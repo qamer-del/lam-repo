@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TransType {
+  SALE
+  EXPENSE
+  ADVANCE
+  OWNER_WITHDRAWAL
+}
+
+enum PayMethod {
+  CASH
+  NETWORK
+}
+
+enum Role {
+  ADMIN
+  CASHIER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      Role     @default(CASHIER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  records   Transaction[] @relation("UserRecords")
+}
+
+model Staff {
+  id              Int           @id @default(autoincrement())
+  name            String
+  baseSalary      Float
+  isActive        Boolean       @default(true)
+  transactions    Transaction[] 
+}
+
+model Transaction {
+  id             Int          @id @default(autoincrement())
+  type           TransType
+  amount         Float
+  method         PayMethod    @default(CASH)
+  description    String?
+  isSettled      Boolean      @default(false)
+  staffId        Int?         
+  staff          Staff?       @relation(fields: [staffId], references: [id])
+  settlementId   Int?         
+  settlement     Settlement?  @relation(fields: [settlementId], references: [id])
+  recordedById   String?      
+  recordedBy     User?        @relation("UserRecords", fields: [recordedById], references: [id])
+  createdAt      DateTime     @default(now())
+}
+
+model Settlement {
+  id             Int           @id @default(autoincrement())
+  totalCashHanded Float
+  reportDate     DateTime      @default(now())
+  transactions   Transaction[]
+}

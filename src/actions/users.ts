@@ -1,0 +1,32 @@
+'use server'
+
+import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
+import bcrypt from 'bcryptjs'
+import { revalidatePath } from 'next/cache'
+
+export async function createUser(data: any) {
+  const session = await auth()
+  if (session?.user?.role !== 'ADMIN') throw new Error("Unauthorized")
+
+  const hashedPassword = await bcrypt.hash(data.password, 10)
+  
+  await prisma.user.create({
+    data: {
+      name: data.name,
+      username: data.username,
+      password: hashedPassword,
+      role: data.role,
+    }
+  })
+  
+  revalidatePath('/admin/users')
+}
+
+export async function deleteUser(id: string) {
+  const session = await auth()
+  if (session?.user?.role !== 'ADMIN') throw new Error("Unauthorized")
+  
+  await prisma.user.delete({ where: { id } })
+  revalidatePath('/admin/users')
+}
