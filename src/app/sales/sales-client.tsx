@@ -12,13 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { format } from 'date-fns'
-import { Receipt, Coins, CreditCard, Download } from 'lucide-react'
+import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
+import { Receipt, Coins, CreditCard, Download, Filter, Calculator } from 'lucide-react'
 import { AddSalesModal } from '@/components/add-sales-modal'
 import { AddRefundModal } from '@/components/add-refund-modal'
 import { SalesDocument } from '@/components/sales-document'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function SalesPage({
   initialSales
@@ -29,12 +31,18 @@ export default function SalesPage({
   const { data: session } = useSession()
   const isCashier = session?.user?.role === 'CASHIER'
   const [sales, setSales] = useState<any[]>(initialSales || [])
+  const [fromDate, setFromDate] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
+  const [toDate, setToDate] = useState<string>(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
+  const [manualProfit, setManualProfit] = useState<string>('')
 
-  // Auto fetch would normally go here if not injected by SSR wrapping
-  // However, since we injected using a page wrapper similar to dashboard, we can just use props.
-
-  const currentMonth = new Date().getMonth()
-  const currentYear = new Date().getFullYear()
+  const filteredSales = sales.filter(sale => {
+    const saleDate = new Date(sale.createdAt)
+    const start = new Date(fromDate)
+    start.setHours(0,0,0,0)
+    const end = new Date(toDate)
+    end.setHours(23,59,59,999)
+    return isWithinInterval(saleDate, { start, end })
+  })
 
   // Calculate metrics
   let totalCash = 0
@@ -43,12 +51,14 @@ export default function SalesPage({
   // Group sales for display
   const groups = new Map<string, any>()
   
-  sales.forEach(sale => {
+  filteredSales.forEach(sale => {
     // Process metrics
-    const d = new Date(sale.createdAt)
-    if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-       if (sale.method === 'CASH') totalCash += sale.amount
-       if (sale.method === 'NETWORK') totalNetwork += sale.amount
+    if (sale.type === 'SALE') {
+      if (sale.method === 'CASH') totalCash += sale.amount
+      if (sale.method === 'NETWORK') totalNetwork += sale.amount
+    } else if (sale.type === 'RETURN') {
+      if (sale.method === 'CASH') totalCash -= sale.amount
+      if (sale.method === 'NETWORK') totalNetwork -= sale.amount
     }
 
     // Grouping strictly by exact ISO timestamp string and cashier ID guarantees split records
@@ -89,11 +99,20 @@ export default function SalesPage({
           
           {!isCashier && (
             <PDFDownloadLink
-              document={<SalesDocument sales={sales} totalCash={totalCash} totalNetwork={totalNetwork} />}
-              fileName={`Sales_Report_${format(new Date(), 'MMM_dd_yyyy')}.pdf`}
+              document={
+                <SalesDocument 
+                  sales={filteredSales} 
+                  totalCash={totalCash} 
+                  totalNetwork={totalNetwork} 
+                  vatAmount={(totalCash + totalNetwork) * 0.15}
+                  manualProfit={parseFloat(manualProfit) || 0}
+                  dateStr={`${fromDate} to ${toDate}`}
+                />
+              }
+              fileName={`Sales_Report_${fromDate}_to_${toDate}.pdf`}
             >
               {({ loading }) => (
-                <Button variant="outline" disabled={loading} className="flex-1 sm:flex-none gap-2">
+                <Button variant="outline" disabled={loading} className="flex-1 sm:flex-none gap-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 shadow-sm">
                   <Download size={16} />
                   {loading ? '...' : t('generatePdf')}
                 </Button>
@@ -104,40 +123,96 @@ export default function SalesPage({
       </div>
 
       {!isCashier && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="shadow-md border-none bg-white dark:bg-gray-900 ring-1 ring-gray-100 dark:ring-gray-800">
-            <CardHeader className="flex flex-row items-center gap-3 pb-2">
-              <div className="p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 rounded-lg">
-                <Receipt size={20} />
+        <Card className="border-none shadow-xl bg-gradient-to-br from-gray-50 to-white dark:from-gray-950 dark:to-gray-900 ring-1 ring-gray-200 dark:ring-gray-800">
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-gray-500">
+                  <Filter size={14} /> From Date
+                </Label>
+                <Input 
+                  type="date" 
+                  className="rounded-xl border-gray-200 focus:ring-emerald-500" 
+                  value={fromDate} 
+                  onChange={(e) => setFromDate(e.target.value)} 
+                />
               </div>
-              <CardTitle className="text-sm font-medium text-gray-500">{t('grossTotalMonth')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">{(totalCash + totalNetwork).toFixed(2)}</p>
-            </CardContent>
-          </Card>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-gray-500">
+                  <Filter size={14} /> To Date
+                </Label>
+                <Input 
+                  type="date" 
+                  className="rounded-xl border-gray-200 focus:ring-emerald-500" 
+                  value={toDate} 
+                  onChange={(e) => setToDate(e.target.value)} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-gray-500">
+                  <Calculator size={14} /> Manually Enter Net Profit
+                </Label>
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="e.g. 1500.00"
+                  className="rounded-xl border-gray-200 focus:ring-emerald-500 font-bold" 
+                  value={manualProfit} 
+                  onChange={(e) => setManualProfit(e.target.value)} 
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          <Card className="shadow-md border-none bg-white dark:bg-gray-900 ring-1 ring-gray-100 dark:ring-gray-800">
-            <CardHeader className="flex flex-row items-center gap-3 pb-2">
+      {!isCashier && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-blue-500">
+            <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
               <div className="p-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 rounded-lg">
                 <Coins size={20} />
               </div>
-              <CardTitle className="text-sm font-medium text-gray-500">{t('cashVolume')}</CardTitle>
+              <CardTitle className="text-xs font-bold uppercase text-gray-400">Net Cash Sales</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400">{totalCash.toFixed(2)}</p>
+              <p className="text-2xl font-black text-blue-600">{totalCash.toFixed(2)}</p>
             </CardContent>
           </Card>
 
-          <Card className="shadow-md border-none bg-white dark:bg-gray-900 ring-1 ring-gray-100 dark:ring-gray-800 sm:col-span-2 lg:col-span-1">
-            <CardHeader className="flex flex-row items-center gap-3 pb-2">
+          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-purple-500">
+            <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
               <div className="p-2 bg-purple-100 text-purple-600 dark:bg-purple-900/30 rounded-lg">
                 <CreditCard size={20} />
               </div>
-              <CardTitle className="text-sm font-medium text-gray-500">{t('networkVolume')}</CardTitle>
+              <CardTitle className="text-xs font-bold uppercase text-gray-400">Net Network Sales</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl sm:text-3xl font-extrabold text-purple-600 dark:text-purple-400">{totalNetwork.toFixed(2)}</p>
+              <p className="text-2xl font-black text-purple-600">{totalNetwork.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-orange-500">
+            <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
+              <div className="p-2 bg-orange-100 text-orange-600 dark:bg-orange-900/30 rounded-lg">
+                <Receipt size={20} />
+              </div>
+              <CardTitle className="text-xs font-bold uppercase text-gray-400">VAT (15%)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-black text-orange-600 font-mono tracking-tighter">{((totalCash + totalNetwork) * 0.15).toFixed(2)}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-emerald-500">
+            <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
+              <div className="p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 rounded-lg">
+                <Calculator size={20} />
+              </div>
+              <CardTitle className="text-xs font-bold uppercase text-gray-400">Net Profit</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-black text-emerald-600">{parseFloat(manualProfit).toFixed(2) || '0.00'}</p>
             </CardContent>
           </Card>
         </div>

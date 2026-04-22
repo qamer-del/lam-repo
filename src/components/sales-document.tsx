@@ -56,12 +56,13 @@ interface SalesDocumentProps {
   sales: any[];
   totalCash: number;
   totalNetwork: number;
+  vatAmount: number;
+  manualProfit: number;
   dateStr?: string;
 }
 
-export function SalesDocument({ sales, totalCash, totalNetwork, dateStr }: SalesDocumentProps) {
+export function SalesDocument({ sales, totalCash, totalNetwork, vatAmount, manualProfit, dateStr }: SalesDocumentProps) {
   const currentDate = dateStr || format(new Date(), 'PPP p');
-  const grandTotal = totalCash + totalNetwork;
 
   return (
     <Document>
@@ -73,16 +74,20 @@ export function SalesDocument({ sales, totalCash, totalNetwork, dateStr }: Sales
 
         <View style={styles.summaryBox}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Total Cash Sales</Text>
+            <Text style={styles.summaryLabel}>Net Cash Sales</Text>
             <Text style={styles.summaryValue}>{totalCash.toFixed(2)}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Total Net Sales</Text>
+            <Text style={styles.summaryLabel}>Net Network Sales</Text>
             <Text style={styles.summaryValue}>{totalNetwork.toFixed(2)}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Combined Total</Text>
-            <Text style={[styles.summaryValue, { color: '#4f46e5' }]}>{grandTotal.toFixed(2)}</Text>
+            <Text style={styles.summaryLabel}>VAT (15%)</Text>
+            <Text style={[styles.summaryValue, { color: '#f59e0b' }]}>{vatAmount.toFixed(2)}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Net Profit</Text>
+            <Text style={[styles.summaryValue, { color: '#059669' }]}>{manualProfit.toFixed(2)}</Text>
           </View>
         </View>
 
@@ -95,9 +100,11 @@ export function SalesDocument({ sales, totalCash, totalNetwork, dateStr }: Sales
           </View>
 
           {sales.map((sale) => (
-            <View key={sale.id} style={styles.tableRow}>
-              <Text style={styles.colMethod}>{sale.method}</Text>
-              <Text style={styles.colAmount}>{sale.amount.toFixed(2)}</Text>
+            <View key={sale.id} style={[styles.tableRow, sale.type === 'RETURN' ? { backgroundColor: '#fef2f2' } : {}]}>
+              <Text style={styles.colMethod}>{sale.type === 'RETURN' ? 'REFUND' : sale.method}</Text>
+              <Text style={[styles.colAmount, sale.type === 'RETURN' ? { color: '#b91c1c', fontWeight: 'bold' } : {}]}>
+                {sale.type === 'RETURN' ? '-' : ''}{sale.amount.toFixed(2)}
+              </Text>
               <Text style={styles.colDesc}>{sale.description || '-'}</Text>
               <Text style={styles.colDate}>{format(new Date(sale.createdAt), 'MM/dd/yy HH:mm')}</Text>
             </View>
