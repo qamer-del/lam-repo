@@ -94,7 +94,9 @@ export async function createSettlement() {
     where: { isSettled: false }
   })
 
-  const cashHanded = unsettled.reduce((acc: number, tx) => {
+  type UnsettledTx = (typeof unsettled)[number]
+
+  const cashHanded = unsettled.reduce((acc: number, tx: UnsettledTx) => {
     if (tx.type === 'SALE' && tx.method === 'CASH') return acc + tx.amount;
     if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL'].includes(tx.type) && tx.method === 'CASH') return acc - tx.amount;
     return acc;
