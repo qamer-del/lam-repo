@@ -15,7 +15,9 @@ import { PdfReportButton } from './pdf-report-button'
 import { editAdvance } from '@/actions/transactions'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent } from '@/components/ui/card'
-import { User, DollarSign, Calendar, CheckCircle2, AlertCircle } from 'lucide-react'
+import { User, DollarSign, Calendar, CheckCircle2, AlertCircle, Wallet, Landmark } from 'lucide-react'
+import { SalarySettlementModal } from './salary-settlement-modal'
+import { SettleAllSalaries } from './settle-all-salaries'
 
 type Staff = {
   id: number
@@ -126,11 +128,14 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
             {s.name}
           </button>
         ))}
-        {!selected && (
-          <PdfReportButton 
-            staffSummary={staffSummary} 
-            totals={{ base: totalBase, advances: totalAllAdvances, deductions: totalDeductions, net: allNetSalary }} 
-          />
+        {!selected && isSuperAdmin && (
+          <div className="flex gap-2">
+            <SettleAllSalaries />
+            <PdfReportButton 
+              staffSummary={staffSummary} 
+              totals={{ base: totalBase, advances: totalAllAdvances, deductions: totalDeductions, net: allNetSalary }} 
+            />
+          </div>
         )}
       </div>
 
@@ -151,6 +156,17 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                 {netSalary.toFixed(2)}
               </p>
             </div>
+            
+            {isSuperAdmin && (
+              <div className="sm:col-span-3 flex justify-end">
+                <SalarySettlementModal 
+                  staff={{ id: selectedStaff.id, name: selectedStaff.name, baseSalary: selectedStaff.baseSalary }}
+                  advances={staffTxs}
+                  totalAdvances={totalAdvances}
+                  netPaid={netSalary}
+                />
+              </div>
+            )}
           </div>
 
           {/* Desktop Table View */}

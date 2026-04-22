@@ -24,6 +24,7 @@ import { useStore, Transaction, TransType, PayMethod } from '@/store/useStore'
 import { addTransaction } from '@/actions/transactions'
 import { getStaffList } from '@/actions/staff'
 import { useEffect } from 'react'
+import { ModernLoader } from './ui/modern-loader'
 
 export function AddTransactionModal() {
   const { t } = useLanguage()
@@ -70,7 +71,9 @@ export function AddTransactionModal() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+      {loading && <ModernLoader />}
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button className="flex items-center gap-2" />}>
         <Plus size={16} />
         {t('addTransaction')}

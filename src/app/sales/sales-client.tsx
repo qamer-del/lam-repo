@@ -15,6 +15,7 @@ import {
 import { format } from 'date-fns'
 import { Receipt, Coins, CreditCard, Download } from 'lucide-react'
 import { AddSalesModal } from '@/components/add-sales-modal'
+import { AddRefundModal } from '@/components/add-refund-modal'
 import { SalesDocument } from '@/components/sales-document'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { Button } from '@/components/ui/button'
@@ -51,10 +52,11 @@ export default function SalesPage({
     }
 
     // Grouping strictly by exact ISO timestamp string and cashier ID guarantees split records
-    const key = `${sale.createdAt}_${sale.recordedById}`
+    const key = `${sale.createdAt}_${sale.recordedById}_${sale.type}`
     if (!groups.has(key)) {
       groups.set(key, {
         id: sale.id,
+        type: sale.type,
         description: sale.description,
         createdAt: sale.createdAt,
         totalAmount: 0,
@@ -83,6 +85,7 @@ export default function SalesPage({
         
         <div className="flex w-full sm:w-auto gap-3">
           <AddSalesModal />
+          <AddRefundModal />
           
           {!isCashier && (
             <PDFDownloadLink
@@ -157,19 +160,25 @@ export default function SalesPage({
                 <TableRow key={sale.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                   <TableCell>
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
-                      sale.methods.has('CASH') && sale.methods.has('NETWORK')
-                        ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                        : sale.methods.has('CASH')
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                          : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                      sale.type === 'RETURN'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        : sale.methods.has('CASH') && sale.methods.has('NETWORK')
+                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          : sale.methods.has('CASH')
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                     }`}>
-                      {sale.methods.has('CASH') && sale.methods.has('NETWORK') 
-                        ? 'SPLIT' 
-                        : sale.methods.has('CASH') ? t('cash') : t('network')}
+                      {sale.type === 'RETURN' 
+                        ? 'REFUND'
+                        : sale.methods.has('CASH') && sale.methods.has('NETWORK') 
+                          ? 'SPLIT' 
+                          : sale.methods.has('CASH') ? t('cash') : t('network')}
                     </span>
                   </TableCell>
                   <TableCell>
-                    <div className="font-bold whitespace-nowrap">{sale.totalAmount.toFixed(2)}</div>
+                    <div className={`font-bold whitespace-nowrap ${sale.type === 'RETURN' ? 'text-red-600' : ''}`}>
+                      {sale.type === 'RETURN' ? '-' : ''}{sale.totalAmount.toFixed(2)}
+                    </div>
                     {sale.methods.has('CASH') && sale.methods.has('NETWORK') && (
                       <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5 whitespace-nowrap" dir="ltr">
                         {t('cash')}: {sale.cashAmount.toFixed(2)} | {t('network')}: {sale.networkAmount.toFixed(2)}
@@ -192,24 +201,26 @@ export default function SalesPage({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      sale.methods.has('CASH') && sale.methods.has('NETWORK')
-                        ? 'bg-orange-100 text-orange-700'
-                        : sale.methods.has('CASH')
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-purple-100 text-purple-700'
+                      sale.type === 'RETURN'
+                        ? 'bg-red-100 text-red-700'
+                        : sale.methods.has('CASH') && sale.methods.has('NETWORK')
+                          ? 'bg-orange-100 text-orange-700'
+                          : sale.methods.has('CASH')
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-purple-100 text-purple-700'
                     }`}>
-                      {sale.methods.has('CASH') && sale.methods.has('NETWORK') ? 'Split Payment' : sale.methods.has('CASH') ? 'Cash Sale' : 'Network Sale'}
+                      {sale.type === 'RETURN' ? 'Sales Return' : sale.methods.has('CASH') && sale.methods.has('NETWORK') ? 'Split Payment' : sale.methods.has('CASH') ? 'Cash Sale' : 'Network Sale'}
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 font-medium">
                     {format(new Date(sale.createdAt), 'MMM dd, h:mm a')}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums leading-none">
-                    {sale.totalAmount.toFixed(2)}
-                  </p>
-                </div>
+                  <div className="text-right">
+                    <p className={`text-2xl font-black tabular-nums leading-none ${sale.type === 'RETURN' ? 'text-red-600' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {sale.type === 'RETURN' ? '-' : ''}{sale.totalAmount.toFixed(2)}
+                    </p>
+                  </div>
               </div>
 
               {sale.methods.has('CASH') && sale.methods.has('NETWORK') && (

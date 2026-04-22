@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { useLanguage } from '@/providers/language-provider'
 import { recordDailySales } from '@/actions/transactions'
 import { useRouter } from 'next/navigation'
+import { ModernLoader } from './ui/modern-loader'
 
 export function AddSalesModal() {
   const { t } = useLanguage()
@@ -74,7 +75,9 @@ export function AddSalesModal() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+      {loading && <ModernLoader />}
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" />}>
         <Plus size={16} />
         {t('addSales')}

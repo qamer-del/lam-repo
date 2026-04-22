@@ -52,7 +52,13 @@ export async function getDashboardData() {
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') cashInDrawer += tx.amount
       else if (tx.method === 'NETWORK') networkSales += tx.amount
-    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
+    } else if (tx.type === 'RETURN') {
+      if (tx.method === 'CASH') cashInDrawer -= tx.amount
+      // Network returns also affect the reported network sales total if we want, 
+      // but usually they decrease the expected cash/balance. 
+      // For now, let's treat both as direct deductions from their respective tracks.
+      if (tx.method === 'NETWORK') networkSales -= tx.amount
+    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type)) {
       if (tx.method === 'CASH') cashInDrawer -= tx.amount
     } else if (tx.type === 'AGENT_PURCHASE') {
       // credit purchase doesn't affect standard cash register
@@ -69,6 +75,104 @@ export async function getDashboardData() {
     totalStaffDebt,
     transactions,
   }
+}
+
+export async function recordRefund(data: {
+  amount: number
+  method: 'CASH' | 'NETWORK'
+  description?: string
+}) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  const tx = await prisma.transaction.create({
+    data: {
+      type: 'RETURN',
+      amount: data.amount,
+      method: data.method,
+      description: data.description,
+      recordedById: session.user.id
+    }
+  })
+  
+  revalidatePath('/')
+  revalidatePath('/sales')
+  return tx
+}
+
+export async function settleSalary(data: { staffId: number, month: number, year: number }) {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
+    throw new Error("Unauthorized")
+  }
+
+  // 1. Get staff info and unsettled advances
+  const staff = await prisma.staff.findUnique({ 
+    where: { id: data.staffId },
+    include: { transactions: {
+      where: {
+        type: 'ADVANCE',
+        isSettled: false
+      }
+    }}
+  })
+  
+  if (!staff) throw new Error("Staff not found")
+
+  const totalAdvances = staff.transactions.reduce((sum, tx) => sum + tx.amount, 0)
+  const netPaid = staff.baseSalary - totalAdvances
+
+  // 2. Create SalarySettlement record
+  const salarySettlement = await prisma.salarySettlement.create({
+    data: {
+      staffId: data.staffId,
+      month: data.month,
+      year: data.year,
+      baseSalary: staff.baseSalary,
+      advancesTally: totalAdvances,
+      netPaid: netPaid,
+      transactions: {
+        connect: staff.transactions.map(tx => ({ id: tx.id }))
+      }
+    }
+  })
+
+  // 3. Record final SALARY_PAYMENT if netPaid > 0
+  if (netPaid > 0) {
+    await prisma.transaction.create({
+      data: {
+        type: 'SALARY_PAYMENT',
+        amount: netPaid,
+        method: 'CASH',
+        description: `Final payout for period ${data.month}/${data.year}`,
+        staffId: data.staffId,
+        recordedById: session.user.id,
+        isSettled: true,
+        salarySettlementId: salarySettlement.id
+      }
+    })
+  }
+
+  // 4. Mark advances as settled
+  await prisma.transaction.updateMany({
+    where: { 
+      id: { in: staff.transactions.map(tx => tx.id) } 
+    },
+    data: { isSettled: true }
+  })
+
+  revalidatePath('/')
+  revalidatePath('/staff')
+  return salarySettlement
+}
+
+export async function settleAllSalaries(data: { month: number, year: number }) {
+  const staffMembers = await prisma.staff.findMany({ where: { isActive: true }})
+  const results = []
+  for (const s of staffMembers) {
+    results.push(await settleSalary({ staffId: s.id, month: data.month, year: data.year }))
+  }
+  return results
 }
 
 export async function editAdvance(transactionId: number, newAmount: number) {

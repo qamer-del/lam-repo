@@ -11,8 +11,10 @@ datasource db {
 
 enum TransType {
   SALE
+  RETURN
   EXPENSE
   ADVANCE
+  SALARY_PAYMENT
   OWNER_WITHDRAWAL
   AGENT_PURCHASE
   AGENT_PAYMENT
@@ -44,11 +46,12 @@ model User {
 }
 
 model Staff {
-  id              Int           @id @default(autoincrement())
-  name            String
-  baseSalary      Float
-  isActive        Boolean       @default(true)
-  transactions    Transaction[] 
+  id                Int                @id @default(autoincrement())
+  name              String
+  baseSalary        Float
+  isActive          Boolean            @default(true)
+  transactions      Transaction[]
+  salarySettlements SalarySettlement[]
 }
 
 model Agent {
@@ -61,26 +64,41 @@ model Agent {
 }
 
 model Transaction {
-  id             Int          @id @default(autoincrement())
-  type           TransType
-  amount         Float
-  method         PayMethod    @default(CASH)
-  description    String?
-  isSettled      Boolean      @default(false)
-  staffId        Int?         
-  staff          Staff?       @relation(fields: [staffId], references: [id])
-  agentId        Int?
-  agent          Agent?       @relation(fields: [agentId], references: [id])
-  settlementId   Int?         
-  settlement     Settlement?  @relation(fields: [settlementId], references: [id])
-  recordedById   String?      
-  recordedBy     User?        @relation("UserRecords", fields: [recordedById], references: [id])
-  createdAt      DateTime     @default(now())
+  id                  Int               @id @default(autoincrement())
+  type                TransType
+  amount              Float
+  method              PayMethod         @default(CASH)
+  description         String?
+  isSettled           Boolean           @default(false)
+  staffId             Int?
+  staff               Staff?            @relation(fields: [staffId], references: [id])
+  agentId             Int?
+  agent               Agent?            @relation(fields: [agentId], references: [id])
+  settlementId        Int?
+  settlement          Settlement?       @relation(fields: [settlementId], references: [id])
+  salarySettlementId  Int?
+  salarySettlement    SalarySettlement? @relation(fields: [salarySettlementId], references: [id])
+  recordedById        String?
+  recordedBy          User?             @relation("UserRecords", fields: [recordedById], references: [id])
+  createdAt           DateTime          @default(now())
 }
 
 model Settlement {
-  id             Int           @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   totalCashHanded Float
-  reportDate     DateTime      @default(now())
-  transactions   Transaction[]
+  reportDate      DateTime      @default(now())
+  transactions    Transaction[]
+}
+
+model SalarySettlement {
+  id            Int           @id @default(autoincrement())
+  staffId       Int
+  staff         Staff         @relation(fields: [staffId], references: [id])
+  month         Int
+  year          Int
+  baseSalary    Float
+  advancesTally Float
+  netPaid       Float
+  paidAt        DateTime      @default(now())
+  transactions  Transaction[]
 }
