@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 
 export async function addTransaction(data: {
-  type: 'SALE' | 'EXPENSE' | 'ADVANCE' | 'OWNER_WITHDRAWAL'
+  type: 'SALE' | 'EXPENSE' | 'ADVANCE' | 'OWNER_WITHDRAWAL' | 'RETURN' | 'SALARY_PAYMENT' | 'AGENT_PURCHASE' | 'AGENT_PAYMENT'
   amount: number
   method: 'CASH' | 'NETWORK'
   description?: string
@@ -18,6 +18,7 @@ export async function addTransaction(data: {
     data: {
       type: data.type,
       amount: data.amount,
+      fundAmount: data.amount,
       method: data.method,
       description: data.description,
       staffId: data.staffId,
@@ -66,26 +67,35 @@ export async function getDashboardData() {
   transactions.forEach((tx: TxWithRelations) => {
     const txDate = new Date(tx.createdAt)
     const isThisMonth = txDate.getMonth() === curMonth && txDate.getFullYear() === curYear
+    
+    // Ledger values: 
+    // tx.amount = Physical (Drawer)
+    // tx.fundAmount = Accounting (Salary Fund) - Fallback to amount for legacy records
+    const fundAmount = tx.fundAmount || tx.amount
 
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') {
         cashInDrawer += tx.amount
-        if (isThisMonth) monthlySalaryPool += tx.amount
+        if (isThisMonth) monthlySalaryPool += fundAmount
       } else if (tx.method === 'NETWORK') {
         networkSales += tx.amount
       }
     } else if (tx.type === 'RETURN') {
       if (tx.method === 'CASH') {
         cashInDrawer -= tx.amount
-        if (isThisMonth) monthlySalaryPool -= tx.amount
+        if (isThisMonth) monthlySalaryPool -= fundAmount
       }
       if (tx.method === 'NETWORK') networkSales -= tx.amount
-    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
+    } else if (tx.type === 'ADVANCE') {
+      if (tx.method === 'CASH') cashInDrawer -= tx.amount
+      // Advances also deduct from the Salary Fund
+      if (isThisMonth && tx.method === 'CASH') salaryPayouts += fundAmount
+    } else if (['EXPENSE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
       if (tx.method === 'CASH') cashInDrawer -= tx.amount
       else if (tx.method === 'NETWORK') networkSales -= tx.amount
     } else if (tx.type === 'SALARY_PAYMENT') {
       // Per user request, salary settlements are from a dedicated fund and don't affect standard cash account
-      if (isThisMonth) salaryPayouts += tx.amount
+      if (isThisMonth) salaryPayouts += fundAmount
     }
   })
 
@@ -210,8 +220,9 @@ export async function editAdvance(transactionId: number, newAmount: number) {
   const tx = await prisma.transaction.update({
     where: { id: transactionId },
     data: { 
-      amount: newAmount,
-      isInternal: true // Move to internal account to avoid affecting main drawer metrics
+      fundAmount: newAmount, // Update correctly reflects in the dedicated Salary Fund
+      // amount: stays original (physical drawer impact)
+      isInternal: false // Keep it visible in the main transactions list but with new fund value
     },
   })
 
@@ -274,6 +285,7 @@ export async function recordDailySales(data: {
     type: 'SALE'
     method: 'CASH' | 'NETWORK'
     amount: number
+    fundAmount: number
     description?: string
     recordedById: string
     createdAt: Date
@@ -286,6 +298,7 @@ export async function recordDailySales(data: {
       type: 'SALE' as const,
       method: 'CASH' as const,
       amount: data.cashAmount,
+      fundAmount: data.cashAmount,
       description: data.description,
       recordedById: session.user.id,
       createdAt: exactTime
@@ -297,6 +310,7 @@ export async function recordDailySales(data: {
       type: 'SALE' as const,
       method: 'NETWORK' as const,
       amount: data.networkAmount,
+      fundAmount: data.networkAmount,
       description: data.description,
       recordedById: session.user.id,
       createdAt: exactTime

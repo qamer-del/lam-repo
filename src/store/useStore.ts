@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 
-export type TransType = 'SALE' | 'EXPENSE' | 'ADVANCE' | 'OWNER_WITHDRAWAL'
+export type TransType = 'SALE' | 'EXPENSE' | 'ADVANCE' | 'OWNER_WITHDRAWAL' | 'RETURN' | 'SALARY_PAYMENT' | 'AGENT_PURCHASE' | 'AGENT_PAYMENT'
 export type PayMethod = 'CASH' | 'NETWORK'
 
 export interface Transaction {
   id: number
   type: TransType
   amount: number
+  fundAmount: number
   method: PayMethod
   description: string | null
   isSettled: boolean
@@ -37,14 +38,23 @@ export const useStore = create<VaultState>((set) => ({
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') {
         cashChange = tx.amount;
-        fuelFundChange = tx.amount; // Sales increase the salary fund
+        fuelFundChange = tx.fundAmount; 
       }
       if (tx.method === 'NETWORK') netChange = tx.amount;
-    } else if (tx.type === 'EXPENSE' || tx.type === 'ADVANCE' || tx.type === 'OWNER_WITHDRAWAL') {
+    } else if (tx.type === 'RETURN') {
+      if (tx.method === 'CASH') {
+        cashChange = -tx.amount;
+        fuelFundChange = -tx.fundAmount;
+      }
+    } else if (tx.type === 'ADVANCE') {
+      if (tx.method === 'CASH') {
+        cashChange = -tx.amount;
+        fuelFundChange = -tx.fundAmount; // Advances come from the fund too
+      }
+    } else if (tx.type === 'EXPENSE' || tx.type === 'OWNER_WITHDRAWAL') {
       if (tx.method === 'CASH') cashChange = -tx.amount;
     } else if (tx.type === 'SALARY_PAYMENT') {
-      // Salary payments come from the fund, NOT the daily drawer
-      fuelFundChange = -tx.amount;
+      fuelFundChange = -tx.fundAmount;
     }
 
     return {

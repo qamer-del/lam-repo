@@ -19,6 +19,7 @@ type Transaction = {
   id: number
   type: string
   amount: number
+  fundAmount: number
   method: string
   description: string | null
   isSettled: boolean
@@ -68,7 +69,7 @@ export default function StaffPage() {
           Loading...
         </div>
       ) : (
-        <StaffLedger staff={staff} transactions={transactions} />
+        <StaffLedger staff={staff} transactions={transactions} onEdited={loadData} />
       )}
     </div>
   )
