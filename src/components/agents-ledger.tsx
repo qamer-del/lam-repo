@@ -11,6 +11,7 @@ import { format } from 'date-fns'
 import { createAgent, addAgentTransaction } from '@/actions/agents'
 import { AgentPdfReportButton } from './agent-report-pdf'
 import { useSession } from 'next-auth/react'
+import { Receipt } from 'lucide-react'
 
 export function AgentsLedger({ agents }: { agents: any[] }) {
   const { data: session } = useSession()
@@ -203,7 +204,8 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
             )}
 
             <Card className={`shadow-sm border-gray-200 dark:border-gray-800 overflow-hidden ${isOwner ? 'col-span-1 md:col-span-3' : 'col-span-1 md:col-span-2'}`}>
-              <div className="overflow-x-auto">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
                     <TableRow>
@@ -214,9 +216,6 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedAgent?.transactions.length === 0 && (
-                      <TableRow><TableCell colSpan={4} className="text-center text-gray-400 py-10">No transactions recorded.</TableCell></TableRow>
-                    )}
                     {selectedAgent?.transactions.map((tx: any) => (
                       <TableRow key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                         <TableCell className="whitespace-nowrap text-sm text-gray-500">{format(new Date(tx.createdAt), 'PPp')}</TableCell>
@@ -232,6 +231,37 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Mobile Card List View */}
+              <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                {selectedAgent?.transactions.map((tx: any) => (
+                  <div key={tx.id} className="p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${tx.type === 'AGENT_PURCHASE' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                          {tx.type === 'AGENT_PURCHASE' ? 'Purchase' : 'Payment'}
+                        </span>
+                        <p className="text-xs text-gray-400 font-medium">{format(new Date(tx.createdAt), 'MMM dd, yyyy')}</p>
+                      </div>
+                      <p className={`text-xl font-black tabular-nums ${tx.type === 'AGENT_PURCHASE' ? 'text-orange-600' : 'text-green-600'}`}>
+                        {tx.type === 'AGENT_PURCHASE' ? '+' : '-'}{tx.amount.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-900/50 p-2 rounded-xl text-xs text-gray-600 dark:text-gray-400 italic">
+                      {tx.description || 'No transaction notes'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedAgent?.transactions.length === 0 && (
+                <div className="text-center py-16 px-6">
+                  <div className="bg-gray-50 dark:bg-gray-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Receipt className="text-gray-300" size={32} />
+                  </div>
+                  <p className="text-gray-400 text-sm font-bold">No transactions yet.</p>
+                </div>
+              )}
             </Card>
           </div>
         </div>

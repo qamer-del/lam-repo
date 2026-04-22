@@ -141,7 +141,8 @@ export default function SalesPage({
       )}
 
       <Card className="shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
               <TableRow>
@@ -179,16 +180,69 @@ export default function SalesPage({
                   <TableCell className="whitespace-nowrap text-xs sm:text-sm text-gray-500">{format(new Date(sale.createdAt), 'PPp')}</TableCell>
                 </TableRow>
               ))}
-              {aggregatedSales.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10 text-gray-400">
-                    {t('noSalesYet')}
-                  </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </div>
+
+        {/* Mobile Card List View */}
+        <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+          {aggregatedSales.map(sale => (
+            <div key={sale.id} className="p-4 space-y-4 active:bg-gray-50 dark:active:bg-gray-900 transition">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      sale.methods.has('CASH') && sale.methods.has('NETWORK')
+                        ? 'bg-orange-100 text-orange-700'
+                        : sale.methods.has('CASH')
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-purple-100 text-purple-700'
+                    }`}>
+                      {sale.methods.has('CASH') && sale.methods.has('NETWORK') ? 'Split Payment' : sale.methods.has('CASH') ? 'Cash Sale' : 'Network Sale'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 font-medium">
+                    {format(new Date(sale.createdAt), 'MMM dd, h:mm a')}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums leading-none">
+                    {sale.totalAmount.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              {sale.methods.has('CASH') && sale.methods.has('NETWORK') && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-xl text-center">
+                    <p className="text-[10px] text-blue-500 font-bold uppercase tracking-tighter">Cash</p>
+                    <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{sale.cashAmount.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded-xl text-center">
+                    <p className="text-[10px] text-purple-500 font-bold uppercase tracking-tighter">Network</p>
+                    <p className="text-sm font-bold text-purple-700 dark:text-purple-300">{sale.networkAmount.toFixed(2)}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl flex items-center justify-between gap-4">
+                <Receipt size={14} className="text-gray-400 shrink-0" />
+                <p className="text-xs text-gray-600 dark:text-gray-400 italic truncate flex-1">
+                  {sale.description || 'No notes for this sale'}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {aggregatedSales.length === 0 && (
+          <div className="text-center py-16">
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Receipt size={32} className="text-emerald-300" />
+            </div>
+            <p className="text-gray-400 text-sm font-bold">{t('noSalesYet')}</p>
+          </div>
+        )}
       </Card>
     </div>
   )

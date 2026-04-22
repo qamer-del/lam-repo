@@ -115,7 +115,8 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
         )}
 
         <Card className={`${isOwner ? 'col-span-1' : 'col-span-1 md:col-span-2'} border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden`}>
-          <div className="overflow-x-auto">
+          {/* Desktop View */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
                 <TableRow>
@@ -148,6 +149,45 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile View */}
+          <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            {initialUsers.map(user => (
+              <div key={user.id} className="p-4 flex items-center justify-between gap-4 active:bg-gray-50 dark:active:bg-gray-900 transition">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${
+                    user.role === 'SUPER_ADMIN' ? 'bg-red-100 text-red-600' :
+                    user.role === 'ADMIN' ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {user.name.substring(0,2).toUpperCase()}
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white leading-none">{user.name}</p>
+                    <p className="text-[10px] text-gray-400 font-medium" dir="ltr">@{user.username}</p>
+                    <div className="pt-1">
+                      <span className={`px-1.5 py-0.5 text-[9px] uppercase tracking-tighter rounded-md font-black ${
+                        user.role === 'SUPER_ADMIN' ? 'bg-red-100 text-red-700' :
+                        user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {user.role}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {!isOwner && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => handleDelete(user.role, user.id)}
+                  >
+                    <LogOut size={18} />
+                  </Button>
+                )}
+              </div>
+            ))}
           </div>
         </Card>
       </div>

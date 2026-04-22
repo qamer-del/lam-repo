@@ -14,6 +14,8 @@ import { format } from 'date-fns'
 import { PdfReportButton } from './pdf-report-button'
 import { editAdvance } from '@/actions/transactions'
 import { useSession } from 'next-auth/react'
+import { Card, CardContent } from '@/components/ui/card'
+import { User, DollarSign, Calendar, CheckCircle2, AlertCircle } from 'lucide-react'
 
 type Staff = {
   id: number
@@ -151,7 +153,8 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
             </div>
           </div>
 
-          <div className="overflow-x-auto border rounded-xl dark:border-gray-800">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto border rounded-xl dark:border-gray-800">
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50 dark:bg-gray-900/50">
@@ -211,6 +214,58 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="md:hidden space-y-4">
+            {staffTxs.length === 0 ? (
+              <div className="text-center py-10 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                <p className="text-gray-400 text-sm">No advances this month.</p>
+              </div>
+            ) : (
+              staffTxs.map(tx => (
+                <div key={tx.id} className="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 shadow-sm space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
+                        <DollarSign size={16} />
+                      </div>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">#{tx.id}</span>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${tx.isSettled ? 'bg-gray-100 text-gray-500' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {tx.isSettled ? t('settled') : t('unsettled')}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-end border-t border-gray-50 dark:border-gray-900 pt-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Amount</p>
+                      <p className="text-xl font-black text-orange-600 tabular-nums">{tx.amount.toFixed(2)}</p>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Date</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">{format(new Date(tx.createdAt), 'MMM dd, yyyy')}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded-xl">
+                    <p className="text-[10px] text-gray-400 font-medium uppercase mb-1">Notes</p>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 italic">
+                      {tx.description || 'No description provided'}
+                    </p>
+                  </div>
+
+                  {isSuperAdmin && (
+                    <button 
+                      onClick={() => { setEditingRow(tx.id); setEditAmount(tx.amount.toString()); }}
+                      className="w-full py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-xl hover:bg-blue-100 transition"
+                    >
+                      Modify Transaction
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

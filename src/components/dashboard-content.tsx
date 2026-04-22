@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DollarSign, Wifi, Users } from 'lucide-react'
+import { DollarSign, Wifi, Users, Receipt } from 'lucide-react'
 import { format } from 'date-fns'
 
 export function DashboardContent({ 
@@ -127,7 +127,8 @@ export function DashboardContent({
           <CardTitle className="text-lg">{t('recentTransactions')}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50 dark:bg-gray-900/50">
@@ -164,16 +165,56 @@ export function DashboardContent({
                     </TableCell>
                   </TableRow>
                 ))}
-                {transactions.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10 text-gray-400">
-                      No transactions yet. Click &quot;Add Transaction&quot; to get started.
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
           </div>
+
+          {/* Mobile Card List View */}
+          <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            {transactions.map((tx) => (
+              <div key={tx.id} className="p-4 space-y-3 active:bg-gray-50 dark:active:bg-gray-900 transition">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${getTypeBadge(tx.type)}`}>
+                      {getTypeLabel(tx.type)}
+                    </span>
+                    <p className="text-xs text-gray-400 font-medium">{format(new Date(tx.createdAt), 'MMM dd, h:mm a')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
+                      {tx.amount.toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-medium">
+                      {tx.method === 'CASH' ? t('cash') : t('network')}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate flex-1 pr-4">
+                    {tx.description || <span className="italic opacity-50">{t('noDescription') || 'No description'}</span>}
+                  </p>
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                    tx.isSettled 
+                      ? 'bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400' 
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                  }`}>
+                    {tx.isSettled ? t('settled') : t('unsettled')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {transactions.length === 0 && (
+            <div className="text-center py-12 px-6">
+              <div className="bg-gray-50 dark:bg-gray-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Receipt className="text-gray-300" size={32} />
+              </div>
+              <p className="text-gray-400 text-sm font-medium">No transactions yet.</p>
+              <p className="text-gray-500 text-xs mt-1">Transactions will appear here once added.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
