@@ -80,6 +80,7 @@ model Transaction {
   salarySettlement    SalarySettlement? @relation(fields: [salarySettlementId], references: [id])
   recordedById        String?
   recordedBy          User?             @relation("UserRecords", fields: [recordedById], references: [id])
+  isInternal          Boolean           @default(false)
   createdAt           DateTime          @default(now())
 }
 

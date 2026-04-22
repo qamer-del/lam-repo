@@ -46,7 +46,12 @@ interface StaffLedgerProps {
 export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const { t } = useLanguage()
   const { data: session } = useSession()
-  const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
+  const currentRole = session?.user?.role
+  const isSuperAdmin = currentRole === 'SUPER_ADMIN'
+  const isAdmin = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN'
+  const isOwner = currentRole === 'OWNER'
+  const canModify = isAdmin && !isOwner
+
   const [selected, setSelected] = useState<number | null>(null)
   const [editingRow, setEditingRow] = useState<number | null>(null)
   const [editAmount, setEditAmount] = useState<string>('')
@@ -56,7 +61,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
       await editAdvance(txId, parseFloat(editAmount))
       setEditingRow(null)
     } catch(e) {
-      alert("Failed to edit advance. Ensure you are an admin.")
+      alert("Failed to edit advance. Ensure you are a system administrator.")
     }
   }
 
@@ -126,7 +131,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
             {s.name}
           </button>
         ))}
-        {!selected && isSuperAdmin && (
+        {!selected && canModify && (
           <div className="flex gap-2">
             <SettleAllSalaries />
             <PdfReportButton 
@@ -134,6 +139,12 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
               totals={{ base: totalBase, advances: totalAllAdvances, deductions: totalDeductions, net: allNetSalary }} 
             />
           </div>
+        )}
+        {!selected && isOwner && (
+          <PdfReportButton 
+            staffSummary={staffSummary} 
+            totals={{ base: totalBase, advances: totalAllAdvances, deductions: totalDeductions, net: allNetSalary }} 
+          />
         )}
       </div>
 
@@ -155,7 +166,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
               </p>
             </div>
             
-            {isSuperAdmin && (
+            {canModify && (
               <div className="sm:col-span-3 flex justify-end">
                 <SalarySettlementModal 
                   staff={{ id: selectedStaff.id, name: selectedStaff.name, baseSalary: selectedStaff.baseSalary }}
@@ -205,7 +216,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                         ) : (
                           <div className="flex items-center gap-2">
                             {tx.amount.toFixed(2)}
-                            {isSuperAdmin && (
+                            {isSuperAdmin && !isOwner && (
                               <button 
                                 onClick={() => { setEditingRow(tx.id); setEditAmount(tx.amount.toString()); }}
                                 className="text-xs text-blue-500 hover:underline"
@@ -281,7 +292,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                     </p>
                   </div>
 
-                  {isSuperAdmin && (
+                  {canModify && (
                     <div className="pt-2">
                     {editingRow === tx.id ? (
                       <div className="flex gap-2">

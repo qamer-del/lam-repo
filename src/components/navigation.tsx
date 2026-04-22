@@ -9,9 +9,9 @@ import { signOut } from 'next-auth/react'
 const navItems = [
   { href: '/', icon: LayoutDashboard, labelKey: 'dashboard' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Dashboard' },
   { href: '/sales', icon: Receipt, labelKey: 'sales' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER', 'CASHIER'], labelFallback: 'Sales' },
-  { href: '/staff', icon: Users, labelKey: 'staffMembers' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN'], labelFallback: 'Staff' },
+  { href: '/staff', icon: Users, labelKey: 'staffMembers' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Staff' },
   { href: '/agents', icon: Briefcase, labelKey: 'agents' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Agents / Representatives' },
-  { href: '/admin/settings', icon: Settings, labelKey: 'settings' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'System Settings' },
+  { href: '/admin/settings', icon: Settings, labelKey: 'settings' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN'], labelFallback: 'System Settings' },
 ]
 
 export function Sidebar({ role }: { role?: string }) {

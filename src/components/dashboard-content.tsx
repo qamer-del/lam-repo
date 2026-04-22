@@ -1,7 +1,20 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useStore, Transaction } from '@/store/useStore'
+import { useStore, TransType, PayMethod } from '@/store/useStore'
+export interface Transaction {
+  id: number
+  type: TransType
+  amount: number
+  method: PayMethod
+  description: string | null
+  isSettled: boolean
+  createdAt: Date
+  staffId: number | null
+  agentId: number | null
+  staff?: { name: string } | null
+  agent?: { name: string } | null
+}
 import { useLanguage } from '@/providers/language-provider'
 import { AddTransactionModal } from './add-transaction-modal'
 import { SettleCashBtn } from './settle-cash-btn'
@@ -14,19 +27,26 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DollarSign, Wifi, Users, Receipt } from 'lucide-react'
+import { DollarSign, Wifi, Users, Receipt, Landmark } from 'lucide-react'
 import { format } from 'date-fns'
 
 export function DashboardContent({ 
   initialData,
   userRole
 }: { 
-  initialData: { cashInDrawer: number, networkSales: number, salaryFundRemaining: number, transactions: Transaction[] } 
+  initialData: { 
+    cashInDrawer: number, 
+    networkSales: number, 
+    salaryFundRemaining: number, 
+    transactions: Transaction[],
+    internalTransactions?: Transaction[] 
+  } 
   userRole?: string
 }) {
   const { t } = useLanguage()
   const { cashInDrawer, networkSales, salaryFundRemaining, transactions, setVaultData } = useStore()
   
+  const isSuperAdmin = userRole === 'SUPER_ADMIN'
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
   const isOwner = userRole === 'OWNER'
   const canViewStats = isAdmin || isOwner
@@ -34,6 +54,8 @@ export function DashboardContent({
   useEffect(() => {
     setVaultData(initialData)
   }, [initialData, setVaultData])
+
+  const internalTransactions = initialData.internalTransactions || []
 
   const getTypeBadge = (type: string) => {
     const map: Record<string, string> = {
@@ -60,9 +82,16 @@ export function DashboardContent({
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
-        <p className="text-gray-500 mt-1 text-sm">Real-time financial overview</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
+          <p className="text-gray-500 mt-1 text-sm">Real-time financial overview</p>
+        </div>
+        {isOwner && (
+          <div className="px-4 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-lg border border-amber-100 dark:border-amber-800">
+            OWNER MODE: READ-ONLY
+          </div>
+        )}
       </div>
 
       {/* Stats Cards - Hidden for Cashiers */}
@@ -219,6 +248,52 @@ export function DashboardContent({
           )}
         </CardContent>
       </Card>
+
+      {/* Separate Account (Internal Adjustments) - SUPER ADMIN ONLY */}
+      {isSuperAdmin && internalTransactions.length > 0 && (
+        <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-xl overflow-hidden bg-gray-50/50 dark:bg-black/20">
+          <CardHeader className="bg-gray-100 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gray-800 text-white rounded-lg">
+                <Landmark size={20} />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Internal Corrections Ledger</CardTitle>
+                <p className="text-xs text-gray-500">Separated adjustments account (Super Admin Only)</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-100/50 dark:bg-gray-800/30">
+                    <TableHead className="text-xs uppercase font-black tracking-widest opacity-50">Correction #</TableHead>
+                    <TableHead className="text-xs uppercase font-black tracking-widest opacity-50">Impacted Account</TableHead>
+                    <TableHead className="text-xs uppercase font-black tracking-widest opacity-50">Final Amount</TableHead>
+                    <TableHead className="text-xs uppercase font-black tracking-widest opacity-50">Modified Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {internalTransactions.map(tx => (
+                    <TableRow key={tx.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition border-gray-100 dark:border-gray-800">
+                      <TableCell className="font-bold text-gray-900 dark:text-gray-100">#{tx.id}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{tx.staff?.name || 'General'}</span>
+                          <span className="text-[10px] bg-gray-200 dark:bg-gray-800 px-1.5 py-0.5 rounded uppercase font-black opacity-60">{tx.type}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-black text-blue-600 dark:text-blue-400 tabular-nums">{tx.amount.toFixed(2)}</TableCell>
+                      <TableCell className="text-xs text-gray-500 font-medium">{format(new Date(tx.createdAt), 'PPp')}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

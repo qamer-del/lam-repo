@@ -37,10 +37,20 @@ export async function getDashboardData() {
   const whereClause = (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'OWNER') ? {} : { recordedById: session?.user?.id }
 
   const transactions = await prisma.transaction.findMany({
-    where: whereClause,
+    where: { 
+      ...whereClause,
+      isInternal: false // Default dashboard view excludes internal adjustments
+    },
     orderBy: { createdAt: 'desc' },
     include: { staff: true, agent: true }
   })
+
+  // If Super Admin, also fetch internal adjustments for their private view
+  const internalTransactions = role === 'SUPER_ADMIN' ? await prisma.transaction.findMany({
+    where: { isInternal: true },
+    orderBy: { createdAt: 'desc' },
+    include: { staff: true, agent: true }
+  }) : []
 
   type TxWithRelations = (typeof transactions)[number]
 
@@ -87,6 +97,7 @@ export async function getDashboardData() {
     networkSales,
     salaryFundRemaining,
     transactions,
+    internalTransactions // Passed to the client for Super Admin view
   }
 }
 
@@ -198,7 +209,10 @@ export async function editAdvance(transactionId: number, newAmount: number) {
 
   const tx = await prisma.transaction.update({
     where: { id: transactionId },
-    data: { amount: newAmount },
+    data: { 
+      amount: newAmount,
+      isInternal: true // Move to internal account to avoid affecting main drawer metrics
+    },
   })
 
   revalidatePath('/')
