@@ -238,9 +238,21 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                   </div>
 
                   <div className="flex justify-between items-end border-t border-gray-50 dark:border-gray-900 pt-3">
-                    <div className="space-y-1">
+                    <div className="space-y-1 flex-1">
                       <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Amount</p>
-                      <p className="text-xl font-black text-orange-600 tabular-nums">{tx.amount.toFixed(2)}</p>
+                      {editingRow === tx.id ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <input 
+                            type="number" 
+                            className="w-full max-w-[120px] p-2 border rounded-lg text-lg font-bold bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                            value={editAmount} 
+                            onChange={e => setEditAmount(e.target.value)} 
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-xl font-black text-orange-600 tabular-nums">{tx.amount.toFixed(2)}</p>
+                      )}
                     </div>
                     <div className="text-right space-y-1">
                       <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Date</p>
@@ -256,12 +268,31 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                   </div>
 
                   {isSuperAdmin && (
-                    <button 
-                      onClick={() => { setEditingRow(tx.id); setEditAmount(tx.amount.toString()); }}
-                      className="w-full py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-xl hover:bg-blue-100 transition"
-                    >
-                      Modify Transaction
-                    </button>
+                    <div className="pt-2">
+                    {editingRow === tx.id ? (
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleEditSave(tx.id)} 
+                          className="flex-1 py-3 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                        >
+                          Save Changes
+                        </button>
+                        <button 
+                          onClick={() => setEditingRow(null)} 
+                          className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-xl active:scale-95 transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => { setEditingRow(tx.id); setEditAmount(tx.amount.toString()); }}
+                        className="w-full py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-xl hover:bg-blue-100 active:scale-95 transition-all"
+                      >
+                        Modify Transaction
+                      </button>
+                    )}
+                    </div>
                   )}
                 </div>
               ))
