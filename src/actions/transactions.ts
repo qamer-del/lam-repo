@@ -54,12 +54,10 @@ export async function getDashboardData() {
       else if (tx.method === 'NETWORK') networkSales += tx.amount
     } else if (tx.type === 'RETURN') {
       if (tx.method === 'CASH') cashInDrawer -= tx.amount
-      // Network returns also affect the reported network sales total if we want, 
-      // but usually they decrease the expected cash/balance. 
-      // For now, let's treat both as direct deductions from their respective tracks.
       if (tx.method === 'NETWORK') networkSales -= tx.amount
     } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type)) {
       if (tx.method === 'CASH') cashInDrawer -= tx.amount
+      else if (tx.method === 'NETWORK') networkSales -= tx.amount
     } else if (tx.type === 'AGENT_PURCHASE') {
       // credit purchase doesn't affect standard cash register
     }

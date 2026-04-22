@@ -29,6 +29,7 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
   const [txType, setTxType] = useState<'AGENT_PURCHASE' | 'AGENT_PAYMENT'>('AGENT_PURCHASE')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
+  const [method, setMethod] = useState<'CASH' | 'NETWORK'>('CASH')
 
   const handleCreateAgent = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,7 +52,7 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
         type: txType,
         amount: parseFloat(amount),
         description,
-        method: 'CASH'
+        method: txType === 'AGENT_PAYMENT' ? method : 'CASH'
       })
       setAmount('')
       setDescription('')
@@ -189,6 +190,19 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {txType === 'AGENT_PAYMENT' && (
+                    <div className="space-y-2">
+                      <Label>Payment Method</Label>
+                      <Select value={method} onValueChange={(val: any) => setMethod(val)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CASH">Cash Payment (Deducts from Drawer)</SelectItem>
+                          <SelectItem value="NETWORK">Network Payment (Deducts from Network)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Amount</Label>
                     <Input type="number" step="0.01" required value={amount} onChange={e => setAmount(e.target.value)} />
@@ -211,6 +225,7 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
                     <TableRow>
                       <TableHead className="whitespace-nowrap">Date</TableHead>
                       <TableHead className="whitespace-nowrap">Type</TableHead>
+                      <TableHead className="whitespace-nowrap">Method</TableHead>
                       <TableHead className="whitespace-nowrap">Amount</TableHead>
                       <TableHead className="whitespace-nowrap">Description</TableHead>
                     </TableRow>
@@ -222,6 +237,11 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
                         <TableCell>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${tx.type === 'AGENT_PURCHASE' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
                             {tx.type === 'AGENT_PURCHASE' ? 'Purchase' : 'Payment'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`text-[10px] font-bold uppercase ${tx.method === 'NETWORK' ? 'text-purple-600' : 'text-blue-600'}`}>
+                            {tx.method}
                           </span>
                         </TableCell>
                         <TableCell className="font-semibold whitespace-nowrap">{tx.amount.toFixed(2)}</TableCell>
@@ -238,9 +258,14 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
                   <div key={tx.id} className="p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${tx.type === 'AGENT_PURCHASE' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
-                          {tx.type === 'AGENT_PURCHASE' ? 'Purchase' : 'Payment'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${tx.type === 'AGENT_PURCHASE' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                            {tx.type === 'AGENT_PURCHASE' ? 'Purchase' : 'Payment'}
+                          </span>
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-tighter border-l pl-2 border-gray-200 dark:border-gray-800">
+                            {tx.method}
+                          </span>
+                        </div>
                         <p className="text-xs text-gray-400 font-medium">{format(new Date(tx.createdAt), 'MMM dd, yyyy')}</p>
                       </div>
                       <p className={`text-xl font-black tabular-nums ${tx.type === 'AGENT_PURCHASE' ? 'text-orange-600' : 'text-green-600'}`}>
