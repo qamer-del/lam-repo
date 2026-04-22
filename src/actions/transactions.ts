@@ -106,7 +106,7 @@ export async function createSettlement() {
     data: {
       totalCashHanded: cashHanded,
       transactions: {
-        connect: unsettled.map(t => ({ id: t.id }))
+        connect: unsettled.map((t: UnsettledTx) => ({ id: t.id }))
       }
     }
   })
@@ -129,7 +129,15 @@ export async function recordDailySales(data: {
   const session = await auth()
   if (!session?.user?.id) throw new Error("Unauthorized")
 
-  const transactions = []
+  type SaleTx = {
+    type: 'SALE'
+    method: 'CASH' | 'NETWORK'
+    amount: number
+    description?: string
+    recordedById: string
+    createdAt: Date
+  }
+  const transactions: SaleTx[] = []
   const exactTime = new Date()
   
   if (data.cashAmount > 0) {
