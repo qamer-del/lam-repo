@@ -65,7 +65,8 @@ export const en = {
   signIn: 'Sign In',
   settings: 'System Settings',
   agents: 'Agents / Representatives',
-  ownerViewOnly: 'Owner (View Only)'
+  ownerViewOnly: 'Owner (View Only)',
+  noDescription: 'No Description'
 }
 
 export const ar = {
@@ -135,5 +136,6 @@ export const ar = {
   signIn: 'تسجيل الدخول',
   settings: 'إعدادات النظام',
   agents: 'الوكلاء / المناديب',
-  ownerViewOnly: 'المالك (عرض فقط)'
+  ownerViewOnly: 'المالك (عرض فقط)',
+  noDescription: 'لا يوجد وصف'
 }

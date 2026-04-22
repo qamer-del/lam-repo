@@ -12,7 +12,7 @@ import { createUser, deleteUser } from '@/actions/users'
 import { factoryReset } from '@/actions/settings'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/providers/language-provider'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, LogOut } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
 export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
