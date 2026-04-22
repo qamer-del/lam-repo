@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Cairo } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from '@/providers/language-provider';
-import { Sidebar, MobileNav } from '@/components/navigation';
+import { Sidebar, MobileNav, MobileTopBar } from '@/components/navigation';
 import { auth } from "@/auth"
 import { SessionProvider } from 'next-auth/react'
 
@@ -35,15 +35,16 @@ export default async function RootLayout({
         <SessionProvider session={session}>
           <LanguageProvider>
             {session ? (
-              <>
-                <div className="flex min-h-screen">
-                  <Sidebar role={session?.user?.role} />
-                  <main className="flex-1 pb-20 md:pb-0">
+              <div className="flex flex-col md:flex-row min-h-screen">
+                <Sidebar role={session?.user?.role} />
+                <div className="flex-1 flex flex-col min-w-0">
+                  <MobileTopBar />
+                  <main className="flex-1 pb-24 md:pb-0">
                     {children}
                   </main>
                 </div>
                 <MobileNav role={session?.user?.role} />
-              </>
+              </div>
             ) : (
               children
             )}
