@@ -42,11 +42,13 @@ export async function getDashboardData() {
     include: { staff: true, agent: true }
   })
 
+  type TxWithRelations = (typeof transactions)[number]
+
   let cashInDrawer = 0
   let networkSales = 0
   let totalStaffDebt = 0
 
-  transactions.forEach((tx) => {
+  transactions.forEach((tx: TxWithRelations) => {
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') cashInDrawer += tx.amount
       else if (tx.method === 'NETWORK') networkSales += tx.amount
