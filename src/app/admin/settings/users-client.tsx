@@ -22,6 +22,7 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
   const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: '', username: '', password: '', role: 'CASHIER' })
+  const [resetConfirm, setResetConfirm] = useState('')
 
   const { t, locale } = useLanguage()
 
@@ -54,18 +55,22 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
   }
 
   const handleReset = async () => {
-    if (confirm('DANGER: Are you absolutely sure you want to completely FACTORY RESET the system? ALL transaction, settlement, and staff data will be permanently deleted!')) {
-      try {
-        const res = await factoryReset()
-        if (res.error) {
-          alert('Reset Error: ' + res.error)
-        } else {
-          alert('System has been factory reset.')
-          router.refresh()
-        }
-      } catch (err) {
-        alert('Server Error during reset')
+    if (resetConfirm !== 'RESET') return;
+    
+    setLoading(true)
+    try {
+      const res = await factoryReset()
+      if (res.error) {
+        alert('Reset Error: ' + res.error)
+      } else {
+        alert('System has been factory reset.')
+        setResetConfirm('')
+        router.refresh()
       }
+    } catch (err) {
+      alert('Server Error during reset')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -193,24 +198,49 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
       </div>
 
       {isSuperAdmin && (
-        <div className="mt-12 space-y-4">
-          <h2 className="text-2xl font-bold text-red-600">Danger Zone</h2>
-          <Card className="border border-red-200 dark:border-red-900 shadow-sm bg-red-50/50 dark:bg-red-950/20">
-            <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div>
-                <h3 className="text-lg font-bold text-red-700 dark:text-red-400">Factory Reset System</h3>
-                <p className="text-sm text-red-600/80 dark:text-red-400/80 mt-1">
-                  Permanently delete all financial data, transactions, staff, and agents. This action is irreversible. Admins will not be logged out.
+        <div className="mt-12 space-y-6 pt-12 border-t border-red-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 text-red-600 rounded-lg">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white">Critical Security Zone</h2>
+              <p className="text-sm text-gray-500">Perform irreversible system actions</p>
+            </div>
+          </div>
+
+          <Card className="border-2 border-red-200 dark:border-red-900/50 shadow-2xl shadow-red-500/5 bg-red-50/30 dark:bg-red-950/10 overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+              <AlertTriangle size={120} className="text-red-600" />
+            </div>
+            <CardContent className="p-8 space-y-8 relative z-10">
+              <div className="max-w-2xl">
+                <h3 className="text-xl font-bold text-red-700 dark:text-red-400">Total System Factory Reset</h3>
+                <p className="text-sm text-red-600/80 dark:text-red-400/80 mt-2 leading-relaxed font-medium">
+                  This will PERMANENTLY ERASE all fuel sales, expenses, employee advances, agent ledgers, and settlement reports. 
+                  User accounts will be preserved to maintain access. There is no way to recover this data.
                 </p>
               </div>
-              <Button 
-                variant="destructive" 
-                onClick={handleReset}
-                className="whitespace-nowrap bg-red-600 hover:bg-red-700 font-bold"
-              >
-                <AlertTriangle className="mr-2" size={18} />
-                Erase All Data
-              </Button>
+
+              <div className="flex flex-col md:flex-row items-end gap-4 max-w-xl bg-white dark:bg-black/40 p-6 rounded-2xl border border-red-100 dark:border-red-900/40">
+                <div className="flex-1 space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-red-500 tracking-widest">Type "RESET" to confirm</Label>
+                  <Input 
+                    placeholder="Type RESET here..." 
+                    className="h-12 border-red-100 focus:ring-red-500 font-black text-center tracking-widest uppercase placeholder:font-normal placeholder:tracking-normal"
+                    value={resetConfirm}
+                    onChange={(e) => setResetConfirm(e.target.value)}
+                  />
+                </div>
+                <Button 
+                  variant="destructive" 
+                  disabled={loading || resetConfirm !== 'RESET'}
+                  onClick={handleReset}
+                  className="h-12 px-8 bg-red-600 hover:bg-red-700 font-black text-sm uppercase tracking-widest shadow-xl shadow-red-600/20 active:scale-95 transition-all disabled:opacity-30"
+                >
+                  Confirm Erase
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

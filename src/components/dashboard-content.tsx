@@ -21,11 +21,11 @@ export function DashboardContent({
   initialData,
   userRole
 }: { 
-  initialData: { cashInDrawer: number, networkSales: number, totalStaffDebt: number, transactions: Transaction[] } 
+  initialData: { cashInDrawer: number, networkSales: number, salaryFundRemaining: number, transactions: Transaction[] } 
   userRole?: string
 }) {
   const { t } = useLanguage()
-  const { cashInDrawer, networkSales, totalStaffDebt, transactions, setVaultData } = useStore()
+  const { cashInDrawer, networkSales, salaryFundRemaining, transactions, setVaultData } = useStore()
   
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
   const isOwner = userRole === 'OWNER'
@@ -41,6 +41,7 @@ export function DashboardContent({
       EXPENSE: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
       ADVANCE: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',
       OWNER_WITHDRAWAL: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400',
+      SALARY_PAYMENT: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400',
     }
     return map[type] || 'bg-gray-100 text-gray-700'
   }
@@ -51,6 +52,7 @@ export function DashboardContent({
       EXPENSE: t('expense'),
       ADVANCE: t('advance'),
       OWNER_WITHDRAWAL: t('ownerWithdrawal'),
+      SALARY_PAYMENT: 'Salary Payment',
     }
     return map[type] || type
   }
@@ -92,16 +94,16 @@ export function DashboardContent({
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-rose-500 to-pink-600 text-white">
+          <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white">
             <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-8 translate-x-8" />
             <CardHeader className="flex flex-row items-center gap-3 pb-2">
               <div className="p-2 bg-white/20 rounded-lg">
-                <Users size={20} />
+                <Receipt size={20} />
               </div>
-              <CardTitle className="text-sm font-medium opacity-90">{t('totalStaffDebt')}</CardTitle>
+              <CardTitle className="text-sm font-medium opacity-90">Monthly Salary Reserves</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-4xl font-extrabold tracking-tight">{totalStaffDebt.toFixed(2)}</p>
+              <p className="text-4xl font-extrabold tracking-tight">{salaryFundRemaining.toFixed(2)}</p>
             </CardContent>
           </Card>
         </div>

@@ -46,31 +46,46 @@ export async function getDashboardData() {
 
   let cashInDrawer = 0
   let networkSales = 0
-  let totalStaffDebt = 0
+  let monthlySalaryPool = 0
+  let salaryPayouts = 0
+  
+  const now = new Date()
+  const curMonth = now.getMonth()
+  const curYear = now.getFullYear()
 
   transactions.forEach((tx: TxWithRelations) => {
+    const txDate = new Date(tx.createdAt)
+    const isThisMonth = txDate.getMonth() === curMonth && txDate.getFullYear() === curYear
+
     if (tx.type === 'SALE') {
-      if (tx.method === 'CASH') cashInDrawer += tx.amount
-      else if (tx.method === 'NETWORK') networkSales += tx.amount
+      if (tx.method === 'CASH') {
+        cashInDrawer += tx.amount
+        if (isThisMonth) monthlySalaryPool += tx.amount
+      } else if (tx.method === 'NETWORK') {
+        networkSales += tx.amount
+      }
     } else if (tx.type === 'RETURN') {
-      if (tx.method === 'CASH') cashInDrawer -= tx.amount
+      if (tx.method === 'CASH') {
+        cashInDrawer -= tx.amount
+        if (isThisMonth) monthlySalaryPool -= tx.amount
+      }
       if (tx.method === 'NETWORK') networkSales -= tx.amount
-    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type)) {
+    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
       if (tx.method === 'CASH') cashInDrawer -= tx.amount
       else if (tx.method === 'NETWORK') networkSales -= tx.amount
-    } else if (tx.type === 'AGENT_PURCHASE') {
-      // credit purchase doesn't affect standard cash register
-    }
-
-    if (tx.type === 'ADVANCE' && !tx.isSettled) {
-      totalStaffDebt += tx.amount
+    } else if (tx.type === 'SALARY_PAYMENT') {
+      // Per user request, salary settlements are from a dedicated fund and don't affect standard cash account
+      if (isThisMonth) salaryPayouts += tx.amount
     }
   })
+
+  // Final available pool is total monthly sales minus what was paid out as salary
+  const salaryFundRemaining = monthlySalaryPool - salaryPayouts
 
   return {
     cashInDrawer,
     networkSales,
-    totalStaffDebt,
+    salaryFundRemaining,
     transactions,
   }
 }

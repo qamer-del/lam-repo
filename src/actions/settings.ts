@@ -14,12 +14,17 @@ export async function factoryReset() {
   try {
     // Delete in reverse order of relationships to prevent foreign key constraints
     await prisma.transaction.deleteMany({})
+    await prisma.salarySettlement.deleteMany({})
     await prisma.settlement.deleteMany({})
+    await prisma.agent.deleteMany({})
     await prisma.staff.deleteMany({})
     
     // We intentionally do NOT delete users, so the admin can log back in.
     
     revalidatePath('/')
+    revalidatePath('/staff')
+    revalidatePath('/sales')
+    revalidatePath('/agents')
     return { success: true }
   } catch (error: any) {
     console.error('Factory reset failed:', error)
