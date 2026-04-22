@@ -109,9 +109,15 @@ export function DashboardContent({
 
       {/* Actions */}
       {!isOwner && (
-        <div className="flex gap-4 justify-end">
-          <AddTransactionModal />
-          {isAdmin && <SettleCashBtn />}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end">
+          <div className="flex-1 sm:flex-none">
+            <AddTransactionModal />
+          </div>
+          {isAdmin && (
+            <div className="flex-1 sm:flex-none">
+              <SettleCashBtn />
+            </div>
+          )}
         </div>
       )}
 
@@ -125,12 +131,12 @@ export function DashboardContent({
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-                  <TableHead>{t('type')}</TableHead>
-                  <TableHead>{t('method')}</TableHead>
-                  <TableHead>{t('amount')}</TableHead>
-                  <TableHead>{t('description')}</TableHead>
-                  <TableHead>{t('reportDate')}</TableHead>
-                  <TableHead>{t('settled')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('type')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('method')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('amount')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('description')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('reportDate')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('settled')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

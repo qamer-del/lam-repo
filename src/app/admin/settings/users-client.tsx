@@ -114,39 +114,41 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
           </Card>
         )}
 
-        <Card className={`${isOwner ? 'col-span-1' : 'col-span-2'} border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden`}>
-          <Table>
-            <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
-              <TableRow>
-                <TableHead className={locale === 'ar' ? 'text-right' : ''}>{t('user')}</TableHead>
-                <TableHead className={locale === 'ar' ? 'text-right' : ''}>{t('role')}</TableHead>
-                <TableHead className={locale === 'ar' ? 'text-right' : ''}>{t('joined')}</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {initialUsers.map(user => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="font-medium">{user.name}</div>
-                    <div className="text-xs text-gray-500" dir="ltr">@{user.username}</div>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                      user.role === 'SUPER_ADMIN' ? 'bg-red-100 text-red-800' :
-                      user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-gray-500 text-sm">{format(new Date(user.createdAt), 'PP')}</TableCell>
-                  <TableCell className={locale === 'ar' ? 'text-left' : 'text-right'}>
-                    {!isOwner && <Button variant="destructive" size="sm" onClick={() => handleDelete(user.role, user.id)}>{t('revoke')}</Button>}
-                  </TableCell>
+        <Card className={`${isOwner ? 'col-span-1' : 'col-span-1 md:col-span-2'} border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden`}>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
+                <TableRow>
+                  <TableHead className={`whitespace-nowrap ${locale === 'ar' ? 'text-right' : ''}`}>{t('user')}</TableHead>
+                  <TableHead className={`whitespace-nowrap ${locale === 'ar' ? 'text-right' : ''}`}>{t('role')}</TableHead>
+                  <TableHead className={`whitespace-nowrap ${locale === 'ar' ? 'text-right' : ''}`}>{t('joined')}</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {initialUsers.map(user => (
+                  <TableRow key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                    <TableCell>
+                      <div className="font-medium whitespace-nowrap">{user.name}</div>
+                      <div className="text-xs text-gray-500" dir="ltr">@{user.username}</div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 text-xs rounded-full font-medium whitespace-nowrap ${
+                        user.role === 'SUPER_ADMIN' ? 'bg-red-100 text-red-800' :
+                        user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {user.role}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-gray-500 text-sm whitespace-nowrap">{format(new Date(user.createdAt), 'PP')}</TableCell>
+                    <TableCell className={locale === 'ar' ? 'text-left' : 'text-right'}>
+                      {!isOwner && <Button variant="destructive" size="sm" onClick={() => handleDelete(user.role, user.id)}>{t('revoke')}</Button>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
       </div>
 

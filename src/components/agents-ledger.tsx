@@ -128,40 +128,42 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
           
           <div className="space-y-4">
             <h3 className="font-semibold text-lg text-gray-700">Agents List</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Opening Debt</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {agents.length === 0 && (
-                  <TableRow><TableCell colSpan={3} className="text-center text-gray-400">No agents registered.</TableCell></TableRow>
-                )}
-                {agents.map(a => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-semibold">{a.name}</TableCell>
-                    <TableCell>{a.companyName || '-'}</TableCell>
-                    <TableCell className="text-orange-600">{a.openingBalance.toFixed(2)}</TableCell>
+            <div className="overflow-x-auto border rounded-xl dark:border-gray-800">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">Name</TableHead>
+                    <TableHead className="whitespace-nowrap">Company</TableHead>
+                    <TableHead className="whitespace-nowrap">Opening Debt</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {agents.length === 0 && (
+                    <TableRow><TableCell colSpan={3} className="text-center text-gray-400">No agents registered.</TableCell></TableRow>
+                  )}
+                  {agents.map(a => (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-semibold whitespace-nowrap">{a.name}</TableCell>
+                      <TableCell className="whitespace-nowrap">{a.companyName || '-'}</TableCell>
+                      <TableCell className="text-orange-600 whitespace-nowrap">{a.openingBalance.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </div>
       ) : (
         <div className="space-y-6">
           <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex gap-4">
-              <div className="bg-blue-50 rounded-xl p-4 text-center min-w-[150px]">
-                <p className="text-sm text-gray-500">Opening Debt</p>
-                <p className="text-xl font-bold">{selectedAgent?.openingBalance.toFixed(2)}</p>
+            <div className="flex flex-wrap gap-4">
+              <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4 text-center min-w-[120px] flex-1 sm:flex-none">
+                <p className="text-xs sm:text-sm text-gray-500">Opening Debt</p>
+                <p className="text-lg sm:text-xl font-bold">{selectedAgent?.openingBalance.toFixed(2)}</p>
               </div>
-              <div className="bg-orange-50 rounded-xl p-4 text-center min-w-[150px]">
-                <p className="text-sm text-gray-500">Net Balance (Debt)</p>
-                <p className="text-xl font-bold text-orange-600">{netBalance.toFixed(2)}</p>
+              <div className="bg-orange-50 dark:bg-orange-900/30 rounded-xl p-4 text-center min-w-[120px] flex-1 sm:flex-none">
+                <p className="text-xs sm:text-sm text-gray-500">Net Balance (Debt)</p>
+                <p className="text-lg sm:text-xl font-bold text-orange-600">{netBalance.toFixed(2)}</p>
               </div>
             </div>
             
@@ -200,34 +202,36 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
             </Card>
             )}
 
-            <Card className={`shadow-sm border-gray-200 ${isOwner ? 'col-span-1 md:col-span-3' : 'col-span-2'}`}>
-              <Table>
-                <TableHeader className="bg-gray-50">
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Description</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedAgent?.transactions.length === 0 && (
-                    <TableRow><TableCell colSpan={4} className="text-center text-gray-400">No transactions recorded.</TableCell></TableRow>
-                  )}
-                  {selectedAgent?.transactions.map((tx: any) => (
-                    <TableRow key={tx.id}>
-                      <TableCell>{format(new Date(tx.createdAt), 'PPp')}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${tx.type === 'AGENT_PURCHASE' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
-                          {tx.type === 'AGENT_PURCHASE' ? 'Purchase' : 'Payment'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-semibold">{tx.amount.toFixed(2)}</TableCell>
-                      <TableCell>{tx.description || '-'}</TableCell>
+            <Card className={`shadow-sm border-gray-200 dark:border-gray-800 overflow-hidden ${isOwner ? 'col-span-1 md:col-span-3' : 'col-span-1 md:col-span-2'}`}>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
+                    <TableRow>
+                      <TableHead className="whitespace-nowrap">Date</TableHead>
+                      <TableHead className="whitespace-nowrap">Type</TableHead>
+                      <TableHead className="whitespace-nowrap">Amount</TableHead>
+                      <TableHead className="whitespace-nowrap">Description</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedAgent?.transactions.length === 0 && (
+                      <TableRow><TableCell colSpan={4} className="text-center text-gray-400 py-10">No transactions recorded.</TableCell></TableRow>
+                    )}
+                    {selectedAgent?.transactions.map((tx: any) => (
+                      <TableRow key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                        <TableCell className="whitespace-nowrap text-sm text-gray-500">{format(new Date(tx.createdAt), 'PPp')}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${tx.type === 'AGENT_PURCHASE' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                            {tx.type === 'AGENT_PURCHASE' ? 'Purchase' : 'Payment'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-semibold whitespace-nowrap">{tx.amount.toFixed(2)}</TableCell>
+                        <TableCell className="min-w-[150px] text-sm text-gray-500">{tx.description || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </Card>
           </div>
         </div>
