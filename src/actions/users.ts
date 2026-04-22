@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function createUser(data: any) {
   const session = await auth()
-  if (session?.user?.role !== 'ADMIN') throw new Error("Unauthorized")
+  if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error("Unauthorized")
 
   const hashedPassword = await bcrypt.hash(data.password, 10)
   
@@ -25,7 +25,7 @@ export async function createUser(data: any) {
 
 export async function deleteUser(id: string) {
   const session = await auth()
-  if (session?.user?.role !== 'ADMIN') throw new Error("Unauthorized")
+  if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error("Unauthorized")
   
   await prisma.user.delete({ where: { id } })
   revalidatePath('/admin/users')

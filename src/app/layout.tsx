@@ -4,6 +4,7 @@ import "./globals.css";
 import { LanguageProvider } from '@/providers/language-provider';
 import { Sidebar, MobileNav } from '@/components/navigation';
 import { auth } from "@/auth"
+import { SessionProvider } from 'next-auth/react'
 
 const inter = Inter({
   variable: "--font-inter",
@@ -31,21 +32,23 @@ export default async function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${cairo.variable} h-full antialiased`}>
       <body className="min-h-full bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-        <LanguageProvider>
-          {session ? (
-            <>
-              <div className="flex min-h-screen">
-                <Sidebar role={session?.user?.role} />
-                <main className="flex-1 pb-20 md:pb-0">
-                  {children}
-                </main>
-              </div>
-              <MobileNav role={session?.user?.role} />
-            </>
-          ) : (
-            children
-          )}
-        </LanguageProvider>
+        <SessionProvider session={session}>
+          <LanguageProvider>
+            {session ? (
+              <>
+                <div className="flex min-h-screen">
+                  <Sidebar role={session?.user?.role} />
+                  <main className="flex-1 pb-20 md:pb-0">
+                    {children}
+                  </main>
+                </div>
+                <MobileNav role={session?.user?.role} />
+              </>
+            ) : (
+              children
+            )}
+          </LanguageProvider>
+        </SessionProvider>
       </body>
     </html>
   );

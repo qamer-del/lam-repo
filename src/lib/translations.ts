@@ -53,6 +53,7 @@ export const en = {
   role: 'Role',
   cashierLimited: 'Cashier (Limited)',
   adminFullAccess: 'Admin (Full Access)',
+  superAdmin: 'Super Admin',
   createUser: 'Create User',
   user: 'User',
   joined: 'Joined',
@@ -62,6 +63,9 @@ export const en = {
   logout: 'Logout',
   authenticating: 'Authenticating...',
   signIn: 'Sign In',
+  settings: 'System Settings',
+  agents: 'Agents / Representatives',
+  ownerViewOnly: 'Owner (View Only)'
 }
 
 export const ar = {
@@ -119,6 +123,7 @@ export const ar = {
   role: 'الصلاحية',
   cashierLimited: 'كاشير (صلاحيات محدودة)',
   adminFullAccess: 'مسؤول (صلاحيات كاملة)',
+  superAdmin: 'مدير عام (سوبر أدمن)',
   createUser: 'إنشاء مستخدم',
   user: 'المستخدم',
   joined: 'تاريخ الانضمام',
@@ -128,4 +133,7 @@ export const ar = {
   logout: 'تسجيل الخروج',
   authenticating: 'جاري التحقق...',
   signIn: 'تسجيل الدخول',
+  settings: 'إعدادات النظام',
+  agents: 'الوكلاء / المناديب',
+  ownerViewOnly: 'المالك (عرض فقط)'
 }

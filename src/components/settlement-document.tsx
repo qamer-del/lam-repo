@@ -59,7 +59,9 @@ export function SettlementDocument({ settlement, transactions }: { settlement: a
           <Text style={styles.col}>Amount</Text>
         </View>
         
-        {transactions.map((tx) => (
+        {transactions
+          .filter(tx => tx.method !== 'NETWORK')
+          .map((tx) => (
           <View style={styles.row} key={tx.id}>
             <Text style={styles.col}>#{tx.id}</Text>
             <Text style={styles.col}>{tx.type}</Text>

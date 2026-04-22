@@ -11,6 +11,9 @@ import {
 } from '@/components/ui/table'
 import { useLanguage } from '@/providers/language-provider'
 import { format } from 'date-fns'
+import { PdfReportButton } from './pdf-report-button'
+import { editAdvance } from '@/actions/transactions'
+import { useSession } from 'next-auth/react'
 
 type Staff = {
   id: number
@@ -38,7 +41,20 @@ interface StaffLedgerProps {
 
 export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const { t } = useLanguage()
+  const { data: session } = useSession()
+  const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
   const [selected, setSelected] = useState<number | null>(null)
+  const [editingRow, setEditingRow] = useState<number | null>(null)
+  const [editAmount, setEditAmount] = useState<string>('')
+
+  const handleEditSave = async (txId: number) => {
+    try {
+      await editAdvance(txId, parseFloat(editAmount))
+      setEditingRow(null)
+    } catch(e) {
+      alert("Failed to edit advance. Ensure you are an admin.")
+    }
+  }
 
   const currentMonth = new Date().getMonth()
   const currentYear = new Date().getFullYear()
@@ -58,14 +74,29 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const selectedStaff = staff.find(s => s.id === selected)
   const netSalary = selectedStaff ? selectedStaff.baseSalary - totalAdvances : 0
 
-  const allAdvancesThisMonth = transactions.filter(tx => {
-    const d = new Date(tx.createdAt)
-    return tx.type === 'ADVANCE' && d.getMonth() === currentMonth && d.getFullYear() === currentYear
+  const staffSummary = staff.map(s => {
+    const sTxs = transactions.filter(tx => {
+      const d = new Date(tx.createdAt)
+      return tx.staffId === s.id && d.getMonth() === currentMonth && d.getFullYear() === currentYear
+    })
+    
+    const advances = sTxs.filter(tx => tx.type === 'ADVANCE').reduce((sum, tx) => sum + tx.amount, 0)
+    const deductions = sTxs.filter(tx => tx.type === 'EXPENSE').reduce((sum, tx) => sum + tx.amount, 0)
+    const netSalary = s.baseSalary - advances - deductions
+
+    return {
+      ...s,
+      advances,
+      deductions,
+      netSalary
+    }
   })
 
-  const totalAllAdvances = allAdvancesThisMonth.reduce((sum, tx) => sum + tx.amount, 0)
-  const totalSalaries = staff.reduce((sum, s) => sum + s.baseSalary, 0)
-  const allNetSalary = totalSalaries - totalAllAdvances
+  const totalBase = staffSummary.reduce((sum, s) => sum + s.baseSalary, 0)
+  const totalAllAdvances = staffSummary.reduce((sum, s) => sum + s.advances, 0)
+  const totalDeductions = staffSummary.reduce((sum, s) => sum + s.deductions, 0)
+  const allNetSalary = staffSummary.reduce((sum, s) => sum + s.netSalary, 0)
+
 
   return (
     <div className="space-y-6">
@@ -93,6 +124,12 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
             {s.name}
           </button>
         ))}
+        {!selected && (
+          <PdfReportButton 
+            staffSummary={staffSummary} 
+            totals={{ base: totalBase, advances: totalAllAdvances, deductions: totalDeductions, net: allNetSalary }} 
+          />
+        )}
       </div>
 
       {selected && selectedStaff && (
@@ -135,7 +172,32 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                 staffTxs.map(tx => (
                   <TableRow key={tx.id}>
                     <TableCell>{tx.id}</TableCell>
-                    <TableCell className="font-semibold text-orange-600">{tx.amount.toFixed(2)}</TableCell>
+                    <TableCell className="font-semibold text-orange-600">
+                      {editingRow === tx.id ? (
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="number" 
+                            className="w-20 p-1 border rounded text-sm" 
+                            value={editAmount} 
+                            onChange={e => setEditAmount(e.target.value)} 
+                          />
+                          <button onClick={() => handleEditSave(tx.id)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">Save</button>
+                          <button onClick={() => setEditingRow(null)} className="text-xs bg-gray-200 px-2 py-1 rounded">Cancel</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          {tx.amount.toFixed(2)}
+                          {isSuperAdmin && (
+                            <button 
+                              onClick={() => { setEditingRow(tx.id); setEditAmount(tx.amount.toString()); }}
+                              className="text-xs text-blue-500 hover:underline"
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>{tx.description || '-'}</TableCell>
                     <TableCell>{format(new Date(tx.createdAt), 'PPp')}</TableCell>
                     <TableCell>
@@ -153,17 +215,21 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
 
       {!selected && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4 text-center">
               <p className="text-sm text-gray-500">Total Base Salaries</p>
-              <p className="text-2xl font-bold">{totalSalaries.toFixed(2)}</p>
+              <p className="text-2xl font-bold">{totalBase.toFixed(2)}</p>
             </div>
             <div className="bg-orange-50 dark:bg-orange-900/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">Total Advances (This Month)</p>
+              <p className="text-sm text-gray-500">Total Advances</p>
               <p className="text-2xl font-bold">{totalAllAdvances.toFixed(2)}</p>
             </div>
+            <div className="bg-red-50 dark:bg-red-900/30 rounded-xl p-4 text-center">
+              <p className="text-sm text-gray-500">Total Deductions</p>
+              <p className="text-2xl font-bold">{totalDeductions.toFixed(2)}</p>
+            </div>
             <div className="bg-green-50 dark:bg-green-900/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">Net Remaining Salaries</p>
+              <p className="text-sm text-gray-500">Total Net Salaries</p>
               <p className={`text-2xl font-bold ${allNetSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {allNetSalary.toFixed(2)}
               </p>
@@ -174,36 +240,31 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>{t('staffMembers')}</TableHead>
-                <TableHead>{t('amount')}</TableHead>
-                <TableHead>{t('description')}</TableHead>
-                <TableHead>{t('reportDate')}</TableHead>
-                <TableHead>{t('settled')}</TableHead>
+                <TableHead>Base Salary</TableHead>
+                <TableHead>Advances</TableHead>
+                <TableHead>Deductions</TableHead>
+                <TableHead>Net Salary</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allAdvancesThisMonth.length === 0 ? (
+              {staffSummary.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-gray-400 py-6">
-                    No advances issued to any employee this month.
+                    No employees found.
                   </TableCell>
                 </TableRow>
               ) : (
-                allAdvancesThisMonth.map(tx => {
-                  const employee = staff.find(s => s.id === tx.staffId)
-                  return (
-                    <TableRow key={tx.id}>
-                      <TableCell className="font-medium">{employee ? employee.name : 'Unknown'}</TableCell>
-                      <TableCell className="font-semibold text-orange-600">{tx.amount.toFixed(2)}</TableCell>
-                      <TableCell>{tx.description || '-'}</TableCell>
-                      <TableCell>{format(new Date(tx.createdAt), 'PPp')}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs ${tx.isSettled ? 'bg-gray-200 text-gray-600' : 'bg-yellow-100 text-yellow-700'}`}>
-                          {tx.isSettled ? t('settled') : t('unsettled')}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
+                staffSummary.map(s => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell>{s.baseSalary.toFixed(2)}</TableCell>
+                    <TableCell className="text-orange-600">{s.advances.toFixed(2)}</TableCell>
+                    <TableCell className="text-red-600">{s.deductions.toFixed(2)}</TableCell>
+                    <TableCell className={`font-semibold ${s.netSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {s.netSalary.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

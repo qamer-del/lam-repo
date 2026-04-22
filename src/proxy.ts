@@ -17,13 +17,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // RBAC checks for Cashiers
-  if (session?.user?.role !== 'ADMIN') {
+  // RBAC checks
+  const role = session?.user?.role;
+  
+  if (role === 'CASHIER') {
     if (
       request.nextUrl.pathname.startsWith('/admin') ||
       request.nextUrl.pathname.startsWith('/staff') ||
-      request.nextUrl.pathname.startsWith('/sales')
+      request.nextUrl.pathname.startsWith('/agents')
     ) {
+      return NextResponse.redirect(new URL('/sales', request.url))
+    }
+  } else if (role === 'OWNER') {
+    if (request.nextUrl.pathname.startsWith('/staff')) {
       return NextResponse.redirect(new URL('/', request.url))
     }
   }

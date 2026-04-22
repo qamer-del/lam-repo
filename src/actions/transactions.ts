@@ -30,9 +30,16 @@ export async function addTransaction(data: {
 }
 
 export async function getDashboardData() {
+  const session = await auth()
+  const role = session?.user?.role
+
+  // If cashier, they only see their own transactions. Super Admin/Admin/Owner see everything.
+  const whereClause = (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'OWNER') ? {} : { recordedById: session?.user?.id }
+
   const transactions = await prisma.transaction.findMany({
+    where: whereClause,
     orderBy: { createdAt: 'desc' },
-    include: { staff: true }
+    include: { staff: true, agent: true }
   })
 
   let cashInDrawer = 0
@@ -43,8 +50,10 @@ export async function getDashboardData() {
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') cashInDrawer += tx.amount
       else if (tx.method === 'NETWORK') networkSales += tx.amount
-    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL'].includes(tx.type)) {
+    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
       if (tx.method === 'CASH') cashInDrawer -= tx.amount
+    } else if (tx.type === 'AGENT_PURCHASE') {
+      // credit purchase doesn't affect standard cash register
     }
 
     if (tx.type === 'ADVANCE' && !tx.isSettled) {
@@ -58,6 +67,23 @@ export async function getDashboardData() {
     totalStaffDebt,
     transactions,
   }
+}
+
+export async function editAdvance(transactionId: number, newAmount: number) {
+  const session = await auth()
+  
+  if (session?.user?.role !== 'SUPER_ADMIN') {
+    throw new Error('Unauthorized. Only Super Admins can modify advances.')
+  }
+
+  const tx = await prisma.transaction.update({
+    where: { id: transactionId },
+    data: { amount: newAmount },
+  })
+
+  revalidatePath('/')
+  revalidatePath('/staff')
+  return tx
 }
 
 export async function createSettlement() {
@@ -100,6 +126,7 @@ export async function recordDailySales(data: {
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const transactions = []
+  const exactTime = new Date()
   
   if (data.cashAmount > 0) {
     transactions.push({
@@ -107,7 +134,8 @@ export async function recordDailySales(data: {
       method: 'CASH' as const,
       amount: data.cashAmount,
       description: data.description,
-      recordedById: session.user.id
+      recordedById: session.user.id,
+      createdAt: exactTime
     })
   }
 
@@ -117,7 +145,8 @@ export async function recordDailySales(data: {
       method: 'NETWORK' as const,
       amount: data.networkAmount,
       description: data.description,
-      recordedById: session.user.id
+      recordedById: session.user.id,
+      createdAt: exactTime
     })
   }
 

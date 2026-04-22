@@ -22,31 +22,27 @@ export default async function LoginPage() {
   await ensureAdminExists()
 
   return (
-    <div className="min-h-screen flex w-full bg-white dark:bg-gray-950">
-      {/* Left Side: Art & Branding */}
-      <div className="hidden lg:flex w-1/2 relative bg-gray-900 overflow-hidden items-center justify-center">
-        {/* The generated abstract art */}
-        <div className="absolute inset-0 z-0">
-          <img src="/login-bg.png" alt="Abstract Background" className="w-full h-full object-cover opacity-90 mix-blend-screen" />
-        </div>
-        
-        {/* Gradient Overlay for Text Readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10"></div>
-        
-        <div className="relative z-20 flex flex-col justify-end h-full w-full p-16 pb-24 text-white">
-          <h1 className="text-5xl font-extrabold tracking-tight mb-4">Lamaha.</h1>
-          <p className="text-xl font-light text-gray-300 max-w-md leading-relaxed">
-            Financial Management Refined. Elevate your business intelligence with unparalleled clarity.
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-white dark:bg-black">
+      {/* Ambient glowing background blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-500/30 rounded-full blur-[120px] mix-blend-screen opacity-50 dark:opacity-40 animate-pulse"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-cyan-400/20 rounded-full blur-[150px] mix-blend-screen opacity-50 dark:opacity-30"></div>
+      <div className="absolute top-[20%] right-[10%] w-[300px] h-[300px] bg-indigo-500/20 rounded-full blur-[100px] mix-blend-screen opacity-60 dark:opacity-40"></div>
+
+      <div className="relative z-10 w-full max-w-md p-6">
+        {/* Elegant Logo / Branding */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent drop-shadow-sm">
+            Lamaha.
+          </h1>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-2">
+            Minimalist Financial Intelligence
           </p>
         </div>
-      </div>
 
-      {/* Right Side: Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 relative overflow-hidden">
-        {/* Subtle decorative blob for right side */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-        
-        <div className="w-full max-w-md z-10">
+        {/* Minimalist Glass Card */}
+        <div className="backdrop-blur-xl bg-white/70 dark:bg-gray-950/70 border border-white/20 dark:border-gray-800/50 shadow-2xl shadow-blue-500/5 rounded-3xl p-8 relative overflow-hidden">
+          {/* Subtle noise texture overlay */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
           <LoginForm />
         </div>
       </div>

@@ -2,15 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Receipt, Shield, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, Receipt, Settings, LogOut, Briefcase } from 'lucide-react'
 import { useLanguage } from '@/providers/language-provider'
 import { signOut } from 'next-auth/react'
 
 const navItems = [
-  { href: '/', icon: LayoutDashboard, labelKey: 'dashboard' as const },
-  { href: '/sales', icon: Receipt, labelKey: 'sales' as const, adminOnly: true },
-  { href: '/staff', icon: Users, labelKey: 'staffMembers' as const, adminOnly: true },
-  { href: '/admin/users', icon: Shield, labelKey: 'users' as const, adminOnly: true },
+  { href: '/', icon: LayoutDashboard, labelKey: 'dashboard' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Dashboard' },
+  { href: '/sales', icon: Receipt, labelKey: 'sales' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER', 'CASHIER'], labelFallback: 'Sales' },
+  { href: '/staff', icon: Users, labelKey: 'staffMembers' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN'], labelFallback: 'Staff' },
+  { href: '/agents', icon: Briefcase, labelKey: 'agents' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Agents / Representatives' },
+  { href: '/admin/settings', icon: Settings, labelKey: 'settings' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'System Settings' },
 ]
 
 export function Sidebar({ role }: { role?: string }) {
@@ -30,7 +31,7 @@ export function Sidebar({ role }: { role?: string }) {
       {/* Nav */}
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map(item => {
-          if (item.adminOnly && role !== 'ADMIN') return null
+          if (item.allowedRoles && (!role || !item.allowedRoles.includes(role))) return null
           
           const isActive = pathname === item.href
           return (
@@ -44,13 +45,13 @@ export function Sidebar({ role }: { role?: string }) {
               }`}
             >
               <item.icon size={18} />
-              {t(item.labelKey)}
+              {t(item.labelKey) || item.labelFallback}
             </Link>
           )
         })}
       </nav>
 
-      {/* Language Toggle & Logout */}
+      {/* Language Toggle, Logout */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
         <button
           onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
@@ -78,7 +79,7 @@ export function MobileNav({ role }: { role?: string }) {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg">
       <div className="flex justify-around py-2">
         {navItems.map(item => {
-          if (item.adminOnly && role !== 'ADMIN') return null
+          if (item.allowedRoles && (!role || !item.allowedRoles.includes(role))) return null
 
           const isActive = pathname === item.href
           return (
@@ -92,17 +93,10 @@ export function MobileNav({ role }: { role?: string }) {
               }`}
             >
               <item.icon size={20} />
-              {t(item.labelKey)}
+              <span className="truncate w-16 text-center">{t(item.labelKey) || item.labelFallback}</span>
             </Link>
           )
         })}
-        <button
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex flex-col items-center gap-1 px-4 py-2 text-xs font-medium transition-all text-red-500 dark:text-red-400"
-        >
-          <LogOut size={20} />
-          {t('logout')}
-        </button>
       </div>
     </nav>
   )

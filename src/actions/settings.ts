@@ -1,0 +1,28 @@
+'use server'
+
+import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
+import { revalidatePath } from 'next/cache'
+
+export async function factoryReset() {
+  const session = await auth()
+  
+  if (session?.user?.role !== 'SUPER_ADMIN') {
+    return { error: 'Unauthorized. Only super admins can perform a factory reset.' }
+  }
+
+  try {
+    // Delete in reverse order of relationships to prevent foreign key constraints
+    await prisma.transaction.deleteMany({})
+    await prisma.settlement.deleteMany({})
+    await prisma.staff.deleteMany({})
+    
+    // We intentionally do NOT delete users, so the admin can log back in.
+    
+    revalidatePath('/')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Factory reset failed:', error)
+    return { error: 'Failed to complete factory reset.' }
+  }
+}

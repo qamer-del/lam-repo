@@ -14,6 +14,8 @@ enum TransType {
   EXPENSE
   ADVANCE
   OWNER_WITHDRAWAL
+  AGENT_PURCHASE
+  AGENT_PAYMENT
 }
 
 enum PayMethod {
@@ -22,8 +24,10 @@ enum PayMethod {
 }
 
 enum Role {
+  SUPER_ADMIN
   ADMIN
   CASHIER
+  OWNER
 }
 
 model User {
@@ -47,6 +51,15 @@ model Staff {
   transactions    Transaction[] 
 }
 
+model Agent {
+  id              Int           @id @default(autoincrement())
+  name            String
+  companyName     String?
+  openingBalance  Float         @default(0)
+  isActive        Boolean       @default(true)
+  transactions    Transaction[]
+}
+
 model Transaction {
   id             Int          @id @default(autoincrement())
   type           TransType
@@ -56,6 +69,8 @@ model Transaction {
   isSettled      Boolean      @default(false)
   staffId        Int?         
   staff          Staff?       @relation(fields: [staffId], references: [id])
+  agentId        Int?
+  agent          Agent?       @relation(fields: [agentId], references: [id])
   settlementId   Int?         
   settlement     Settlement?  @relation(fields: [settlementId], references: [id])
   recordedById   String?      

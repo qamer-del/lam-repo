@@ -27,7 +27,9 @@ export function DashboardContent({
   const { t } = useLanguage()
   const { cashInDrawer, networkSales, totalStaffDebt, transactions, setVaultData } = useStore()
   
-  const isAdmin = userRole === 'ADMIN'
+  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
+  const isOwner = userRole === 'OWNER'
+  const canViewStats = isAdmin || isOwner
 
   useEffect(() => {
     setVaultData(initialData)
@@ -62,7 +64,7 @@ export function DashboardContent({
       </div>
 
       {/* Stats Cards - Hidden for Cashiers */}
-      {isAdmin && (
+      {canViewStats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white">
             <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-8 translate-x-8" />
@@ -106,10 +108,12 @@ export function DashboardContent({
       )}
 
       {/* Actions */}
-      <div className="flex gap-4 justify-end">
-        <AddTransactionModal />
-        {isAdmin && <SettleCashBtn />}
-      </div>
+      {!isOwner && (
+        <div className="flex gap-4 justify-end">
+          <AddTransactionModal />
+          {isAdmin && <SettleCashBtn />}
+        </div>
+      )}
 
       {/* Recent Transactions */}
       <Card className="shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden">

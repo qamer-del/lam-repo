@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { useLanguage } from '@/providers/language-provider'
 import { StaffLedger } from '@/components/staff-ledger'
 import { AddStaffModal } from '@/components/add-staff-modal'
@@ -27,6 +28,7 @@ type Transaction = {
 
 export default function StaffPage() {
   const { t } = useLanguage()
+  const { data: session, status } = useSession()
   const [staff, setStaff] = useState<Staff[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,8 +50,10 @@ export default function StaffPage() {
   }
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (status === 'authenticated') {
+      loadData()
+    }
+  }, [status])
 
   return (
     <div className="p-6 md:p-12 max-w-7xl mx-auto space-y-6">
