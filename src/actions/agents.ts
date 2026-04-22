@@ -18,7 +18,7 @@ export async function getAgents() {
 
 export async function createAgent(data: { name: string; companyName?: string; openingBalance: number }) {
   const session = await auth()
-  if (session?.user?.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error('Unauthorized')
 
   await prisma.agent.create({
     data: {
@@ -41,7 +41,7 @@ export async function addAgentTransaction(data: {
   method: 'CASH' | 'NETWORK'
 }) {
   const session = await auth()
-  if (session?.user?.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error('Unauthorized')
 
   await prisma.transaction.create({
     data: {
