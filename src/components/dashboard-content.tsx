@@ -6,7 +6,6 @@ export interface Transaction {
   id: number
   type: TransType
   amount: number
-  fundAmount: number
   method: PayMethod
   description: string | null
   isSettled: boolean

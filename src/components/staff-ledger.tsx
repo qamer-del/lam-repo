@@ -30,7 +30,6 @@ type Transaction = {
   id: number
   type: string
   amount: number
-  fundAmount: number
   method: string
   description: string | null
   isSettled: boolean
@@ -42,10 +41,9 @@ type Transaction = {
 interface StaffLedgerProps {
   staff: Staff[]
   transactions: Transaction[]
-  onEdited?: () => void
 }
 
-export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps) {
+export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const { t } = useLanguage()
   const { data: session } = useSession()
   const currentRole = session?.user?.role
@@ -62,7 +60,6 @@ export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps)
     try {
       await editAdvance(txId, parseFloat(editAmount))
       setEditingRow(null)
-      if (onEdited) onEdited()
     } catch(e) {
       alert("Failed to edit advance. Ensure you are a system administrator.")
     }
@@ -77,9 +74,7 @@ export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps)
 
   const totalAdvances = staffTxs.reduce((sum, tx) => {
     if (!tx.isSettled) {
-      // Use fundAmount if it exists (is not 0), otherwise use amount
-      const currentAccountingVal = tx.fundAmount || tx.amount
-      return sum + currentAccountingVal
+      return sum + tx.amount
     }
     return sum
   }, 0)
@@ -92,10 +87,7 @@ export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps)
       return tx.staffId === s.id && !tx.isSettled
     })
     
-    const advances = sTxs.filter(tx => tx.type === 'ADVANCE').reduce((sum, tx) => {
-      const currentVal = tx.fundAmount || tx.amount
-      return sum + currentVal
-    }, 0)
+    const advances = sTxs.filter(tx => tx.type === 'ADVANCE').reduce((sum, tx) => sum + tx.amount, 0)
     const deductions = sTxs.filter(tx => tx.type === 'EXPENSE').reduce((sum, tx) => sum + tx.amount, 0)
     const netSalary = s.baseSalary - advances - deductions
 
@@ -223,13 +215,10 @@ export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps)
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            {(tx.fundAmount || tx.amount).toFixed(2)}
-                            {tx.fundAmount > 0 && tx.fundAmount !== tx.amount && (
-                              <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded font-bold">REVISED</span>
-                            )}
+                            {tx.amount.toFixed(2)}
                             {isSuperAdmin && !isOwner && (
                               <button 
-                                onClick={() => { setEditingRow(tx.id); setEditAmount((tx.fundAmount || tx.amount).toString()); }}
+                                onClick={() => { setEditingRow(tx.id); setEditAmount(tx.amount.toString()); }}
                                 className="text-xs text-blue-500 hover:underline"
                               >
                                 Edit
@@ -267,9 +256,6 @@ export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps)
                         <DollarSign size={16} />
                       </div>
                       <span className="text-sm font-bold text-gray-900 dark:text-white">#{tx.id}</span>
-                      {tx.fundAmount > 0 && tx.fundAmount !== tx.amount && (
-                        <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter shadow-sm">Revised Ledger</span>
-                      )}
                     </div>
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${tx.isSettled ? 'bg-gray-100 text-gray-500' : 'bg-yellow-100 text-yellow-700'}`}>
                       {tx.isSettled ? t('settled') : t('unsettled')}
@@ -278,7 +264,7 @@ export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps)
 
                   <div className="flex justify-between items-end border-t border-gray-50 dark:border-gray-900 pt-3">
                     <div className="space-y-1 flex-1">
-                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Accounting Amount</p>
+                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Amount</p>
                       {editingRow === tx.id ? (
                         <div className="flex items-center gap-2 mt-1">
                           <input 
@@ -290,7 +276,7 @@ export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps)
                           />
                         </div>
                       ) : (
-                        <p className="text-xl font-black text-orange-600 tabular-nums">{(tx.fundAmount || tx.amount).toFixed(2)}</p>
+                        <p className="text-xl font-black text-orange-600 tabular-nums">{tx.amount.toFixed(2)}</p>
                       )}
                     </div>
                     <div className="text-right space-y-1">
@@ -325,7 +311,7 @@ export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps)
                       </div>
                     ) : (
                       <button 
-                        onClick={() => { setEditingRow(tx.id); setEditAmount((tx.fundAmount || tx.amount).toString()); }}
+                        onClick={() => { setEditingRow(tx.id); setEditAmount(tx.amount.toString()); }}
                         className="w-full py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-xl hover:bg-blue-100 active:scale-95 transition-all"
                       >
                         Modify Transaction
@@ -337,7 +323,6 @@ export function StaffLedger({ staff, transactions, onEdited }: StaffLedgerProps)
               ))
             )}
           </div>
-
         </div>
       )}
 

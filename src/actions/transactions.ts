@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 
 export async function addTransaction(data: {
-  type: 'SALE' | 'EXPENSE' | 'ADVANCE' | 'OWNER_WITHDRAWAL' | 'RETURN' | 'SALARY_PAYMENT' | 'AGENT_PURCHASE' | 'AGENT_PAYMENT'
+  type: 'SALE' | 'EXPENSE' | 'ADVANCE' | 'OWNER_WITHDRAWAL'
   amount: number
   method: 'CASH' | 'NETWORK'
   description?: string
@@ -18,7 +18,6 @@ export async function addTransaction(data: {
     data: {
       type: data.type,
       amount: data.amount,
-      fundAmount: data.amount,
       method: data.method,
       description: data.description,
       staffId: data.staffId,
@@ -67,35 +66,26 @@ export async function getDashboardData() {
   transactions.forEach((tx: TxWithRelations) => {
     const txDate = new Date(tx.createdAt)
     const isThisMonth = txDate.getMonth() === curMonth && txDate.getFullYear() === curYear
-    
-    // Ledger values: 
-    // tx.amount = Physical (Drawer)
-    // tx.fundAmount = Accounting (Salary Fund) - Fallback to amount for legacy records
-    const fundAmount = tx.fundAmount || tx.amount
 
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') {
         cashInDrawer += tx.amount
-        if (isThisMonth) monthlySalaryPool += fundAmount
+        if (isThisMonth) monthlySalaryPool += tx.amount
       } else if (tx.method === 'NETWORK') {
         networkSales += tx.amount
       }
     } else if (tx.type === 'RETURN') {
       if (tx.method === 'CASH') {
         cashInDrawer -= tx.amount
-        if (isThisMonth) monthlySalaryPool -= fundAmount
+        if (isThisMonth) monthlySalaryPool -= tx.amount
       }
       if (tx.method === 'NETWORK') networkSales -= tx.amount
-    } else if (tx.type === 'ADVANCE') {
-      if (tx.method === 'CASH') cashInDrawer -= tx.amount
-      // Advances also deduct from the Salary Fund
-      if (isThisMonth && tx.method === 'CASH') salaryPayouts += fundAmount
-    } else if (['EXPENSE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
+    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
       if (tx.method === 'CASH') cashInDrawer -= tx.amount
       else if (tx.method === 'NETWORK') networkSales -= tx.amount
     } else if (tx.type === 'SALARY_PAYMENT') {
       // Per user request, salary settlements are from a dedicated fund and don't affect standard cash account
-      if (isThisMonth) salaryPayouts += fundAmount
+      if (isThisMonth) salaryPayouts += tx.amount
     }
   })
 
@@ -111,50 +101,6 @@ export async function getDashboardData() {
   }
 }
 
-export async function recordDailySales(data: {
-  totalAmount: number
-  cashAmount: number
-  networkAmount: number
-  description?: string
-}) {
-  const session = await auth()
-  if (!session?.user?.id) throw new Error("Unauthorized")
-
-  const exactTime = new Date()
-  
-  if (data.cashAmount > 0) {
-    await prisma.transaction.create({
-      data: {
-        type: 'SALE',
-        method: 'CASH',
-        amount: data.cashAmount,
-        fundAmount: data.cashAmount,
-        description: data.description,
-        recordedById: session.user.id,
-        createdAt: exactTime
-      }
-    })
-  }
-
-  if (data.networkAmount > 0) {
-    await prisma.transaction.create({
-      data: {
-        type: 'SALE',
-        method: 'NETWORK',
-        amount: data.networkAmount,
-        fundAmount: data.networkAmount,
-        description: data.description,
-        recordedById: session.user.id,
-        createdAt: exactTime
-      }
-    })
-  }
-
-  revalidatePath('/')
-  revalidatePath('/sales')
-  return { success: true }
-}
-
 export async function recordRefund(data: {
   amount: number
   method: 'CASH' | 'NETWORK'
@@ -167,7 +113,6 @@ export async function recordRefund(data: {
     data: {
       type: 'RETURN',
       amount: data.amount,
-      fundAmount: data.amount,
       method: data.method,
       description: data.description,
       recordedById: session.user.id
@@ -198,10 +143,7 @@ export async function settleSalary(data: { staffId: number, month: number, year:
   
   if (!staff) throw new Error("Staff not found")
 
-  const totalAdvances = staff.transactions.reduce((sum, tx) => {
-    const val = tx.fundAmount || tx.amount
-    return sum + val
-  }, 0)
+  const totalAdvances = staff.transactions.reduce((sum, tx) => sum + tx.amount, 0)
   const netPaid = staff.baseSalary - totalAdvances
 
   // 2. Create SalarySettlement record
@@ -226,7 +168,6 @@ export async function settleSalary(data: { staffId: number, month: number, year:
       data: {
         type: 'SALARY_PAYMENT',
         amount: netPaid,
-        fundAmount: netPaid,
         method: data.method,
         description: `Final payout for period ${data.month}/${data.year}`,
         staffId: data.staffId,
@@ -269,8 +210,8 @@ export async function editAdvance(transactionId: number, newAmount: number) {
   const tx = await prisma.transaction.update({
     where: { id: transactionId },
     data: { 
-      fundAmount: newAmount, 
-      isInternal: false 
+      amount: newAmount,
+      isInternal: true // Move to internal account to avoid affecting main drawer metrics
     },
   })
 
@@ -280,6 +221,7 @@ export async function editAdvance(transactionId: number, newAmount: number) {
 }
 
 export async function createSettlement() {
+  // Finds all unsettled transactions and lock them into a single settlement
   const unsettled = await prisma.transaction.findMany({
     where: { isSettled: false }
   })
@@ -317,5 +259,56 @@ export async function createSettlement() {
 
   revalidatePath('/')
   return settlement
+}
+
+export async function recordDailySales(data: {
+  totalAmount: number
+  cashAmount: number
+  networkAmount: number
+  description?: string
+}) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  type SaleTx = {
+    type: 'SALE'
+    method: 'CASH' | 'NETWORK'
+    amount: number
+    description?: string
+    recordedById: string
+    createdAt: Date
+  }
+  const transactions: SaleTx[] = []
+  const exactTime = new Date()
+  
+  if (data.cashAmount > 0) {
+    transactions.push({
+      type: 'SALE' as const,
+      method: 'CASH' as const,
+      amount: data.cashAmount,
+      description: data.description,
+      recordedById: session.user.id,
+      createdAt: exactTime
+    })
+  }
+
+  if (data.networkAmount > 0) {
+    transactions.push({
+      type: 'SALE' as const,
+      method: 'NETWORK' as const,
+      amount: data.networkAmount,
+      description: data.description,
+      recordedById: session.user.id,
+      createdAt: exactTime
+    })
+  }
+
+  if (transactions.length > 0) {
+    await prisma.transaction.createMany({
+      data: transactions
+    })
+    revalidatePath('/')
+    revalidatePath('/sales')
+  }
 }
 
