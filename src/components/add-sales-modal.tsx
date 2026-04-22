@@ -140,5 +140,6 @@ export function AddSalesModal() {
         </form>
       </DialogContent>
     </Dialog>
+    </>
   )
 }

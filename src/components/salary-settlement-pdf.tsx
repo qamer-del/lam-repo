@@ -9,7 +9,7 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Cairo', backgroundColor: '#ffffff' },
-  header: { marginBottom: 30, textAlign: 'center', borderBottom: 2, borderBottomColor: '#3b82f6', pb: 10 },
+  header: { marginBottom: 30, textAlign: 'center', borderBottom: 2, borderBottomColor: '#3b82f6', paddingBottom: 10 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
   subtitle: { fontSize: 12, color: '#6b7280', marginTop: 4 },
   infoSection: { marginBottom: 30, flexDirection: 'row', justifyContent: 'space-between' },
@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: 'row', padding: 8, borderBottom: 1, borderBottomColor: '#f3f4f6' },
   col1: { flex: 2 },
   col2: { flex: 1, textAlign: 'right' },
-  footer: { marginTop: 50, textAlign: 'center', borderTop: 1, borderTopColor: '#e5e7eb', pt: 20 },
+  footer: { marginTop: 50, textAlign: 'center', borderTop: 1, borderTopColor: '#e5e7eb', paddingTop: 20 },
   summary: { marginTop: 30, padding: 15, backgroundColor: '#f0f9ff', borderRadius: 8 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 },
   totalLabel: { fontSize: 12, color: '#0369a1' },
@@ -93,7 +93,7 @@ export function SalarySettlementDocument({
             <Text style={styles.totalLabel}>Total Advances Deducted</Text>
             <Text style={[styles.totalValue, { fontSize: 14, color: '#b91c1c' }]}>- {totalAdvances.toFixed(2)}</Text>
           </View>
-          <View style={[styles.totalRow, { marginTop: 10, borderTop: 1, borderTopColor: '#bae6fd', pt: 10 }]}>
+          <View style={[styles.totalRow, { marginTop: 10, borderTop: 1, borderTopColor: '#bae6fd', paddingTop: 10 }]}>
             <Text style={[styles.totalLabel, { fontWeight: 'bold' }]}>Final Payment (Net)</Text>
             <Text style={styles.totalValue}>{netPaid.toFixed(2)}</Text>
           </View>

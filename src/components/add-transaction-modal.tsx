@@ -157,5 +157,6 @@ export function AddTransactionModal() {
         </form>
       </DialogContent>
     </Dialog>
+    </>
   )
 }
