@@ -68,8 +68,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   )
 
   const totalAdvances = staffTxs.reduce((sum, tx) => {
-    const d = new Date(tx.createdAt)
-    if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+    if (!tx.isSettled) {
       return sum + tx.amount
     }
     return sum
@@ -80,8 +79,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
 
   const staffSummary = staff.map(s => {
     const sTxs = transactions.filter(tx => {
-      const d = new Date(tx.createdAt)
-      return tx.staffId === s.id && d.getMonth() === currentMonth && d.getFullYear() === currentYear
+      return tx.staffId === s.id && !tx.isSettled
     })
     
     const advances = sTxs.filter(tx => tx.type === 'ADVANCE').reduce((sum, tx) => sum + tx.amount, 0)

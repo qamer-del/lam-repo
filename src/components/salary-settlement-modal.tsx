@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/dialog'
 import { useLanguage } from '@/providers/language-provider'
 import { settleSalary } from '@/actions/transactions'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
 import { PDFDownloadLink } from '@react-pdf/renderer'
@@ -32,6 +34,7 @@ export function SalarySettlementModal({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [method, setMethod] = useState<'CASH' | 'NETWORK'>('CASH')
   const [settledData, setSettledData] = useState<any>(null)
 
   const handleSettle = async () => {
@@ -41,7 +44,8 @@ export function SalarySettlementModal({
       const res = await settleSalary({
         staffId: staff.id,
         month: now.getMonth() + 1,
-        year: now.getFullYear()
+        year: now.getFullYear(),
+        method
       })
       setSettledData(res)
       router.refresh()
@@ -94,7 +98,20 @@ export function SalarySettlementModal({
                   </div>
                 </div>
 
-                <Button onClick={handleSettle} className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-gray-400">Payment Method</Label>
+                  <Select value={method} onValueChange={(v: any) => setMethod(v)}>
+                    <SelectTrigger className="w-full py-6 rounded-xl border-gray-200 focus:ring-emerald-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CASH">Cash Payment (Drawer)</SelectItem>
+                      <SelectItem value="NETWORK">Network / Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button onClick={handleSettle} className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
                   Confirm & Clear Balance
                 </Button>
               </div>
@@ -120,6 +137,7 @@ export function SalarySettlementModal({
                       advances={advances}
                       totalAdvances={settledData.advancesTally}
                       netPaid={settledData.netPaid}
+                      paymentMethod={settledData.method}
                     />
                   }
                   fileName={`Settlement_${staff.name}_${settledData.month}_${settledData.year}.pdf`}

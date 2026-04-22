@@ -35,7 +35,8 @@ export function SalarySettlementDocument({
   baseSalary, 
   advances, 
   totalAdvances, 
-  netPaid 
+  netPaid,
+  paymentMethod
 }: { 
   staffName: string, 
   month: number, 
@@ -43,7 +44,8 @@ export function SalarySettlementDocument({
   baseSalary: number, 
   advances: any[], 
   totalAdvances: number, 
-  netPaid: number 
+  netPaid: number,
+  paymentMethod: 'CASH' | 'NETWORK'
 }) {
   return (
     <Document>
@@ -61,6 +63,10 @@ export function SalarySettlementDocument({
           <View style={styles.infoBox}>
             <Text style={styles.label}>Settlement Date</Text>
             <Text style={styles.value}>{format(new Date(), 'PP')}</Text>
+          </View>
+          <View style={styles.infoBox}>
+            <Text style={styles.label}>Method</Text>
+            <Text style={[styles.value, { color: paymentMethod === 'NETWORK' ? '#7c3aed' : '#2563eb' }]}>{paymentMethod}</Text>
           </View>
         </View>
 

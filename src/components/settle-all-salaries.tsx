@@ -11,6 +11,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { settleAllSalaries } from '@/actions/transactions'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
 
@@ -18,6 +20,7 @@ export function SettleAllSalaries() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [method, setMethod] = useState<'CASH' | 'NETWORK'>('CASH')
   const [done, setDone] = useState(false)
 
   const handleSettleAll = async () => {
@@ -26,7 +29,8 @@ export function SettleAllSalaries() {
       const now = new Date()
       await settleAllSalaries({
         month: now.getMonth() + 1,
-        year: now.getFullYear()
+        year: now.getFullYear(),
+        method
       })
       setDone(true)
       router.refresh()
@@ -73,7 +77,20 @@ export function SettleAllSalaries() {
                   <p className="text-2xl font-black text-center">{new Date().toLocaleString('default', { month: 'long' })} {new Date().getFullYear()}</p>
                 </div>
 
-                <Button onClick={handleSettleAll} className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Select Payout Method for All</Label>
+                  <Select value={method} onValueChange={(v: any) => setMethod(v)}>
+                    <SelectTrigger className="w-full py-6 rounded-2xl border-gray-100 dark:border-gray-800 focus:ring-emerald-500 shadow-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CASH">Cash Settlement (Drawer)</SelectItem>
+                      <SelectItem value="NETWORK">Bank Transfer / Network</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button onClick={handleSettleAll} className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg shadow-xl shadow-emerald-500/20 active:scale-95 transition-all rounded-2xl">
                   Confirm Bulk Settlement
                 </Button>
               </div>

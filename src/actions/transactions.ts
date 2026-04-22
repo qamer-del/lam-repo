@@ -98,7 +98,7 @@ export async function recordRefund(data: {
   return tx
 }
 
-export async function settleSalary(data: { staffId: number, month: number, year: number }) {
+export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK' }) {
   const session = await auth()
   if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
     throw new Error("Unauthorized")
@@ -129,6 +129,7 @@ export async function settleSalary(data: { staffId: number, month: number, year:
       baseSalary: staff.baseSalary,
       advancesTally: totalAdvances,
       netPaid: netPaid,
+      method: data.method,
       transactions: {
         connect: staff.transactions.map(tx => ({ id: tx.id }))
       }
@@ -141,7 +142,7 @@ export async function settleSalary(data: { staffId: number, month: number, year:
       data: {
         type: 'SALARY_PAYMENT',
         amount: netPaid,
-        method: 'CASH',
+        method: data.method,
         description: `Final payout for period ${data.month}/${data.year}`,
         staffId: data.staffId,
         recordedById: session.user.id,
@@ -164,11 +165,11 @@ export async function settleSalary(data: { staffId: number, month: number, year:
   return salarySettlement
 }
 
-export async function settleAllSalaries(data: { month: number, year: number }) {
+export async function settleAllSalaries(data: { month: number, year: number, method: 'CASH' | 'NETWORK' }) {
   const staffMembers = await prisma.staff.findMany({ where: { isActive: true }})
   const results = []
   for (const s of staffMembers) {
-    results.push(await settleSalary({ staffId: s.id, month: data.month, year: data.year }))
+    results.push(await settleSalary({ staffId: s.id, month: data.month, year: data.year, method: data.method }))
   }
   return results
 }
