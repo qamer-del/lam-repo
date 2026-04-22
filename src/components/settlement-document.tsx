@@ -51,26 +51,31 @@ export function SettlementDocument({ settlement, transactions }: { settlement: a
           <Text style={styles.col}>#{settlement.id}</Text>
         </View>
 
-        <Text style={{ marginTop: 20, marginBottom: 10, fontSize: 14, fontWeight: 'bold' }}>Transactions Included</Text>
+        <Text style={{ marginTop: 20, marginBottom: 10, fontSize: 14, fontWeight: 'bold' }}>Transaction Summary</Text>
         <View style={[styles.row, { backgroundColor: '#f3f4f6' }]}>
-          <Text style={styles.col}>ID</Text>
+          <Text style={[styles.col, { flex: 0.5 }]}>ID</Text>
           <Text style={styles.col}>Type</Text>
           <Text style={styles.col}>Method</Text>
           <Text style={styles.col}>Amount</Text>
         </View>
         
-        {transactions
-          .filter(tx => tx.method !== 'NETWORK')
-          .map((tx) => (
+        {transactions.map((tx) => (
           <View style={styles.row} key={tx.id}>
-            <Text style={styles.col}>#{tx.id}</Text>
+            <Text style={[styles.col, { flex: 0.5 }]}>#{tx.id}</Text>
             <Text style={styles.col}>{tx.type}</Text>
             <Text style={styles.col}>{tx.method}</Text>
-            <Text style={styles.col}>{tx.amount.toFixed(2)}</Text>
+            <Text style={styles.col}>
+              {['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT', 'RETURN'].includes(tx.type) ? '-' : ''}
+              {tx.amount.toFixed(2)}
+            </Text>
           </View>
         ))}
 
-        <Text style={styles.total}>Total Cash Handed: {settlement.totalCashHanded.toFixed(2)}</Text>
+        <View style={styles.total}>
+          <Text style={{ fontSize: 13, color: '#4b5563' }}>Expected Cash in Drawer: {settlement.totalCashHanded.toFixed(2)}</Text>
+          <Text style={{ fontSize: 13, color: '#4b5563', marginTop: 4 }}>Expected Network Total: {settlement.totalNetworkVolume.toFixed(2)}</Text>
+          <Text style={{ marginTop: 10, fontSize: 16 }}>Grand Total: {(settlement.totalCashHanded + settlement.totalNetworkVolume).toFixed(2)}</Text>
+        </View>
       </Page>
     </Document>
   );
