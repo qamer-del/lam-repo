@@ -111,6 +111,50 @@ export async function getDashboardData() {
   }
 }
 
+export async function recordDailySales(data: {
+  totalAmount: number
+  cashAmount: number
+  networkAmount: number
+  description?: string
+}) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  const exactTime = new Date()
+  
+  if (data.cashAmount > 0) {
+    await prisma.transaction.create({
+      data: {
+        type: 'SALE',
+        method: 'CASH',
+        amount: data.cashAmount,
+        fundAmount: data.cashAmount,
+        description: data.description,
+        recordedById: session.user.id,
+        createdAt: exactTime
+      }
+    })
+  }
+
+  if (data.networkAmount > 0) {
+    await prisma.transaction.create({
+      data: {
+        type: 'SALE',
+        method: 'NETWORK',
+        amount: data.networkAmount,
+        fundAmount: data.networkAmount,
+        description: data.description,
+        recordedById: session.user.id,
+        createdAt: exactTime
+      }
+    })
+  }
+
+  revalidatePath('/')
+  revalidatePath('/sales')
+  return { success: true }
+}
+
 export async function recordRefund(data: {
   amount: number
   method: 'CASH' | 'NETWORK'
@@ -123,6 +167,7 @@ export async function recordRefund(data: {
     data: {
       type: 'RETURN',
       amount: data.amount,
+      fundAmount: data.amount,
       method: data.method,
       description: data.description,
       recordedById: session.user.id
@@ -153,7 +198,10 @@ export async function settleSalary(data: { staffId: number, month: number, year:
   
   if (!staff) throw new Error("Staff not found")
 
-  const totalAdvances = staff.transactions.reduce((sum, tx) => sum + tx.amount, 0)
+  const totalAdvances = staff.transactions.reduce((sum, tx) => {
+    const val = tx.fundAmount || tx.amount
+    return sum + val
+  }, 0)
   const netPaid = staff.baseSalary - totalAdvances
 
   // 2. Create SalarySettlement record
@@ -178,6 +226,7 @@ export async function settleSalary(data: { staffId: number, month: number, year:
       data: {
         type: 'SALARY_PAYMENT',
         amount: netPaid,
+        fundAmount: netPaid,
         method: data.method,
         description: `Final payout for period ${data.month}/${data.year}`,
         staffId: data.staffId,
@@ -220,9 +269,8 @@ export async function editAdvance(transactionId: number, newAmount: number) {
   const tx = await prisma.transaction.update({
     where: { id: transactionId },
     data: { 
-      fundAmount: newAmount, // Update correctly reflects in the dedicated Salary Fund
-      // amount: stays original (physical drawer impact)
-      isInternal: false // Keep it visible in the main transactions list but with new fund value
+      fundAmount: newAmount, 
+      isInternal: false 
     },
   })
 
@@ -232,7 +280,6 @@ export async function editAdvance(transactionId: number, newAmount: number) {
 }
 
 export async function createSettlement() {
-  // Finds all unsettled transactions and lock them into a single settlement
   const unsettled = await prisma.transaction.findMany({
     where: { isSettled: false }
   })
@@ -270,59 +317,5 @@ export async function createSettlement() {
 
   revalidatePath('/')
   return settlement
-}
-
-export async function recordDailySales(data: {
-  totalAmount: number
-  cashAmount: number
-  networkAmount: number
-  description?: string
-}) {
-  const session = await auth()
-  if (!session?.user?.id) throw new Error("Unauthorized")
-
-  type SaleTx = {
-    type: 'SALE'
-    method: 'CASH' | 'NETWORK'
-    amount: number
-    fundAmount: number
-    description?: string
-    recordedById: string
-    createdAt: Date
-  }
-  const transactions: SaleTx[] = []
-  const exactTime = new Date()
-  
-  if (data.cashAmount > 0) {
-    transactions.push({
-      type: 'SALE' as const,
-      method: 'CASH' as const,
-      amount: data.cashAmount,
-      fundAmount: data.cashAmount,
-      description: data.description,
-      recordedById: session.user.id,
-      createdAt: exactTime
-    })
-  }
-
-  if (data.networkAmount > 0) {
-    transactions.push({
-      type: 'SALE' as const,
-      method: 'NETWORK' as const,
-      amount: data.networkAmount,
-      fundAmount: data.networkAmount,
-      description: data.description,
-      recordedById: session.user.id,
-      createdAt: exactTime
-    })
-  }
-
-  if (transactions.length > 0) {
-    await prisma.transaction.createMany({
-      data: transactions
-    })
-    revalidatePath('/')
-    revalidatePath('/sales')
-  }
 }
 
