@@ -93,31 +93,33 @@ export default function SalesPage({
           <p className="text-gray-500 mt-1 text-xs sm:text-sm">{t('salesSubtitle')}</p>
         </div>
         
-        <div className="flex w-full sm:w-auto gap-3">
-          <AddSalesModal />
-          <AddRefundModal />
+        <div className="grid grid-cols-2 sm:flex sm:w-auto gap-2 w-full">
+          <AddSalesModal triggerClassName="w-full h-full py-2" />
+          <AddRefundModal triggerClassName="w-full h-full py-2" />
           
           {!isCashier && (
-            <PDFDownloadLink
-              document={
-                <SalesDocument 
-                  sales={filteredSales} 
-                  totalCash={totalCash} 
-                  totalNetwork={totalNetwork} 
-                  vatAmount={(totalCash + totalNetwork) * 0.15}
-                  manualProfit={parseFloat(manualProfit) || 0}
-                  dateStr={`${fromDate} to ${toDate}`}
-                />
-              }
-              fileName={`Sales_Report_${fromDate}_to_${toDate}.pdf`}
-            >
-              {({ loading }) => (
-                <Button variant="outline" disabled={loading} className="flex-1 sm:flex-none gap-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 shadow-sm">
-                  <Download size={16} />
-                  {loading ? '...' : t('generatePdf')}
-                </Button>
-              )}
-            </PDFDownloadLink>
+            <div className="col-span-2 sm:flex-none">
+              <PDFDownloadLink
+                document={
+                  <SalesDocument 
+                    sales={filteredSales} 
+                    totalCash={totalCash} 
+                    totalNetwork={totalNetwork} 
+                    vatAmount={(totalCash + totalNetwork) * 0.15}
+                    manualProfit={parseFloat(manualProfit) || 0}
+                    dateStr={`${fromDate} to ${toDate}`}
+                  />
+                }
+                fileName={`Sales_Report_${fromDate}_to_${toDate}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="outline" disabled={loading} className="w-full sm:w-auto gap-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 shadow-sm h-11 sm:h-10">
+                    <Download size={16} />
+                    {loading ? '...' : t('generatePdf')}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            </div>
           )}
         </div>
       </div>
@@ -168,51 +170,63 @@ export default function SalesPage({
 
       {!isCashier && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-blue-500">
+          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-blue-500 overflow-hidden relative group transition-all hover:shadow-lg">
+            <div className="absolute top-0 right-0 p-1 opacity-5">
+              <Coins size={60} />
+            </div>
             <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
               <div className="p-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 rounded-lg">
-                <Coins size={20} />
+                <Coins size={18} />
               </div>
-              <CardTitle className="text-xs font-bold uppercase text-gray-400">Net Cash Sales</CardTitle>
+              <CardTitle className="text-[10px] sm:text-xs font-black uppercase text-gray-400 tracking-wider">Net Cash Sales</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-black text-blue-600">{totalCash.toFixed(2)}</p>
+              <p className="text-xl sm:text-2xl font-black text-blue-600 tabular-nums">{totalCash.toFixed(2)}</p>
             </CardContent>
           </Card>
 
-          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-purple-500">
+          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-purple-500 overflow-hidden relative group transition-all hover:shadow-lg">
+             <div className="absolute top-0 right-0 p-1 opacity-5">
+              <CreditCard size={60} />
+            </div>
             <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
               <div className="p-2 bg-purple-100 text-purple-600 dark:bg-purple-900/30 rounded-lg">
-                <CreditCard size={20} />
+                <CreditCard size={18} />
               </div>
-              <CardTitle className="text-xs font-bold uppercase text-gray-400">Net Network Sales</CardTitle>
+              <CardTitle className="text-[10px] sm:text-xs font-black uppercase text-gray-400 tracking-wider">Net Network Sales</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-black text-purple-600">{totalNetwork.toFixed(2)}</p>
+              <p className="text-xl sm:text-2xl font-black text-purple-600 tabular-nums">{totalNetwork.toFixed(2)}</p>
             </CardContent>
           </Card>
 
-          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-orange-500">
+          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-orange-500 overflow-hidden relative group transition-all hover:shadow-lg">
+            <div className="absolute top-0 right-0 p-1 opacity-5">
+              <Receipt size={60} />
+            </div>
             <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
               <div className="p-2 bg-orange-100 text-orange-600 dark:bg-orange-900/30 rounded-lg">
-                <Receipt size={20} />
+                <Receipt size={18} />
               </div>
-              <CardTitle className="text-xs font-bold uppercase text-gray-400">VAT (15%)</CardTitle>
+              <CardTitle className="text-[10px] sm:text-xs font-black uppercase text-gray-400 tracking-wider">VAT (15%)</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-black text-orange-600 font-mono tracking-tighter">{((totalCash + totalNetwork) * 0.15).toFixed(2)}</p>
+              <p className="text-xl sm:text-2xl font-black text-orange-600 tabular-nums tracking-tighter">{((totalCash + totalNetwork) * 0.15).toFixed(2)}</p>
             </CardContent>
           </Card>
 
-          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-emerald-500">
+          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-emerald-500 overflow-hidden relative group transition-all hover:shadow-lg">
+            <div className="absolute top-0 right-0 p-1 opacity-5">
+              <Calculator size={60} />
+            </div>
             <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
               <div className="p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 rounded-lg">
-                <Calculator size={20} />
+                <Calculator size={18} />
               </div>
-              <CardTitle className="text-xs font-bold uppercase text-gray-400">Net Profit</CardTitle>
+              <CardTitle className="text-[10px] sm:text-xs font-black uppercase text-gray-400 tracking-wider">Net Profit</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-black text-emerald-600">{parseFloat(manualProfit).toFixed(2) || '0.00'}</p>
+              <p className="text-xl sm:text-2xl font-black text-emerald-600 tabular-nums">{parseFloat(manualProfit).toFixed(2) || '0.00'}</p>
             </CardContent>
           </Card>
         </div>
@@ -271,50 +285,56 @@ export default function SalesPage({
         {/* Mobile Card List View */}
         <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
           {aggregatedSales.map(sale => (
-            <div key={sale.id} className="p-4 space-y-4 active:bg-gray-50 dark:active:bg-gray-900 transition">
+            <div key={sale.id} className="p-5 space-y-4 active:bg-gray-50 dark:active:bg-gray-900/50 transition-colors">
               <div className="flex justify-between items-start">
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm ${
                       sale.type === 'RETURN'
-                        ? 'bg-red-100 text-red-700'
+                        ? 'bg-red-500 text-white'
                         : sale.methods.has('CASH') && sale.methods.has('NETWORK')
-                          ? 'bg-orange-100 text-orange-700'
+                          ? 'bg-orange-500 text-white'
                           : sale.methods.has('CASH')
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-purple-100 text-purple-700'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-purple-600 text-white'
                     }`}>
                       {sale.type === 'RETURN' ? 'Sales Return' : sale.methods.has('CASH') && sale.methods.has('NETWORK') ? 'Split Payment' : sale.methods.has('CASH') ? 'Cash Sale' : 'Network Sale'}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 font-medium">
-                    {format(new Date(sale.createdAt), 'MMM dd, h:mm a')}
-                  </p>
+                  <div className="flex items-center gap-1.5 text-gray-400 font-bold">
+                    <p className="text-[10px] uppercase tracking-tight">
+                      {format(new Date(sale.createdAt), 'MMM dd, yyyy')}
+                    </p>
+                    <span className="w-1 h-1 rounded-full bg-gray-300" />
+                    <p className="text-[10px] uppercase tracking-tight">
+                      {format(new Date(sale.createdAt), 'h:mm a')}
+                    </p>
+                  </div>
                 </div>
                   <div className="text-right">
-                    <p className={`text-2xl font-black tabular-nums leading-none ${sale.type === 'RETURN' ? 'text-red-600' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    <p className={`text-2xl font-black tabular-nums leading-none tracking-tight ${sale.type === 'RETURN' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
                       {sale.type === 'RETURN' ? '-' : ''}{sale.totalAmount.toFixed(2)}
                     </p>
                   </div>
               </div>
 
               {sale.methods.has('CASH') && sale.methods.has('NETWORK') && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-xl text-center">
-                    <p className="text-[10px] text-blue-500 font-bold uppercase tracking-tighter">Cash</p>
-                    <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{sale.cashAmount.toFixed(2)}</p>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded-2xl border border-blue-100 dark:border-blue-800/30 text-center">
+                    <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest mb-1">Cash</p>
+                    <p className="text-sm font-black text-blue-700 dark:text-blue-300 tabular-nums">{sale.cashAmount.toFixed(2)}</p>
                   </div>
-                  <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded-xl text-center">
-                    <p className="text-[10px] text-purple-500 font-bold uppercase tracking-tighter">Network</p>
-                    <p className="text-sm font-bold text-purple-700 dark:text-purple-300">{sale.networkAmount.toFixed(2)}</p>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-2.5 rounded-2xl border border-purple-100 dark:border-purple-800/30 text-center">
+                    <p className="text-[9px] text-purple-500 font-black uppercase tracking-widest mb-1">Network</p>
+                    <p className="text-sm font-black text-purple-700 dark:text-purple-300 tabular-nums">{sale.networkAmount.toFixed(2)}</p>
                   </div>
                 </div>
               )}
 
-              <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl flex items-center justify-between gap-4">
+              <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 rounded-2xl flex items-center gap-3 border border-gray-100 dark:border-gray-800">
                 <Receipt size={14} className="text-gray-400 shrink-0" />
-                <p className="text-xs text-gray-600 dark:text-gray-400 italic truncate flex-1">
-                  {sale.description || 'No notes for this sale'}
+                <p className="text-xs text-gray-600 dark:text-gray-300 font-medium italic truncate">
+                  {sale.description || 'No notes provided for this transaction'}
                 </p>
               </div>
             </div>

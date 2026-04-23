@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,7 @@ import { recordDailySales } from '@/actions/transactions'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
 
-export function AddSalesModal() {
+export function AddSalesModal({ triggerClassName }: { triggerClassName?: string }) {
   const { t } = useLanguage()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -78,7 +79,7 @@ export function AddSalesModal() {
     <>
       {loading && <ModernLoader />}
       <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" />}>
+      <DialogTrigger render={<Button className={cn("flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white", triggerClassName)} />}>
         <Plus size={16} />
         {t('addSales')}
       </DialogTrigger>

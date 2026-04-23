@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import {
   Dialog,
   DialogContent,
@@ -18,7 +19,7 @@ import { recordRefund } from '@/actions/transactions'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
 
-export function AddRefundModal() {
+export function AddRefundModal({ triggerClassName }: { triggerClassName?: string }) {
   const { t } = useLanguage()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -56,7 +57,7 @@ export function AddRefundModal() {
     <>
       {loading && <ModernLoader />}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger render={<Button variant="outline" className="flex items-center gap-2 border-red-200 text-red-600 hover:bg-red-50" />}>
+        <DialogTrigger render={<Button variant="outline" className={cn("flex items-center gap-2 border-red-200 text-red-600 hover:bg-red-50", triggerClassName)} />}>
           <Undo2 size={16} />
           Refund
         </DialogTrigger>
