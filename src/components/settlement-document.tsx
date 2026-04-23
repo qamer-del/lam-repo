@@ -59,7 +59,7 @@ export function SettlementDocument({ settlement, transactions }: { settlement: a
         </View>
         
         {transactions
-          .filter(tx => tx.method === 'CASH')
+          .filter(tx => tx.method === 'CASH' && tx.type !== 'AGENT_PURCHASE')
           .map((tx) => (
           <View style={styles.row} key={tx.id}>
             <Text style={[styles.col, { flex: 0.5 }]}>#{tx.id}</Text>
