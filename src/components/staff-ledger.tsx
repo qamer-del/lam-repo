@@ -215,8 +215,13 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            {tx.amount.toFixed(2)}
-                            {isSuperAdmin && !isOwner && (
+                            <span className={tx.amount < 0 ? 'text-blue-600' : ''}>
+                              {tx.amount.toFixed(2)}
+                            </span>
+                            {tx.isInternal && (
+                              <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase">Correction</span>
+                            )}
+                            {isSuperAdmin && !isOwner && !tx.isInternal && (
                               <button 
                                 onClick={() => { setEditingRow(tx.id); setEditAmount(tx.amount.toString()); }}
                                 className="text-xs text-blue-500 hover:underline"
@@ -276,7 +281,14 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                           />
                         </div>
                       ) : (
-                        <p className="text-xl font-black text-orange-600 tabular-nums">{tx.amount.toFixed(2)}</p>
+                        <div className="flex items-center gap-2">
+                          <p className={`text-xl font-black tabular-nums ${tx.amount < 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                            {tx.amount.toFixed(2)}
+                          </p>
+                          {tx.isInternal && (
+                            <span className="text-[8px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Correction</span>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="text-right space-y-1">
@@ -292,7 +304,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                     </p>
                   </div>
 
-                  {canModify && (
+                  {canModify && !tx.isInternal && (
                     <div className="pt-2">
                     {editingRow === tx.id ? (
                       <div className="flex gap-2">

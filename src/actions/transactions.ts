@@ -59,9 +59,10 @@ export async function getDashboardData() {
   const curMonth = now.getMonth()
   const curYear = now.getFullYear()
 
-  // Use allTxs (including internal corrections) for metrics calculation
-  // This ensures the drawer balance reflects the actual cash movement even if corrected
   allTxs.forEach((tx: TxWithRelations) => {
+    const isNeutral = tx.description?.includes('[DRAWER_NEUTRAL]')
+    if (isNeutral) return;
+
     const txDate = new Date(tx.createdAt)
     const isThisMonth = txDate.getMonth() === curMonth && txDate.getFullYear() === curYear
 
@@ -205,42 +206,44 @@ export async function editAdvance(transactionId: number, newAmount: number) {
   if (session?.user?.role !== 'SUPER_ADMIN') {
     throw new Error('Unauthorized. Only Super Admins can modify advances.')
   }
-
-  // 1. Get existing transaction
-  const oldTx = await prisma.transaction.findUnique({
+  
+  // 1. Get existing original transaction
+  const originalTx = await prisma.transaction.findUnique({
     where: { id: transactionId },
     include: { staff: true }
   })
+  if (!originalTx) throw new Error("Transaction not found")
 
-  if (!oldTx) throw new Error("Transaction not found")
-
-  // 2. Update the original transaction (it stays in the main ledger)
-  const tx = await prisma.transaction.update({
-    where: { id: transactionId },
-    data: { 
-      amount: newAmount,
-      isInternal: true // Hide from dashboard but keep in staff records
-    },
+  // 2. Clear any previous internal corrections for this specific advance to keep it clean
+  await prisma.transaction.deleteMany({
+    where: {
+      description: { contains: `[CORRECTION FOR #${transactionId}]` },
+      isInternal: true
+    }
   })
 
-  // 3. If the amount was reduced, transfer the difference to the internal correction ledger
-  const diff = oldTx.amount - newAmount
-  if (diff > 0) {
+  // 3. Calculate the difference relative to the ORIGINAL amount
+  // We don't modify the original record as per user request for audit trail
+  const diff = originalTx.amount - newAmount
+  
+  if (Math.abs(diff) > 0.01) {
+    // 4. Create the correction entry (marked as internal so it's hidden from dashboard)
     await prisma.transaction.create({
       data: {
-        type: 'EXPENSE',
-        amount: diff,
-        method: oldTx.method,
-        description: `Internal Correction: ${oldTx.staff?.name || 'Staff'} advance #${transactionId} adjusted from ${oldTx.amount} to ${newAmount}`,
+        type: 'ADVANCE',
+        amount: -diff, // Negative if we are reducing the advance, positive if increasing
+        method: originalTx.method,
+        description: `[CORRECTION FOR #${transactionId}] [DRAWER_NEUTRAL] Adjusted from ${originalTx.amount} to ${newAmount}`,
         isInternal: true,
-        recordedById: oldTx.recordedById // Keep it in the same drawer context
+        staffId: originalTx.staffId,
+        recordedById: session.user.id
       }
     })
   }
 
   revalidatePath('/')
   revalidatePath('/staff')
-  return tx
+  return originalTx
 }
 
 export async function createSettlement() {
@@ -252,6 +255,7 @@ export async function createSettlement() {
   type UnsettledTx = (typeof unsettled)[number]
 
   const cashHanded = unsettled.reduce((acc: number, tx: UnsettledTx) => {
+    if (tx.description?.includes('[DRAWER_NEUTRAL]')) return acc;
     if (tx.type === 'SALE' && tx.method === 'CASH') return acc + tx.amount;
     if (tx.type === 'RETURN' && tx.method === 'CASH') return acc - tx.amount;
     if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type) && tx.method === 'CASH') return acc - tx.amount;
@@ -259,6 +263,7 @@ export async function createSettlement() {
   }, 0)
 
   const networkVolume = unsettled.reduce((acc: number, tx: UnsettledTx) => {
+    if (tx.description?.includes('[DRAWER_NEUTRAL]')) return acc;
     if (tx.type === 'SALE' && tx.method === 'NETWORK') return acc + tx.amount;
     if (tx.type === 'RETURN' && tx.method === 'NETWORK') return acc - tx.amount;
     if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type) && tx.method === 'NETWORK') return acc - tx.amount;
