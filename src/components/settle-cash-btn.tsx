@@ -8,7 +8,9 @@ import { pdf } from '@react-pdf/renderer'
 import { SettlementDocument } from './settlement-document'
 import { useStore } from '@/store/useStore'
 
-export function SettleCashBtn() {
+import { cn } from '@/lib/utils'
+
+export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string }) {
   const { t } = useLanguage()
   const [loading, setLoading] = useState(false)
   const { transactions } = useStore()
@@ -38,7 +40,12 @@ export function SettleCashBtn() {
   }
 
   return (
-    <Button variant="secondary" className="bg-black text-white hover:bg-gray-800" onClick={handleSettle} disabled={loading}>
+    <Button 
+      variant="secondary" 
+      className={cn("bg-gray-900 text-white hover:bg-black shadow-lg shadow-gray-500/20 transition-all active:scale-95", triggerClassName)} 
+      onClick={handleSettle} 
+      disabled={loading}
+    >
       {loading ? '...' : t('settleCash')}
     </Button>
   )

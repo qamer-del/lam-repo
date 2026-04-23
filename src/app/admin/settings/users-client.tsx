@@ -108,8 +108,8 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
                     <SelectContent>
                       <SelectItem value="CASHIER">{t('cashierLimited')}</SelectItem>
                       <SelectItem value="ADMIN">{t('adminFullAccess')}</SelectItem>
-                      <SelectItem value="SUPER_ADMIN">{t('superAdmin') || 'Super Admin'}</SelectItem>
-                      <SelectItem value="OWNER">{t('ownerViewOnly') || 'Owner (View Only)'}</SelectItem>
+                      {isSuperAdmin && <SelectItem value="SUPER_ADMIN">{t('superAdmin') || 'Super Admin'}</SelectItem>}
+                      <SelectItem value="OWNER">{t('ownerViewOnly') || 'Owner'}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -229,7 +229,7 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
                     placeholder="Type RESET here..." 
                     className="h-12 border-red-100 focus:ring-red-500 font-black text-center tracking-widest uppercase placeholder:font-normal placeholder:tracking-normal"
                     value={resetConfirm}
-                    onChange={(e) => setResetConfirm(e.target.value)}
+                    onChange={(e) => setResetConfirm(e.target.value.toUpperCase().trim())}
                   />
                 </div>
                 <Button 

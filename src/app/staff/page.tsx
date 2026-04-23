@@ -41,7 +41,7 @@ export default function StaffPage() {
         getDashboardData()
       ])
       setStaff(staffData as any)
-      setTransactions(txData.transactions as any)
+      setTransactions(txData.allStaffTransactions as any)
     } catch (err) {
       console.error(err)
     } finally {

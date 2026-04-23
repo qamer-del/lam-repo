@@ -93,12 +93,12 @@ export default function SalesPage({
           <p className="text-gray-500 mt-1 text-xs sm:text-sm">{t('salesSubtitle')}</p>
         </div>
         
-        <div className="grid grid-cols-2 sm:flex sm:w-auto gap-2 w-full">
-          <AddSalesModal triggerClassName="w-full h-full py-2" />
-          <AddRefundModal triggerClassName="w-full h-full py-2" />
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <AddSalesModal triggerClassName="flex-1 sm:flex-none h-10 px-4" />
+          <AddRefundModal triggerClassName="flex-1 sm:flex-none h-10 px-4" />
           
           {!isCashier && (
-            <div className="col-span-2 sm:flex-none">
+            <div className="w-full sm:w-auto">
               <PDFDownloadLink
                 document={
                   <SalesDocument 
@@ -113,7 +113,7 @@ export default function SalesPage({
                 fileName={`Sales_Report_${fromDate}_to_${toDate}.pdf`}
               >
                 {({ loading }) => (
-                  <Button variant="outline" disabled={loading} className="w-full sm:w-auto gap-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 shadow-sm h-11 sm:h-10">
+                  <Button variant="outline" disabled={loading} className="w-full sm:w-auto gap-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 shadow-sm h-10">
                     <Download size={16} />
                     {loading ? '...' : t('generatePdf')}
                   </Button>

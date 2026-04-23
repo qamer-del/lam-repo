@@ -39,6 +39,7 @@ export function DashboardContent({
     networkSales: number, 
     salaryFundRemaining: number, 
     transactions: Transaction[],
+    allStaffTransactions?: Transaction[],
     internalTransactions?: Transaction[] 
   } 
   userRole?: string
@@ -140,14 +141,10 @@ export function DashboardContent({
 
       {/* Actions */}
       {!isOwner && (
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end">
-          <div className="flex-1 sm:flex-none">
-            <AddTransactionModal />
-          </div>
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
+          <AddTransactionModal triggerClassName="flex-1 sm:flex-none h-11 sm:h-10 px-6 font-bold" />
           {isAdmin && (
-            <div className="flex-1 sm:flex-none">
-              <SettleCashBtn />
-            </div>
+            <SettleCashBtn triggerClassName="flex-1 sm:flex-none h-11 sm:h-10 px-6 font-bold" />
           )}
         </div>
       )}

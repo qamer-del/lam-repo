@@ -8,6 +8,11 @@ import { revalidatePath } from 'next/cache'
 export async function createUser(data: any) {
   const session = await auth()
   if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error("Unauthorized")
+  
+  // Security check: Only Super Admins can create Super Admins
+  if (data.role === 'SUPER_ADMIN' && session?.user?.role !== 'SUPER_ADMIN') {
+    throw new Error("Unauthorized: Only Super Admins can create other Super Admin accounts")
+  }
 
   const hashedPassword = await bcrypt.hash(data.password, 10)
   

@@ -95,6 +95,7 @@ export async function getDashboardData() {
     networkSales,
     salaryFundRemaining,
     transactions,
+    allStaffTransactions: allTxs, // Complete list including internal corrections
     internalTransactions // Passed to the client for Super Admin view
   }
 }
@@ -218,7 +219,7 @@ export async function editAdvance(transactionId: number, newAmount: number) {
     where: { id: transactionId },
     data: { 
       amount: newAmount,
-      isInternal: false 
+      isInternal: true // Hide from dashboard but keep in staff records
     },
   })
 
