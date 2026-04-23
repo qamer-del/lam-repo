@@ -169,7 +169,22 @@ export default function SalesPage({
       )}
 
       {!isCashier && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-emerald-600 overflow-hidden relative group transition-all hover:shadow-lg">
+            <div className="absolute top-0 right-0 p-1 opacity-5">
+              <Receipt size={60} />
+            </div>
+            <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
+              <div className="p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 rounded-lg">
+                <Receipt size={18} />
+              </div>
+              <CardTitle className="text-[10px] sm:text-xs font-black uppercase text-gray-400 tracking-wider">Total Sales</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xl sm:text-2xl font-black text-emerald-600 tabular-nums">{(totalCash + totalNetwork).toFixed(2)}</p>
+            </CardContent>
+          </Card>
+
           <Card className="shadow-md border-none bg-white dark:bg-gray-900 border-l-4 border-l-blue-500 overflow-hidden relative group transition-all hover:shadow-lg">
             <div className="absolute top-0 right-0 p-1 opacity-5">
               <Coins size={60} />
