@@ -36,23 +36,19 @@ export async function getDashboardData() {
   // If cashier, they only see their own transactions. Super Admin/Admin/Owner see everything.
   const whereClause = (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'OWNER') ? {} : { recordedById: session?.user?.id }
 
-  const transactions = await prisma.transaction.findMany({
+  const allTxs = await prisma.transaction.findMany({
     where: { 
       ...whereClause,
-      isInternal: false // Default dashboard view excludes internal adjustments
     },
     orderBy: { createdAt: 'desc' },
     include: { staff: true, agent: true }
   })
 
-  // If Super Admin, also fetch internal adjustments for their private view
-  const internalTransactions = role === 'SUPER_ADMIN' ? await prisma.transaction.findMany({
-    where: { isInternal: true },
-    orderBy: { createdAt: 'desc' },
-    include: { staff: true, agent: true }
-  }) : []
+  // Separate for the UI
+  const transactions = allTxs.filter(tx => !tx.isInternal)
+  const internalTransactions = role === 'SUPER_ADMIN' ? allTxs.filter(tx => tx.isInternal) : []
 
-  type TxWithRelations = (typeof transactions)[number]
+  type TxWithRelations = (typeof allTxs)[number]
 
   let cashInDrawer = 0
   let networkSales = 0
@@ -63,7 +59,9 @@ export async function getDashboardData() {
   const curMonth = now.getMonth()
   const curYear = now.getFullYear()
 
-  transactions.forEach((tx: TxWithRelations) => {
+  // Use allTxs (including internal corrections) for metrics calculation
+  // This ensures the drawer balance reflects the actual cash movement even if corrected
+  allTxs.forEach((tx: TxWithRelations) => {
     const txDate = new Date(tx.createdAt)
     const isThisMonth = txDate.getMonth() === curMonth && txDate.getFullYear() === curYear
 
@@ -207,13 +205,37 @@ export async function editAdvance(transactionId: number, newAmount: number) {
     throw new Error('Unauthorized. Only Super Admins can modify advances.')
   }
 
+  // 1. Get existing transaction
+  const oldTx = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    include: { staff: true }
+  })
+
+  if (!oldTx) throw new Error("Transaction not found")
+
+  // 2. Update the original transaction (it stays in the main ledger)
   const tx = await prisma.transaction.update({
     where: { id: transactionId },
     data: { 
       amount: newAmount,
-      isInternal: true // Move to internal account to avoid affecting main drawer metrics
+      isInternal: false 
     },
   })
+
+  // 3. If the amount was reduced, transfer the difference to the internal correction ledger
+  const diff = oldTx.amount - newAmount
+  if (diff > 0) {
+    await prisma.transaction.create({
+      data: {
+        type: 'EXPENSE',
+        amount: diff,
+        method: oldTx.method,
+        description: `Internal Correction: ${oldTx.staff?.name || 'Staff'} advance #${transactionId} adjusted from ${oldTx.amount} to ${newAmount}`,
+        isInternal: true,
+        recordedById: oldTx.recordedById // Keep it in the same drawer context
+      }
+    })
+  }
 
   revalidatePath('/')
   revalidatePath('/staff')
