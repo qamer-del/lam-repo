@@ -126,33 +126,33 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-3">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex items-center gap-2 p-1.5 bg-gray-100/80 dark:bg-gray-900/50 backdrop-blur-xl rounded-2xl overflow-x-auto no-scrollbar border border-gray-200/50 dark:border-gray-800/50 shadow-inner">
         <button
           onClick={() => setSelected(null)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+          className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all shrink-0 ${
             selected === null
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
+              : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
           }`}
         >
-          Overview Report
+          {t('overviewReport')}
         </button>
         {staff.map(s => (
           <button
             key={s.id}
             onClick={() => setSelected(s.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+            className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all shrink-0 ${
               selected === s.id
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
+                : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
             {s.name}
           </button>
         ))}
         {!selected && canModify && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 ml-auto pl-2 border-l border-gray-200 dark:border-gray-800">
             <SettleAllSalaries />
             <PdfReportButton 
               staffSummary={staffSummary} 
@@ -160,34 +160,50 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
             />
           </div>
         )}
-        {!selected && isOwner && (
-          <PdfReportButton 
-            staffSummary={staffSummary} 
-            totals={{ base: totalBase, advances: totalAllAdvances, deductions: totalDeductions, net: allNetSalary }} 
-          />
-        )}
       </div>
 
       {selected && selectedStaff && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">{t('staffMembers')}</p>
-              <p className="text-xl sm:text-2xl font-bold break-words">{selectedStaff.name}</p>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 mb-2">
+                  <User size={24} />
+                </div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('staffMembers')}</p>
+                <p className="text-2xl font-black text-gray-900 dark:text-white break-words">{selectedStaff.name}</p>
+              </div>
             </div>
-            <div className="bg-green-50 dark:bg-green-900/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">Base Salary</p>
-              <p className="text-xl sm:text-2xl font-bold">{selectedStaff.baseSalary.toFixed(2)}</p>
+
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 mb-2">
+                  <Wallet size={24} />
+                </div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Base Salary</p>
+                <p className="text-3xl font-black text-gray-900 dark:text-white tabular-nums">
+                  {selectedStaff.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
             </div>
-            <div className="bg-orange-50 dark:bg-orange-900/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">Net this Month</p>
-              <p className={`text-xl sm:text-2xl font-bold ${netSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {netSalary.toFixed(2)}
-              </p>
+
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 mb-2">
+                  <DollarSign size={24} />
+                </div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Net this Month</p>
+                <p className={`text-3xl font-black tabular-nums ${netSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {netSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
             </div>
             
             {canModify && (
-              <div className="sm:col-span-3 flex justify-end">
+              <div className="sm:col-span-3 flex justify-center pt-2">
                 <SalarySettlementModal 
                   staff={{ id: selectedStaff.id, name: selectedStaff.name, baseSalary: selectedStaff.baseSalary }}
                   advances={staffTxs}
@@ -199,15 +215,15 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
           </div>
 
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto border rounded-xl dark:border-gray-800">
+          <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl shadow-sm overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-                  <TableHead className="whitespace-nowrap">#</TableHead>
-                  <TableHead className="whitespace-nowrap">{t('amount')}</TableHead>
-                  <TableHead className="whitespace-nowrap">{t('description')}</TableHead>
-                  <TableHead className="whitespace-nowrap">{t('reportDate')}</TableHead>
-                  <TableHead className="whitespace-nowrap">{t('settled')}</TableHead>
+                <TableRow className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 hover:bg-transparent">
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400 pl-6">#</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">{t('amount')}</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">{t('description')}</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">{t('reportDate')}</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400 pr-6">{t('settled')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -219,9 +235,9 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                   </TableRow>
                 ) : (
                   staffTxs.map(tx => (
-                    <TableRow key={tx.id}>
-                      <TableCell>{tx.id}</TableCell>
-                      <TableCell className="font-semibold text-orange-600 whitespace-nowrap">
+                    <TableRow key={tx.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                      <TableCell className="pl-6 py-4 font-bold text-gray-400">#{tx.id}</TableCell>
+                      <TableCell className="py-4">
                         {editingRow === tx.id ? (
                           <div className="flex items-center gap-2">
                             <input 
@@ -267,22 +283,23 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
           </div>
 
           {/* Mobile Card List View */}
-          <div className="md:hidden space-y-4">
+          <div className="md:hidden space-y-6">
             {staffTxs.length === 0 ? (
-              <div className="text-center py-10 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
-                <p className="text-gray-400 text-sm">No advances this month.</p>
+              <div className="text-center py-20 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
+                <p className="text-gray-400 font-medium">No advances this month.</p>
               </div>
             ) : (
               staffTxs.map(tx => (
-                <div key={tx.id} className="bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 shadow-sm space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
-                        <DollarSign size={16} />
+                <div key={tx.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-5 shadow-sm space-y-4 relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 transform scale-y-0 group-hover:scale-y-100 transition-transform duration-300" />
+                  <div className="flex justify-between items-center relative">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 shadow-sm">
+                        <DollarSign size={20} />
                       </div>
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">#{tx.id}</span>
+                      <span className="text-sm font-black text-gray-900 dark:text-white">Transaction #{tx.id}</span>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${tx.isSettled ? 'bg-gray-100 text-gray-500' : 'bg-yellow-100 text-yellow-700'}`}>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${tx.isSettled ? 'bg-gray-100 text-gray-500' : 'bg-yellow-100 text-yellow-700'}`}>
                       {tx.isSettled ? t('settled') : t('unsettled')}
                     </span>
                   </div>
@@ -360,36 +377,63 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
 
       {!selected && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">Total Base Salaries</p>
-              <p className="text-xl sm:text-2xl font-bold">{totalBase.toFixed(2)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 mb-2">
+                  <Landmark size={24} />
+                </div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Base Salaries</p>
+                <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{totalBase.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              </div>
             </div>
-            <div className="bg-orange-50 dark:bg-orange-900/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">Total Advances</p>
-              <p className="text-xl sm:text-2xl font-bold">{totalAllAdvances.toFixed(2)}</p>
+
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 mb-2">
+                  <DollarSign size={24} />
+                </div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Advances</p>
+                <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{totalAllAdvances.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              </div>
             </div>
-            <div className="bg-red-50 dark:bg-red-900/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">Total Deductions</p>
-              <p className="text-xl sm:text-2xl font-bold">{totalDeductions.toFixed(2)}</p>
+
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center text-red-600 mb-2">
+                  <AlertCircle size={24} />
+                </div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Deductions</p>
+                <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              </div>
             </div>
-            <div className="bg-green-50 dark:bg-green-900/30 rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">Total Net Salaries</p>
-              <p className={`text-xl sm:text-2xl font-bold ${allNetSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {allNetSalary.toFixed(2)}
-              </p>
+
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 mb-2">
+                  <CheckCircle2 size={24} />
+                </div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Net Payout</p>
+                <p className={`text-2xl font-black tabular-nums ${allNetSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {allNetSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto border rounded-xl dark:border-gray-800">
+          <div className="overflow-x-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl shadow-sm overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50 dark:bg-gray-900/50">
-                  <TableHead className="whitespace-nowrap">{t('staffMembers')}</TableHead>
-                  <TableHead className="whitespace-nowrap">Base Salary</TableHead>
-                  <TableHead className="whitespace-nowrap">Advances</TableHead>
-                  <TableHead className="whitespace-nowrap">Deductions</TableHead>
-                  <TableHead className="whitespace-nowrap">Net Salary</TableHead>
+                <TableRow className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 hover:bg-transparent">
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400 pl-6">{t('staffMembers')}</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Base Salary</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Advances</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Deductions</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400 pr-6">Net Salary</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -401,13 +445,13 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                   </TableRow>
                 ) : (
                   staffSummary.map(s => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-medium whitespace-nowrap">{s.name}</TableCell>
-                      <TableCell className="whitespace-nowrap">{s.baseSalary.toFixed(2)}</TableCell>
-                      <TableCell className="text-orange-600 whitespace-nowrap">{s.advances.toFixed(2)}</TableCell>
-                      <TableCell className="text-red-600 whitespace-nowrap">{s.deductions.toFixed(2)}</TableCell>
-                      <TableCell className={`font-semibold whitespace-nowrap ${s.netSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {s.netSalary.toFixed(2)}
+                    <TableRow key={s.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                      <TableCell className="pl-6 py-4 font-black text-gray-900 dark:text-white whitespace-nowrap">{s.name}</TableCell>
+                      <TableCell className="py-4 font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap tabular-nums">{s.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="py-4 font-bold text-orange-600 whitespace-nowrap tabular-nums">{s.advances.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="py-4 font-bold text-red-600 whitespace-nowrap tabular-nums">{s.deductions.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className={`py-4 pr-6 font-black whitespace-nowrap tabular-nums ${s.netSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {s.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </TableCell>
                     </TableRow>
                   ))

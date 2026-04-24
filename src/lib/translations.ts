@@ -66,7 +66,8 @@ export const en = {
   settings: 'System Settings',
   agents: 'Agents / Representatives',
   ownerViewOnly: 'Owner',
-  noDescription: 'No Description'
+  noDescription: 'No Description',
+  overviewReport: 'Overview Report'
 }
 
 export const ar = {
@@ -137,5 +138,6 @@ export const ar = {
   settings: 'إعدادات النظام',
   agents: 'الوكلاء / المناديب',
   ownerViewOnly: 'المالك',
-  noDescription: 'لا يوجد وصف'
+  noDescription: 'لا يوجد وصف',
+  overviewReport: 'تقرير عام'
 }

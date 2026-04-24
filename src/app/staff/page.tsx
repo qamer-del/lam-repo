@@ -56,16 +56,29 @@ export default function StaffPage() {
   }, [status])
 
   return (
-    <div className="p-6 md:p-12 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">{t('staffLedger')}</h1>
-        <AddStaffModal onAdded={loadData} />
+    <div className="p-6 md:p-12 max-w-7xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-gray-900 to-gray-400 dark:from-white dark:to-gray-500">
+            {t('staffLedger')}
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 font-medium">Manage employee records, advances, and monthly settlements</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <AddStaffModal onAdded={loadData} />
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
-          Loading...
+        <div className="flex flex-col items-center justify-center py-32 space-y-6 animate-in fade-in duration-1000">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full border-4 border-gray-100 dark:border-gray-800" />
+            <div className="absolute top-0 left-0 w-20 h-20 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
+          </div>
+          <div className="text-center space-y-2">
+            <p className="text-gray-400 font-black tracking-widest uppercase text-[10px]">Please Wait</p>
+            <p className="text-gray-900 dark:text-white font-bold">Synchronizing Ledger Data...</p>
+          </div>
         </div>
       ) : (
         <StaffLedger staff={staff} transactions={transactions} />
