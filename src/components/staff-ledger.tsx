@@ -70,7 +70,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const currentYear = new Date().getFullYear()
 
   let staffTxs = transactions
-    .filter(tx => tx.staffId !== undefined && tx.staffId === selected && tx.type === 'ADVANCE')
+    .filter(tx => tx.staffId != null && Number(tx.staffId) === Number(selected) && (tx.type === 'ADVANCE' || tx.type === 'EXPENSE'))
     .map(tx => ({ ...tx }))
 
   // For non-super admins/owners, merge corrections into original transactions and hide internal ones
@@ -92,19 +92,22 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
     staffTxs = originals
   }
 
-  const totalAdvances = staffTxs.reduce((sum, tx) => {
-    if (!tx.isSettled) {
-      return sum + tx.amount
-    }
-    return sum
+  const selectedAdvances = staffTxs.filter(tx => tx.type === 'ADVANCE').reduce((sum, tx) => {
+    return !tx.isSettled ? sum + tx.amount : sum
   }, 0)
 
-  const selectedStaff = staff.find(s => s.id === selected)
-  const netSalary = selectedStaff ? selectedStaff.baseSalary - totalAdvances : 0
+  const selectedDeductions = staffTxs.filter(tx => tx.type === 'EXPENSE').reduce((sum, tx) => {
+    return !tx.isSettled ? sum + tx.amount : sum
+  }, 0)
+
+  const totalStaffTotalDebt = selectedAdvances + selectedDeductions
+
+  const selectedStaff = staff.find(s => Number(s.id) === Number(selected))
+  const netSalary = selectedStaff ? selectedStaff.baseSalary - totalStaffTotalDebt : 0
 
   const staffSummary = staff.map(s => {
     const sTxs = transactions.filter(tx => {
-      return tx.staffId === s.id && !tx.isSettled
+      return Number(tx.staffId) === Number(s.id) && !tx.isSettled
     })
     
     const advances = sTxs.filter(tx => tx.type === 'ADVANCE').reduce((sum, tx) => sum + tx.amount, 0)
@@ -195,8 +198,21 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                 <div className="w-12 h-12 rounded-2xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 mb-2">
                   <DollarSign size={24} />
                 </div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Net this Month</p>
-                <p className={`text-3xl font-black tabular-nums ${netSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Advances & Deductions</p>
+                <p className="text-3xl font-black text-orange-600 tabular-nums">
+                  {totalStaffTotalDebt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500 sm:col-span-3">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2 py-4">
+                <div className="w-16 h-16 rounded-3xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 mb-2">
+                  <Landmark size={32} />
+                </div>
+                <p className="text-sm font-black text-gray-400 uppercase tracking-[0.2em]">Net Payable Salary</p>
+                <p className={`text-5xl font-black tabular-nums ${netSalary < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                   {netSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </p>
               </div>
@@ -207,7 +223,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                 <SalarySettlementModal 
                   staff={{ id: selectedStaff.id, name: selectedStaff.name, baseSalary: selectedStaff.baseSalary }}
                   advances={staffTxs}
-                  totalAdvances={totalAdvances}
+                  totalAdvances={totalStaffTotalDebt}
                   netPaid={netSalary}
                 />
               </div>

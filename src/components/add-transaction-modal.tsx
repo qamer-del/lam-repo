@@ -53,7 +53,7 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
         amount: parseFloat(amount),
         method,
         description,
-        staffId: type === 'ADVANCE' ? staffId : undefined
+        staffId: (type === 'ADVANCE' || type === 'EXPENSE') ? staffId : undefined
       })
       
       addTxToStore(result as Transaction)
@@ -102,7 +102,7 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
             </Select>
           </div>
 
-          {type === 'ADVANCE' && (
+          {(type === 'ADVANCE' || type === 'EXPENSE') && (
             <div className="grid gap-2">
               <Label htmlFor="staffId">{t('selectStaff')}</Label>
               <Select value={staffId ? staffId.toString() : ''} onValueChange={(val: any) => val && setStaffId(parseInt(val))}>

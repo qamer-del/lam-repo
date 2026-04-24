@@ -135,7 +135,7 @@ export async function settleSalary(data: { staffId: number, month: number, year:
     where: { id: data.staffId },
     include: { transactions: {
       where: {
-        type: 'ADVANCE',
+        type: { in: ['ADVANCE', 'EXPENSE'] },
         isSettled: false
       }
     }}
