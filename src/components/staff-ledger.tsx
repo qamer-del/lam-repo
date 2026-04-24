@@ -36,6 +36,7 @@ type Transaction = {
   createdAt: Date
   staffId?: number | null
   staff?: Staff | null
+  isInternal?: boolean
 }
 
 interface StaffLedgerProps {
@@ -68,9 +69,28 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const currentMonth = new Date().getMonth()
   const currentYear = new Date().getFullYear()
 
-  const staffTxs = transactions.filter(
-    tx => tx.staffId !== undefined && tx.staffId === selected && tx.type === 'ADVANCE'
-  )
+  let staffTxs = transactions
+    .filter(tx => tx.staffId !== undefined && tx.staffId === selected && tx.type === 'ADVANCE')
+    .map(tx => ({ ...tx }))
+
+  // For non-super admins/owners, merge corrections into original transactions and hide internal ones
+  if (!isSuperAdmin && !isOwner) {
+    const corrections = staffTxs.filter(tx => tx.isInternal)
+    const originals = staffTxs.filter(tx => !tx.isInternal)
+
+    corrections.forEach(c => {
+      const match = c.description?.match(/\[CORRECTION FOR #(\d+)\]/)
+      if (match) {
+        const targetId = parseInt(match[1])
+        const target = originals.find(o => o.id === targetId)
+        if (target) {
+          target.amount += c.amount
+        }
+      }
+    })
+
+    staffTxs = originals
+  }
 
   const totalAdvances = staffTxs.reduce((sum, tx) => {
     if (!tx.isSettled) {
@@ -218,7 +238,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                             <span className={tx.amount < 0 ? 'text-blue-600' : ''}>
                               {tx.amount.toFixed(2)}
                             </span>
-                            {tx.isInternal && (
+                            {(isSuperAdmin || isOwner) && tx.isInternal && (
                               <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase">Correction</span>
                             )}
                             {isSuperAdmin && !isOwner && !tx.isInternal && (
@@ -285,7 +305,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                           <p className={`text-xl font-black tabular-nums ${tx.amount < 0 ? 'text-blue-600' : 'text-orange-600'}`}>
                             {tx.amount.toFixed(2)}
                           </p>
-                          {tx.isInternal && (
+                          {(isSuperAdmin || isOwner) && tx.isInternal && (
                             <span className="text-[8px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">Correction</span>
                           )}
                         </div>
@@ -304,7 +324,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                     </p>
                   </div>
 
-                  {canModify && !tx.isInternal && (
+                  {isSuperAdmin && !tx.isInternal && (
                     <div className="pt-2">
                     {editingRow === tx.id ? (
                       <div className="flex gap-2">
