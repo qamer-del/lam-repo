@@ -46,6 +46,11 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if ((type === 'ADVANCE' || type === 'EXPENSE') && !staffId) {
+      alert('Please select a staff member')
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       const result = await addTransaction({

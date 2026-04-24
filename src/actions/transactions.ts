@@ -26,6 +26,7 @@ export async function addTransaction(data: {
   })
   
   revalidatePath('/')
+  revalidatePath('/staff')
   return tx
 }
 
@@ -286,6 +287,7 @@ export async function createSettlement() {
   })
 
   revalidatePath('/')
+  revalidatePath('/staff')
   return settlement
 }
 
