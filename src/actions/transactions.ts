@@ -102,8 +102,38 @@ export async function getDashboardData() {
     salaryFundRemaining,
     transactions,
     allStaffTransactions: allTxs, // Complete list including internal corrections
-    internalTransactions // Passed to the client for Super Admin view
+    internalTransactions, // Passed to the client for Super Admin view
+    recentSettlements: await prisma.settlement.findMany({
+      orderBy: { reportDate: 'desc' },
+      take: 5
+    })
   }
+}
+
+export async function getSettlementHistory() {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  return await prisma.settlement.findMany({
+    orderBy: { reportDate: 'desc' },
+    include: {
+      transactions: {
+        select: { id: true }
+      }
+    }
+  })
+}
+
+export async function getSettlementDetails(id: number) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  return await prisma.settlement.findUnique({
+    where: { id },
+    include: {
+      transactions: true
+    }
+  })
 }
 
 export async function recordRefund(data: {

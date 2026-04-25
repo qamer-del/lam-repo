@@ -19,7 +19,14 @@ interface VaultState {
   networkSales: number
   salaryFundRemaining: number
   transactions: Transaction[]
-  setVaultData: (data: { cashInDrawer: number; networkSales: number; salaryFundRemaining: number; transactions: Transaction[] }) => void
+  recentSettlements: any[]
+  setVaultData: (data: { 
+    cashInDrawer: number; 
+    networkSales: number; 
+    salaryFundRemaining: number; 
+    transactions: Transaction[];
+    recentSettlements: any[];
+  }) => void
   addTransaction: (tx: Transaction) => void
 }
 
@@ -28,6 +35,7 @@ export const useStore = create<VaultState>((set) => ({
   networkSales: 0,
   salaryFundRemaining: 0,
   transactions: [],
+  recentSettlements: [],
   setVaultData: (data) => set(data),
   addTransaction: (tx) => set((state) => {
     let cashChange = 0;

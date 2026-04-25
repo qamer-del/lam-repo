@@ -18,7 +18,8 @@ export interface Transaction {
 import { useLanguage } from '@/providers/language-provider'
 import { AddTransactionModal } from './add-transaction-modal'
 import { SettleCashBtn } from './settle-cash-btn'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { SettlementHistory } from './settlement-history'
 import {
   Table,
   TableBody,
@@ -40,7 +41,8 @@ export function DashboardContent({
     salaryFundRemaining: number, 
     transactions: Transaction[],
     allStaffTransactions?: Transaction[],
-    internalTransactions?: Transaction[] 
+    internalTransactions?: Transaction[],
+    recentSettlements: any[]
   } 
   userRole?: string
 }) {
@@ -290,6 +292,11 @@ export function DashboardContent({
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Settlement History Section */}
+      {canViewStats && (
+        <SettlementHistory initialSettlements={initialData.recentSettlements} />
       )}
     </div>
   )
