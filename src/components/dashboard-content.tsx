@@ -184,11 +184,11 @@ export function DashboardContent({
                     <TableCell className="text-sm text-gray-500">{format(new Date(tx.createdAt), 'PPp')}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        tx.isSettled 
+                        (tx.isSettled || tx.settlementId) 
                           ? 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' 
                           : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                       }`}>
-                        {tx.isSettled ? t('settled') : t('unsettled')}
+                        {(tx.isSettled || tx.settlementId) ? t('settled') : t('unsettled')}
                       </span>
                     </TableCell>
                   </TableRow>
@@ -223,11 +223,11 @@ export function DashboardContent({
                     {tx.description || <span className="italic opacity-50">{t('noDescription') || 'No description'}</span>}
                   </p>
                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                    tx.isSettled 
+                    (tx.isSettled || tx.settlementId)
                       ? 'bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400' 
                       : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                   }`}>
-                    {tx.isSettled ? t('settled') : t('unsettled')}
+                    {(tx.isSettled || tx.settlementId) ? t('settled') : t('unsettled')}
                   </span>
                 </div>
               </div>

@@ -21,13 +21,16 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Calculator, CheckCircle2, AlertCircle, Banknote } from 'lucide-react'
 
 export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string }) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const [loading, setLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [actualCount, setActualCount] = useState<string>('')
   const { transactions, cashInDrawer } = useStore()
+
+  const isRtl = locale === 'ar'
 
   const handleSettle = async () => {
     const count = parseFloat(actualCount)
@@ -74,50 +77,94 @@ export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string 
       >
         {t('settleCash')}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Finalize Cash Settlement</DialogTitle>
-          <DialogDescription>
-            Verify the physical cash in the drawer before handing it over to the owner.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-6 py-4">
-          <div className="flex flex-col gap-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800">
-            <Label className="text-xs text-gray-400 uppercase font-bold tracking-wider">System Expected Cash</Label>
-            <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">
+      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-none rounded-[2rem]">
+        <div className="bg-gradient-to-br from-gray-900 to-black p-8 text-white relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
+          <DialogHeader className="relative text-left">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-4">
+              <Banknote size={24} className="text-emerald-400" />
+            </div>
+            <DialogTitle className="text-2xl font-black">{t('finalizeSettlement')}</DialogTitle>
+            <DialogDescription className="text-gray-400 mt-2 leading-relaxed">
+              {t('verifyPhysicalCash')}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
+
+        <div className="p-8 space-y-8 bg-white dark:bg-gray-950">
+          <div className="flex flex-col gap-3 p-5 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-inner">
+            <div className="flex items-center gap-2 text-gray-400">
+              <Calculator size={14} />
+              <Label className="text-[10px] uppercase font-black tracking-widest">{t('systemExpectedCash')}</Label>
+            </div>
+            <p className="text-4xl font-black text-gray-900 dark:text-white tabular-nums">
               {cashInDrawer.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="actual-cash" className="font-bold">Physically Counted Cash</Label>
-            <Input
-              id="actual-cash"
-              type="number"
-              placeholder="0.00"
-              value={actualCount}
-              onChange={(e) => setActualCount(e.target.value)}
-              className="text-lg font-bold h-12"
-              autoFocus
-            />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="actual-cash" className="font-black text-xs uppercase tracking-widest text-gray-500">
+                {t('physicallyCountedCash')}
+              </Label>
+              {actualCount && (
+                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${diff === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {diff === 0 ? 'Perfect Match' : 'Discrepancy Found'}
+                </span>
+              )}
+            </div>
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors">
+                <Banknote size={20} />
+              </div>
+              <Input
+                id="actual-cash"
+                type="number"
+                placeholder="0.00"
+                value={actualCount}
+                onChange={(e) => setActualCount(e.target.value)}
+                className="text-2xl font-black h-16 pl-12 bg-white dark:bg-black border-2 border-gray-100 dark:border-gray-800 focus:border-blue-500 rounded-2xl transition-all shadow-sm focus:shadow-xl focus:shadow-blue-500/10"
+                autoFocus
+              />
+            </div>
           </div>
 
           {actualCount && (
-            <div className={`p-4 rounded-xl border flex justify-between items-center ${diff === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
-              <span className="text-sm font-bold">Discrepancy:</span>
-              <span className="text-lg font-black tabular-nums">
-                {diff > 0 ? '+' : ''}{diff.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </span>
+            <div className={`p-5 rounded-3xl border-2 flex justify-between items-center animate-in zoom-in-95 duration-300 ${
+              diff === 0 
+                ? 'bg-emerald-50/50 border-emerald-100 text-emerald-700 dark:bg-emerald-900/10 dark:border-emerald-900/30' 
+                : 'bg-amber-50/50 border-amber-100 text-amber-700 dark:bg-amber-900/10 dark:border-amber-900/30'
+            }`}>
+              <div className="flex items-center gap-3">
+                {diff === 0 ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('discrepancy')}</span>
+                  <span className="text-xl font-black tabular-nums">
+                    {diff > 0 ? '+' : ''}{diff.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </div>
-        <DialogFooter>
+
+        <DialogFooter className="p-8 pt-0 bg-white dark:bg-gray-950">
           <Button 
-            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-xl"
+            className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white font-black text-lg rounded-2xl shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
             onClick={handleSettle}
             disabled={loading || !actualCount}
           >
-            {loading ? 'Processing...' : 'Confirm Handover & Settle'}
+            {loading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {t('processing')}
+              </>
+            ) : (
+              <>
+                {t('confirmHandover')}
+                <CheckCircle2 size={20} />
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

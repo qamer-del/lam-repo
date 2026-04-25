@@ -67,7 +67,14 @@ export const en = {
   agents: 'Agents / Representatives',
   ownerViewOnly: 'Owner',
   noDescription: 'No Description',
-  overviewReport: 'Overview Report'
+  overviewReport: 'Overview Report',
+  finalizeSettlement: 'Finalize Cash Settlement',
+  verifyPhysicalCash: 'Verify the physical cash in the drawer before handing it over to the owner.',
+  systemExpectedCash: 'System Expected Cash',
+  physicallyCountedCash: 'Physically Counted Cash',
+  discrepancy: 'Discrepancy',
+  confirmHandover: 'Confirm Handover & Settle',
+  processing: 'Processing...',
 }
 
 export const ar = {
@@ -139,5 +146,12 @@ export const ar = {
   agents: 'الوكلاء / المناديب',
   ownerViewOnly: 'المالك',
   noDescription: 'لا يوجد وصف',
-  overviewReport: 'تقرير عام'
+  overviewReport: 'تقرير عام',
+  finalizeSettlement: 'تأكيد تسوية النقدية',
+  verifyPhysicalCash: 'يرجى التحقق من النقدية الفعلية في الدرج قبل تسليمها للمالك.',
+  systemExpectedCash: 'النقدية المتوقعة (النظام)',
+  physicallyCountedCash: 'النقدية الفعلية (المحسوبة)',
+  discrepancy: 'الفارق',
+  confirmHandover: 'تأكيد التسليم والتسوية',
+  processing: 'جاري المعالجة...',
 }
