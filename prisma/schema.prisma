@@ -86,10 +86,12 @@ model Transaction {
 
 model Settlement {
   id                  Int           @id @default(autoincrement())
-  totalCashHanded     Float
+  totalCashHanded     Float         // System calculated cash
+  actualCashCounted   Float?        // Physically counted cash
   totalNetworkVolume  Float         @default(0)
   reportDate          DateTime      @default(now())
   transactions        Transaction[]
+  performedById       String?
 }
 
 model SalarySettlement {

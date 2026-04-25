@@ -251,7 +251,10 @@ export async function editAdvance(transactionId: number, newAmount: number) {
   return originalTx
 }
 
-export async function createSettlement() {
+export async function createSettlement(actualCashCounted: number) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
   // Finds all unsettled transactions that haven't been part of a cash settlement report yet
   const unsettled = await prisma.transaction.findMany({
     where: { 
@@ -259,6 +262,8 @@ export async function createSettlement() {
       settlementId: null
     }
   })
+
+  if (unsettled.length === 0) return null
 
   type UnsettledTx = (typeof unsettled)[number]
 
@@ -281,7 +286,9 @@ export async function createSettlement() {
   const settlement = await prisma.settlement.create({
     data: {
       totalCashHanded: cashHanded,
+      actualCashCounted: actualCashCounted,
       totalNetworkVolume: networkVolume,
+      performedById: session.user.id,
       transactions: {
         connect: unsettled.map((t: UnsettledTx) => ({ id: t.id }))
       }

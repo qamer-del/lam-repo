@@ -71,7 +71,13 @@ export function SettlementDocument({ settlement, transactions }: { settlement: a
           </View>
         ))}
 
-        <Text style={styles.total}>Total Cash Handed: {settlement.totalCashHanded.toFixed(2)}</Text>
+        <View style={{ marginTop: 20, borderTopWidth: 1, paddingTop: 10 }}>
+          <Text style={styles.total}>System Expected Cash: {settlement.totalCashHanded.toFixed(2)}</Text>
+          <Text style={styles.total}>Actual Cash Counted: {settlement.actualCashCounted?.toFixed(2) || '0.00'}</Text>
+          <Text style={[styles.total, { color: (settlement.actualCashCounted - settlement.totalCashHanded) === 0 ? '#10b981' : '#f59e0b' }]}>
+            Discrepancy: {(settlement.actualCashCounted - settlement.totalCashHanded).toFixed(2)}
+          </Text>
+        </View>
       </Page>
     </Document>
   );
