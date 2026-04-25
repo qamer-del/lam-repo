@@ -67,22 +67,26 @@ export async function getDashboardData() {
     const txDate = new Date(tx.createdAt)
     const isThisMonth = txDate.getMonth() === curMonth && txDate.getFullYear() === curYear
 
+    // For drawer metrics (cashInDrawer, networkSales), we only count transactions 
+    // that haven't been settled yet AND haven't been handed over in a settlement report.
+    const isActiveInDrawer = !tx.isSettled && tx.settlementId === null
+
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') {
-        cashInDrawer += tx.amount
+        if (isActiveInDrawer) cashInDrawer += tx.amount
         if (isThisMonth) monthlySalaryPool += tx.amount
       } else if (tx.method === 'NETWORK') {
-        networkSales += tx.amount
+        if (isActiveInDrawer) networkSales += tx.amount
       }
     } else if (tx.type === 'RETURN') {
       if (tx.method === 'CASH') {
-        cashInDrawer -= tx.amount
+        if (isActiveInDrawer) cashInDrawer -= tx.amount
         if (isThisMonth) monthlySalaryPool -= tx.amount
       }
-      if (tx.method === 'NETWORK') networkSales -= tx.amount
+      if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
     } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
-      if (tx.method === 'CASH') cashInDrawer -= tx.amount
-      else if (tx.method === 'NETWORK') networkSales -= tx.amount
+      if (tx.method === 'CASH' && isActiveInDrawer) cashInDrawer -= tx.amount
+      else if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
     } else if (tx.type === 'SALARY_PAYMENT') {
       // Per user request, salary settlements are from a dedicated fund and don't affect standard cash account
       if (isThisMonth) salaryPayouts += tx.amount
@@ -248,9 +252,12 @@ export async function editAdvance(transactionId: number, newAmount: number) {
 }
 
 export async function createSettlement() {
-  // Finds all unsettled transactions and lock them into a single settlement
+  // Finds all unsettled transactions that haven't been part of a cash settlement report yet
   const unsettled = await prisma.transaction.findMany({
-    where: { isSettled: false }
+    where: { 
+      isSettled: false,
+      settlementId: null
+    }
   })
 
   type UnsettledTx = (typeof unsettled)[number]
@@ -281,8 +288,20 @@ export async function createSettlement() {
     }
   })
 
+  // Mark as settled ONLY if they are not staff-related.
+  // Staff ADVANCE and staff-linked EXPENSE must stay isSettled: false 
+  // so they can be settled later in the monthly Staff Salary workflow.
   await prisma.transaction.updateMany({
-    where: { isSettled: false },
+    where: { 
+      id: { in: unsettled.map((t: UnsettledTx) => t.id) },
+      NOT: {
+        OR: [
+          { type: 'ADVANCE' },
+          { type: 'SALARY_PAYMENT' },
+          { AND: [{ type: 'EXPENSE' }, { NOT: { staffId: null } }] }
+        ]
+      }
+    },
     data: { isSettled: true }
   })
 
