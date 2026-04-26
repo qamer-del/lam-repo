@@ -3,19 +3,26 @@
 import React from 'react'
 import dynamic from 'next/dynamic'
 import { StaffReportPDF } from './staff-report-pdf'
+import { FileText, Download } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 const PDFDownloadLink = dynamic(
   () => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink),
-  { ssr: false, loading: () => <button disabled className="px-4 py-2 bg-gray-300 text-gray-700 rounded-full text-sm font-medium">Preparing PDF...</button> }
+  { ssr: false, loading: () => <Button disabled variant="outline" className="gap-2 px-6"><FileText size={16} className="animate-pulse" /> Preparing PDF...</Button> }
 )
 
 export function PdfReportButton({ staffSummary, totals }: { staffSummary: any, totals: any }) {
   return (
     <PDFDownloadLink document={<StaffReportPDF staffSummary={staffSummary} totals={totals} />} fileName="staff-report.pdf">
       {({ loading }) =>
-        <button className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${loading ? 'bg-gray-300 text-gray-700' : 'bg-red-600 text-white hover:bg-red-700 shadow-md'}`}>
+        <Button 
+          variant="outline" 
+          className={`gap-2 px-6 border-red-200 dark:border-red-900/50 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-md transition-all active:scale-95 ${loading ? 'opacity-70' : ''}`}
+          disabled={loading}
+        >
+          {loading ? <FileText size={16} className="animate-pulse" /> : <Download size={16} />}
           {loading ? 'Preparing PDF...' : 'Download PDF Report'}
-        </button>
+        </Button>
       }
     </PDFDownloadLink>
   )

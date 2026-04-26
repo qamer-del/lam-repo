@@ -46,7 +46,12 @@ export function SettleAllSalaries() {
     <>
       {loading && <ModernLoader />}
       <Dialog open={open} onOpenChange={(v) => { setOpen(v); if(!v) setDone(false); }}>
-        <DialogTrigger render={<Button variant="outline" className="gap-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 shadow-md" />}>
+        <DialogTrigger render={
+          <Button 
+            variant="outline" 
+            className="gap-2 px-6 border-emerald-200 dark:border-emerald-900/50 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-md transition-all active:scale-95" 
+          />
+        }>
           <Landmark size={16} />
           Settle All Salaries
         </DialogTrigger>

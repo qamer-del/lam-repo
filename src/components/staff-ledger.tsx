@@ -130,32 +130,35 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex items-center gap-2 p-1.5 bg-gray-100/80 dark:bg-gray-900/50 backdrop-blur-xl rounded-2xl overflow-x-auto no-scrollbar border border-gray-200/50 dark:border-gray-800/50 shadow-inner">
-        <button
-          onClick={() => setSelected(null)}
-          className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all shrink-0 ${
-            selected === null
-              ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
-              : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-          }`}
-        >
-          {t('overviewReport')}
-        </button>
-        {staff.map(s => (
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+        <div className="flex-1 flex items-center gap-2 p-1.5 bg-gray-100/80 dark:bg-gray-900/50 backdrop-blur-xl rounded-2xl overflow-x-auto no-scrollbar border border-gray-200/50 dark:border-gray-800/50 shadow-inner">
           <button
-            key={s.id}
-            onClick={() => setSelected(s.id)}
+            onClick={() => setSelected(null)}
             className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all shrink-0 ${
-              selected === s.id
+              selected === null
                 ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
                 : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            {s.name}
+            {t('overviewReport')}
           </button>
-        ))}
+          {staff.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setSelected(s.id)}
+              className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all shrink-0 ${
+                selected === s.id
+                  ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+
         {!selected && canModify && (
-          <div className="flex gap-2 ml-auto pl-2 border-l border-gray-200 dark:border-gray-800">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <SettleAllSalaries />
             <PdfReportButton 
               staffSummary={staffSummary} 
