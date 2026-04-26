@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TransType = 'SALE' | 'EXPENSE' | 'ADVANCE' | 'OWNER_WITHDRAWAL'
+export type TransType = 'SALE' | 'RETURN' | 'EXPENSE' | 'ADVANCE' | 'SALARY_PAYMENT' | 'OWNER_WITHDRAWAL' | 'AGENT_PURCHASE' | 'AGENT_PAYMENT'
 export type PayMethod = 'CASH' | 'NETWORK'
 
 export interface Transaction {
@@ -11,6 +11,11 @@ export interface Transaction {
   description: string | null
   isSettled: boolean
   staffId: number | null
+  agentId: number | null
+  settlementId: number | null
+  salarySettlementId: number | null
+  recordedById: string | null
+  isInternal: boolean
   createdAt: Date
 }
 

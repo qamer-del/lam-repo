@@ -12,6 +12,10 @@ export interface Transaction {
   createdAt: Date
   staffId: number | null
   agentId: number | null
+  settlementId: number | null
+  salarySettlementId: number | null
+  recordedById: string | null
+  isInternal: boolean
   staff?: { name: string } | null
   agent?: { name: string } | null
 }

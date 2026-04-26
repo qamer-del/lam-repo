@@ -3,11 +3,12 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
+import { TransType, PayMethod } from '@prisma/client'
 
 export async function addTransaction(data: {
-  type: 'SALE' | 'EXPENSE' | 'ADVANCE' | 'OWNER_WITHDRAWAL'
+  type: TransType
   amount: number
-  method: 'CASH' | 'NETWORK'
+  method: PayMethod
   description?: string
   staffId?: number
 }) {
