@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore, TransType, PayMethod } from '@/store/useStore'
 export interface Transaction {
   id: number
@@ -22,6 +22,7 @@ export interface Transaction {
 import { useLanguage } from '@/providers/language-provider'
 import { AddTransactionModal } from './add-transaction-modal'
 import { SettleCashBtn } from './settle-cash-btn'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { SettlementHistory } from './settlement-history'
 import {
@@ -32,8 +33,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DollarSign, Wifi, Users, Receipt, Landmark } from 'lucide-react'
+import { 
+  DollarSign, 
+  Wifi, 
+  Users, 
+  Receipt, 
+  Landmark,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
+} from 'lucide-react'
 import { format } from 'date-fns'
+
+const ITEMS_PER_PAGE = 10
 
 export function DashboardContent({ 
   initialData,
@@ -62,7 +75,22 @@ export function DashboardContent({
     setVaultData(initialData)
   }, [initialData, setVaultData])
 
+  const [currentPage, setCurrentPage] = useState(1)
+
   const internalTransactions = initialData.internalTransactions || []
+
+  // Reset pagination when transactions list changes (e.g. new tx added)
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [transactions.length])
+
+  const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE)
+  const paginatedTransactions = transactions.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, transactions.length)
 
   const getTypeBadge = (type: string) => {
     const map: Record<string, string> = {
@@ -170,7 +198,7 @@ export function DashboardContent({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.map((tx) => (
+                {paginatedTransactions.map((tx) => (
                   <TableRow key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                     <TableCell>
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getTypeBadge(tx.type)}`}>
@@ -200,7 +228,7 @@ export function DashboardContent({
 
           {/* Mobile Card List View */}
           <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-            {transactions.map((tx) => (
+            {paginatedTransactions.map((tx) => (
               <div key={tx.id} className="p-4 space-y-3 active:bg-gray-50 dark:active:bg-gray-900 transition">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
@@ -242,6 +270,61 @@ export function DashboardContent({
               </div>
               <p className="text-gray-400 text-sm font-medium">No transactions yet.</p>
               <p className="text-gray-500 text-xs mt-1">Transactions will appear here once added.</p>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {transactions.length > ITEMS_PER_PAGE && (
+            <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Showing <span className="font-bold text-gray-900 dark:text-white">{startIndex + 1}</span> to <span className="font-bold text-gray-900 dark:text-white">{endIndex}</span> of <span className="font-bold text-gray-900 dark:text-white">{transactions.length}</span> transactions
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft size={14} />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft size={14} />
+                </Button>
+                
+                <div className="flex items-center gap-1 px-2">
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{currentPage}</span>
+                  <span className="text-xs text-gray-400">/</span>
+                  <span className="text-xs font-medium text-gray-500">{totalPages}</span>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight size={14} />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight size={14} />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
