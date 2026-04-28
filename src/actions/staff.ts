@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { auth } from '@/auth'
 
 export async function getStaffList() {
   return prisma.staff.findMany({
@@ -12,6 +13,11 @@ export async function getStaffList() {
 }
 
 export async function addStaff(data: { name: string; baseSalary: number }) {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
+    throw new Error("Unauthorized")
+  }
+  
   const staff = await prisma.staff.create({
     data: {
       name: data.name,

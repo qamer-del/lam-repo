@@ -65,7 +65,7 @@ export default function StaffPage() {
           <p className="text-gray-500 dark:text-gray-400 font-medium">Manage employee records, advances, and monthly settlements</p>
         </div>
         <div className="flex items-center gap-3">
-          <AddStaffModal onAdded={loadData} />
+          {session?.user?.role !== 'OWNER' && <AddStaffModal onAdded={loadData} />}
         </div>
       </div>
 

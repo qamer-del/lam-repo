@@ -172,7 +172,7 @@ export async function recordRefund(data: {
 
 export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK' }) {
   const session = await auth()
-  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN' && session?.user?.role !== 'OWNER') {
     throw new Error("Unauthorized")
   }
 
@@ -238,6 +238,11 @@ export async function settleSalary(data: { staffId: number, month: number, year:
 }
 
 export async function settleAllSalaries(data: { month: number, year: number, method: 'CASH' | 'NETWORK' }) {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
+    throw new Error("Unauthorized. Bulk settlement is restricted to Administrators.")
+  }
+
   const staffMembers = await prisma.staff.findMany({ where: { isActive: true }})
   const results = []
   for (const s of staffMembers) {

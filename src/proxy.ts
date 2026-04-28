@@ -5,7 +5,7 @@ import { auth } from "./auth"
 export async function proxy(request: NextRequest) {
   const session = await auth()
   console.log("MIDDLEWARE URL:", request.nextUrl.pathname, "SESSION:", session)
-  
+
   // Protect all non-public routes
   if (!session && !request.nextUrl.pathname.startsWith('/login')) {
     console.log("REDIRECTING TO LOGIN!")
@@ -19,7 +19,7 @@ export async function proxy(request: NextRequest) {
 
   // RBAC checks
   const role = session?.user?.role;
-  
+
   if (role === 'CASHIER') {
     if (
       request.nextUrl.pathname.startsWith('/admin') ||
@@ -27,10 +27,6 @@ export async function proxy(request: NextRequest) {
       request.nextUrl.pathname.startsWith('/agents')
     ) {
       return NextResponse.redirect(new URL('/sales', request.url))
-    }
-  } else if (role === 'OWNER') {
-    if (request.nextUrl.pathname.startsWith('/staff')) {
-      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 

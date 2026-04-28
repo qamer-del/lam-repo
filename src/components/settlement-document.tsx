@@ -9,7 +9,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'between',
+    justifyContent: 'space-between',
     marginBottom: 30,
     borderBottomWidth: 2,
     borderBottomColor: '#1e40af',

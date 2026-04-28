@@ -51,7 +51,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const isSuperAdmin = currentRole === 'SUPER_ADMIN'
   const isAdmin = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN'
   const isOwner = currentRole === 'OWNER'
-  const canModify = isAdmin && !isOwner
+  const canModify = isAdmin || isOwner
 
   const [selected, setSelected] = useState<number | null>(null)
   const [editingRow, setEditingRow] = useState<number | null>(null)
@@ -73,8 +73,8 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
     .filter(tx => tx.staffId != null && Number(tx.staffId) === Number(selected) && (tx.type === 'ADVANCE' || tx.type === 'EXPENSE'))
     .map(tx => ({ ...tx }))
 
-  // For non-super admins/owners, merge corrections into original transactions and hide internal ones
-  if (!isSuperAdmin && !isOwner) {
+  // For non-super admins, merge corrections into original transactions and hide internal ones
+  if (!isSuperAdmin) {
     const corrections = staffTxs.filter(tx => tx.isInternal)
     const originals = staffTxs.filter(tx => !tx.isInternal)
 
@@ -157,9 +157,9 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
           ))}
         </div>
 
-        {!selected && canModify && (
+        {!selected && (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <SettleAllSalaries />
+            {isAdmin && <SettleAllSalaries />}
             <PdfReportButton 
               staffSummary={staffSummary} 
               totals={{ base: totalBase, advances: totalAllAdvances, deductions: totalDeductions, net: allNetSalary }} 
