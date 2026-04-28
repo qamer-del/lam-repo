@@ -83,7 +83,6 @@ export const en = {
   systemCalculated: 'System Calculated',
   physicalCount: 'Physical Count',
   noSettlements: 'No settlement reports found yet.',
-  networkVolume: 'Network Volume',
   business: 'Business / General',
 }
 
@@ -172,6 +171,5 @@ export const ar = {
   systemCalculated: 'حساب النظام',
   physicalCount: 'العد الفعلي',
   noSettlements: 'لم يتم العثور على تقارير تسوية بعد.',
-  networkVolume: 'حجم الشبكة',
   business: 'عمل / عام',
 }
