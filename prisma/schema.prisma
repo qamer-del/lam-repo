@@ -49,6 +49,8 @@ model User {
 model Staff {
   id                Int                @id @default(autoincrement())
   name              String
+  idNumber          String?            // ID or Iqama Number
+  nationality       String?
   baseSalary        Float
   isActive          Boolean            @default(true)
   transactions      Transaction[]

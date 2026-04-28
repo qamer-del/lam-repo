@@ -7,12 +7,23 @@ import { auth } from '@/auth'
 export async function getStaffList() {
   return prisma.staff.findMany({
     where: { isActive: true },
-    include: { transactions: true },
+    include: { 
+      transactions: true,
+      salarySettlements: {
+        orderBy: { paidAt: 'desc' },
+        include: { transactions: true }
+      }
+    },
     orderBy: { name: 'asc' }
   })
 }
 
-export async function addStaff(data: { name: string; baseSalary: number }) {
+export async function addStaff(data: { 
+  name: string; 
+  baseSalary: number;
+  idNumber?: string;
+  nationality?: string;
+}) {
   const session = await auth()
   if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
     throw new Error("Unauthorized")
@@ -22,6 +33,8 @@ export async function addStaff(data: { name: string; baseSalary: number }) {
     data: {
       name: data.name,
       baseSalary: data.baseSalary,
+      idNumber: data.idNumber,
+      nationality: data.nationality,
     }
   })
   revalidatePath('/staff')

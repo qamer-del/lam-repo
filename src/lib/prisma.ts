@@ -1,4 +1,4 @@
-// Triggering rebuild for schema update
+// Re-initializing Prisma client to pick up schema changes (v2)
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'

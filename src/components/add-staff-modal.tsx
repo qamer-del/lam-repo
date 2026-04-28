@@ -21,15 +21,24 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState('')
   const [salary, setSalary] = useState('')
+  const [idNumber, setIdNumber] = useState('')
+  const [nationality, setNationality] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await addStaff({ name, baseSalary: parseFloat(salary) })
+      await addStaff({ 
+        name, 
+        baseSalary: parseFloat(salary),
+        idNumber,
+        nationality
+      })
       setOpen(false)
       setName('')
       setSalary('')
+      setIdNumber('')
+      setNationality('')
       onAdded?.()
     } catch (err) {
       console.error(err)
@@ -67,6 +76,26 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
               required
               value={salary}
               onChange={(e) => setSalary(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="idNumber">ID / Iqama Number</Label>
+            <Input
+              id="idNumber"
+              required
+              placeholder="Enter ID or Iqama"
+              value={idNumber}
+              onChange={(e) => setIdNumber(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="nationality">Nationality</Label>
+            <Input
+              id="nationality"
+              required
+              placeholder="e.g. Saudi, Egyptian, etc."
+              value={nationality}
+              onChange={(e) => setNationality(e.target.value)}
             />
           </div>
           <Button type="submit" disabled={loading} className="mt-2 text-white bg-blue-600 hover:bg-blue-700">
