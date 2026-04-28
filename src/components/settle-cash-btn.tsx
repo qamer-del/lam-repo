@@ -38,11 +38,10 @@ export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string 
 
     setLoading(true)
     try {
-      const unsettledTxs = transactions.filter(tx => !tx.isSettled)
       const settlement = await createSettlement(count)
       
       if (settlement) {
-        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={unsettledTxs} />).toBlob()
+        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={settlement.transactions as any[]} />).toBlob()
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url

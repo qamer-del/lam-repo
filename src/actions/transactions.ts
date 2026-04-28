@@ -333,6 +333,12 @@ export async function createSettlement(actualCashCounted: number) {
       transactions: {
         connect: unsettled.map((t: UnsettledTx) => ({ id: t.id }))
       }
+    },
+    include: {
+      transactions: true,
+      performedBy: {
+        select: { name: true }
+      }
     }
   })
 
