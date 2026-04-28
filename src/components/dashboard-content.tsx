@@ -94,11 +94,6 @@ export function DashboardContent({
           <h1 className="text-3xl font-bold">{t('dashboard')}</h1>
           <p className="text-gray-500 mt-1 text-sm">Real-time financial overview</p>
         </div>
-        {isOwner && (
-          <div className="px-4 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-lg border border-amber-100 dark:border-amber-800">
-            OWNER MODE: READ-ONLY
-          </div>
-        )}
       </div>
 
       {/* Stats Cards - Hidden for Cashiers */}
