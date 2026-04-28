@@ -43,6 +43,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   records   Transaction[] @relation("UserRecords")
+  settlements Settlement[] @relation("UserSettlements")
 }
 
 model Staff {
@@ -92,6 +93,7 @@ model Settlement {
   reportDate          DateTime      @default(now())
   transactions        Transaction[]
   performedById       String?
+  performedBy         User?         @relation("UserSettlements", fields: [performedById], references: [id])
 }
 
 model SalarySettlement {

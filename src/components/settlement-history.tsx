@@ -45,9 +45,9 @@ export function SettlementHistory({ initialSettlements }: { initialSettlements: 
             <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
               <History size={18} />
             </div>
-            <CardTitle className="text-xl font-black">Settlement Reports History</CardTitle>
+            <CardTitle className="text-xl font-black">{t('settlementHistory')}</CardTitle>
           </div>
-          <CardDescription>View and download previous cash handover reports</CardDescription>
+          <CardDescription>{t('viewPreviousReports')}</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -56,50 +56,65 @@ export function SettlementHistory({ initialSettlements }: { initialSettlements: 
             <TableHeader>
               <TableRow className="bg-gray-50/30 dark:bg-gray-900/20">
                 <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">ID</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">Date & Time</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">Expected Cash</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">Actual Count</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400 text-right">Actions</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">{t('reportDate')}</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">{t('expectedCash')}</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">{t('actualCount')}</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">{t('discrepancy')}</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">{t('networkVolume')}</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400">{t('performedBy')}</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-gray-400 text-right">{t('grossTotalMonth')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {initialSettlements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-gray-400 font-medium">
-                    No settlement reports found yet.
+                  <TableCell colSpan={8} className="h-24 text-center text-gray-400 font-medium">
+                    {t('noSettlements')}
                   </TableCell>
                 </TableRow>
               ) : (
-                initialSettlements.map((s) => (
-                  <TableRow key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition border-gray-100 dark:border-gray-800">
-                    <TableCell className="font-black text-gray-400">#{s.id}</TableCell>
-                    <TableCell className="text-sm font-bold text-gray-600 dark:text-gray-300">
-                      {format(new Date(s.reportDate), 'PPp')}
-                    </TableCell>
-                    <TableCell className="font-black tabular-nums">
-                      {s.totalCashHanded.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell className="font-black tabular-nums text-blue-600 dark:text-blue-400">
-                      {s.actualCashCounted?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 font-bold rounded-xl"
-                        onClick={() => handleDownload(s.id)}
-                        disabled={loadingId === s.id}
-                      >
-                        {loadingId === s.id ? (
-                          <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
-                        ) : (
-                          <FileDown size={14} />
-                        )}
-                        PDF
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                initialSettlements.map((s) => {
+                  const discrepancy = (s.actualCashCounted || 0) - s.totalCashHanded
+                  return (
+                    <TableRow key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition border-gray-100 dark:border-gray-800">
+                      <TableCell className="font-black text-gray-400">#{s.id}</TableCell>
+                      <TableCell className="text-sm font-bold text-gray-600 dark:text-gray-300">
+                        {format(new Date(s.reportDate), 'PPp')}
+                      </TableCell>
+                      <TableCell className="font-black tabular-nums">
+                        {s.totalCashHanded.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="font-black tabular-nums text-blue-600 dark:text-blue-400">
+                        {s.actualCashCounted?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || 'N/A'}
+                      </TableCell>
+                      <TableCell className={`font-black tabular-nums ${discrepancy < 0 ? 'text-red-500' : discrepancy > 0 ? 'text-emerald-500' : 'text-gray-400'}`}>
+                        {discrepancy === 0 ? '0.00' : (discrepancy > 0 ? '+' : '') + discrepancy.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
+                        {s.totalNetworkVolume.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        {s.performedBy?.name || '-'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 font-bold rounded-xl"
+                          onClick={() => handleDownload(s.id)}
+                          disabled={loadingId === s.id}
+                        >
+                          {loadingId === s.id ? (
+                            <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+                          ) : (
+                            <FileDown size={14} />
+                          )}
+                          PDF
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>

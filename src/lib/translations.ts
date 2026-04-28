@@ -75,6 +75,16 @@ export const en = {
   discrepancy: 'Discrepancy',
   confirmHandover: 'Confirm Handover & Settle',
   processing: 'Processing...',
+  settlementHistory: 'Settlement Reports History',
+  viewPreviousReports: 'View and download previous cash handover reports',
+  expectedCash: 'Expected Cash',
+  actualCount: 'Actual Count',
+  performedBy: 'Performed By',
+  systemCalculated: 'System Calculated',
+  physicalCount: 'Physical Count',
+  noSettlements: 'No settlement reports found yet.',
+  networkVolume: 'Network Volume',
+  business: 'Business / General',
 }
 
 export const ar = {
@@ -154,4 +164,14 @@ export const ar = {
   discrepancy: 'الفارق',
   confirmHandover: 'تأكيد التسليم والتسوية',
   processing: 'جاري المعالجة...',
+  settlementHistory: 'سجل تقارير التسوية',
+  viewPreviousReports: 'عرض وتحميل تقارير تسليم النقدية السابقة',
+  expectedCash: 'النقدية المتوقعة',
+  actualCount: 'العد الفعلي',
+  performedBy: 'تم بواسطة',
+  systemCalculated: 'حساب النظام',
+  physicalCount: 'العد الفعلي',
+  noSettlements: 'لم يتم العثور على تقارير تسوية بعد.',
+  networkVolume: 'حجم الشبكة',
+  business: 'عمل / عام',
 }

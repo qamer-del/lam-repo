@@ -69,8 +69,10 @@ export async function getDashboardData() {
     const isThisMonth = txDate.getMonth() === curMonth && txDate.getFullYear() === curYear
 
     // For drawer metrics (cashInDrawer, networkSales), we only count transactions 
-    // that haven't been settled yet AND haven't been handed over in a settlement report.
-    const isActiveInDrawer = !tx.isSettled && tx.settlementId === null
+    // that haven't been settled yet. Cash is further restricted to not being part of a handover.
+    const isActiveInDrawer = tx.method === 'NETWORK' 
+      ? !tx.isSettled 
+      : (!tx.isSettled && tx.settlementId === null)
 
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') {
@@ -106,7 +108,12 @@ export async function getDashboardData() {
     internalTransactions, // Passed to the client for Super Admin view
     recentSettlements: await prisma.settlement.findMany({
       orderBy: { reportDate: 'desc' },
-      take: 5
+      take: 5,
+      include: {
+        performedBy: {
+          select: { name: true }
+        }
+      }
     })
   }
 }
@@ -132,7 +139,10 @@ export async function getSettlementDetails(id: number) {
   return await prisma.settlement.findUnique({
     where: { id },
     include: {
-      transactions: true
+      transactions: true,
+      performedBy: {
+        select: { name: true }
+      }
     }
   })
 }
@@ -332,6 +342,7 @@ export async function createSettlement(actualCashCounted: number) {
   await prisma.transaction.updateMany({
     where: { 
       id: { in: unsettled.map((t: UnsettledTx) => t.id) },
+      method: 'CASH', // Only cash is physically settled and cleared from drawer
       NOT: {
         OR: [
           { type: 'ADVANCE' },
