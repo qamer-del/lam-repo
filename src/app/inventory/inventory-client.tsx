@@ -38,7 +38,7 @@ const MOVEMENT_COLORS: Record<string, string> = {
 }
 
 const MOVEMENT_LABELS: Record<string, string> = {
-  PURCHASE_IN: 'Stock In', SALE_OUT: 'Consumed', ADJUSTMENT: 'Adjustment', RETURN_IN: 'Return',
+  PURCHASE_IN: 'Stock In', SALE_OUT: 'Sale Out', ADJUSTMENT: 'Adjustment', RETURN_IN: 'Returned',
 }
 
 interface InventoryItem {
@@ -57,7 +57,7 @@ interface PurchaseOrder {
 
 interface StockMovement {
   id: number; type: string; quantity: number; unitCost: number | null
-  note: string | null; createdAt: Date
+  note: string | null; createdAt: Date; isRestocked: boolean; invoiceNumber: string | null
   item: { name: string; unit: string }
   recordedBy: { name: string } | null
 }
@@ -416,34 +416,49 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
             <Table>
               <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
                 <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Unit Cost</TableHead>
-                  <TableHead>Note</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>By</TableHead>
+                  <TableHead className="text-xs">Type</TableHead>
+                  <TableHead className="text-xs">Item</TableHead>
+                  <TableHead className="text-xs">Qty</TableHead>
+                  <TableHead className="text-xs">Unit Cost</TableHead>
+                  <TableHead className="text-xs">Invoice</TableHead>
+                  <TableHead className="text-xs">Note</TableHead>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">By</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {initialMovements.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center py-12 text-gray-400">{t('noMovementsYet')}</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-12 text-gray-400">{t('noMovementsYet')}</TableCell></TableRow>
                 )}
                 {initialMovements.map(m => (
                   <TableRow key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                     <TableCell>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${MOVEMENT_COLORS[m.type]}`}>
-                        {MOVEMENT_LABELS[m.type]}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase w-fit ${MOVEMENT_COLORS[m.type]}`}>
+                          {MOVEMENT_LABELS[m.type]}
+                        </span>
+                        {m.type === 'RETURN_IN' && (
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold w-fit ${
+                            m.isRestocked ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            {m.isRestocked ? '↑ Restocked' : '✕ Not restocked'}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="font-medium">{m.item.name}</TableCell>
-                    <TableCell className={`font-black tabular-nums ${m.quantity < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                    <TableCell className="font-medium text-sm">{m.item.name}</TableCell>
+                    <TableCell className={`font-bold tabular-nums text-sm ${m.quantity < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                       {m.quantity > 0 ? '+' : ''}{m.quantity} <span className="text-xs text-gray-400 font-normal">{m.item.unit}</span>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500 tabular-nums">{m.unitCost ? m.unitCost.toFixed(2) : '-'}</TableCell>
-                    <TableCell className="text-sm text-gray-400 max-w-[160px] truncate">{m.note || '-'}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{format(new Date(m.createdAt), 'PPp')}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{m.recordedBy?.name || '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-500 tabular-nums">{m.unitCost ? m.unitCost.toFixed(2) : '—'}</TableCell>
+                    <TableCell>
+                      {m.invoiceNumber
+                        ? <span className="font-mono text-[10px] text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">{m.invoiceNumber}</span>
+                        : <span className="text-gray-400 text-xs">—</span>}
+                    </TableCell>
+                    <TableCell className="text-xs text-gray-400 max-w-[140px] truncate">{m.note || '—'}</TableCell>
+                    <TableCell className="text-xs text-gray-500 whitespace-nowrap">{format(new Date(m.createdAt), 'PP · p')}</TableCell>
+                    <TableCell className="text-xs text-gray-500">{m.recordedBy?.name || '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -455,12 +470,24 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
             {initialMovements.length === 0 && <div className="py-12 text-center text-gray-400 text-sm">{t('noMovementsYet')}</div>}
             {initialMovements.map(m => (
               <div key={m.id} className="p-4 flex justify-between items-start gap-3">
-                <div className="space-y-1 flex-1">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${MOVEMENT_COLORS[m.type]}`}>{MOVEMENT_LABELS[m.type]}</span>
-                  <p className="font-semibold text-sm text-gray-900 dark:text-white">{m.item.name}</p>
-                  <p className="text-xs text-gray-400">{m.note || '-'} · {format(new Date(m.createdAt), 'MMM dd, h:mm a')}</p>
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${MOVEMENT_COLORS[m.type]}`}>{MOVEMENT_LABELS[m.type]}</span>
+                    {m.type === 'RETURN_IN' && (
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+                        m.isRestocked ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {m.isRestocked ? '↑ Restocked' : '✕ Not restocked'}
+                      </span>
+                    )}
+                    {m.invoiceNumber && (
+                      <span className="font-mono text-[9px] text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">{m.invoiceNumber}</span>
+                    )}
+                  </div>
+                  <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{m.item.name}</p>
+                  <p className="text-xs text-gray-400">{format(new Date(m.createdAt), 'MMM d · h:mm a')} · {m.recordedBy?.name || '—'}</p>
                 </div>
-                <p className={`text-xl font-black tabular-nums ${m.quantity < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                <p className={`text-lg font-black tabular-nums shrink-0 ${m.quantity < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                   {m.quantity > 0 ? '+' : ''}{m.quantity}
                   <span className="text-xs text-gray-400 font-normal ml-1">{m.item.unit}</span>
                 </p>

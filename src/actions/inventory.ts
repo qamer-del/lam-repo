@@ -286,7 +286,15 @@ export async function getStockMovements(itemId?: number) {
     where: itemId ? { itemId } : undefined,
     orderBy: { createdAt: 'desc' },
     take: 200,
-    include: {
+    select: {
+      id: true,
+      type: true,
+      quantity: true,
+      unitCost: true,
+      isRestocked: true,
+      invoiceNumber: true,
+      note: true,
+      createdAt: true,
       item: { select: { name: true, unit: true } },
       recordedBy: { select: { name: true } },
     },
@@ -319,37 +327,5 @@ export async function getInventorySummary() {
   return { totalValue, lowStockCount, outOfStockCount, totalItems: items.length }
 }
 
-// ── Consume stock via sales (called alongside recordDailySales) ───────────────
-
-export async function consumeInventoryItems(
-  items: { itemId: number; quantity: number }[]
-) {
-  const session = await auth()
-  if (!session?.user?.id) throw new Error('Unauthorized')
-
-  for (const item of items) {
-    await prisma.$transaction(async (tx) => {
-      const inv = await tx.inventoryItem.findUnique({
-        where: { id: item.itemId },
-      })
-      if (!inv) return
-
-      await tx.inventoryItem.update({
-        where: { id: item.itemId },
-        data: { currentStock: { decrement: item.quantity } },
-      })
-
-      await tx.stockMovement.create({
-        data: {
-          itemId: item.itemId,
-          type: 'SALE_OUT',
-          quantity: -item.quantity,
-          note: 'Consumed during sale',
-          recordedById: session.user.id,
-        },
-      })
-    })
-  }
-
-  revalidatePath('/inventory')
-}
+// Note: consumeInventoryItems was removed — stock is consumed atomically
+// inside recordDailySales (transactions.ts) to keep the operations atomic.

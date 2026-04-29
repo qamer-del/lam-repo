@@ -149,62 +149,73 @@ export async function getSettlementDetails(id: number) {
 
 export async function recordRefund(data: {
   amount: number
-  method: 'CASH' | 'NETWORK'
+  method: 'CASH' | 'NETWORK' | 'TABBY' | 'TAMARA'
   description?: string
   invoiceNumber?: string
   reason?: string
   returnedItems?: { itemId: number; quantity: number; shouldRestock: boolean }[]
 }) {
   const session = await auth()
-  if (!session?.user?.id) throw new Error("Unauthorized")
+  if (!session?.user?.id) throw new Error('Unauthorized')
+  if (!data.amount || data.amount <= 0) throw new Error('Refund amount must be greater than zero')
 
-  const fullDescription = data.reason ? `[${data.reason}] ${data.description || ''}` : data.description
+  const fullDescription = data.reason
+    ? `[${data.reason}] ${data.description || ''}`.trim()
+    : data.description
 
-  const tx = await prisma.transaction.create({
-    data: {
-      type: 'RETURN',
-      amount: data.amount,
-      method: data.method,
-      description: fullDescription,
-      invoiceNumber: data.invoiceNumber,
-      recordedById: session.user.id
-    }
-  })
-  
-  // Handle returned items
-  if (data.returnedItems && data.returnedItems.length > 0) {
-    for (const item of data.returnedItems) {
-      if (item.quantity <= 0) continue
-      
-      // Only increment stock if restock is toggled on
-      if (item.shouldRestock) {
-        await prisma.inventoryItem.update({
+  // ── Atomic operation: all DB writes succeed or all roll back ─────────────────
+  const tx = await prisma.$transaction(async (db) => {
+    // 1. Create the financial RETURN transaction
+    const returnTx = await db.transaction.create({
+      data: {
+        type: 'RETURN',
+        amount: data.amount,
+        method: data.method,
+        description: fullDescription,
+        invoiceNumber: data.invoiceNumber,
+        recordedById: session.user.id,
+      },
+    })
+
+    // 2. Process each returned inventory item
+    if (data.returnedItems && data.returnedItems.length > 0) {
+      for (const item of data.returnedItems) {
+        if (item.quantity <= 0) continue
+
+        // 2a. Restock inventory if requested
+        if (item.shouldRestock) {
+          await db.inventoryItem.update({
+            where: { id: item.itemId },
+            data: { currentStock: { increment: item.quantity } },
+          })
+        }
+
+        // 2b. Fetch current cost/price for the movement record
+        const invItem = await db.inventoryItem.findUnique({
           where: { id: item.itemId },
-          data: { currentStock: { increment: item.quantity } },
+          select: { unitCost: true, sellingPrice: true },
+        })
+
+        // 2c. Create the stock movement
+        await db.stockMovement.create({
+          data: {
+            itemId: item.itemId,
+            type: 'RETURN_IN',
+            quantity: item.quantity,
+            unitCost: invItem?.unitCost || 0,
+            sellingPrice: invItem?.sellingPrice || 0,
+            isRestocked: item.shouldRestock,
+            note: `Returned from invoice ${data.invoiceNumber || 'Unknown'}. Reason: ${data.reason || 'None'}. ${item.shouldRestock ? 'Restocked.' : 'Not restocked.'}`,
+            transactionId: returnTx.id,
+            invoiceNumber: data.invoiceNumber,
+            recordedById: session.user.id,
+          },
         })
       }
-
-      const invItem = await prisma.inventoryItem.findUnique({ 
-        where: { id: item.itemId }, 
-        select: { unitCost: true, sellingPrice: true } 
-      })
-
-      await prisma.stockMovement.create({
-        data: {
-          itemId: item.itemId,
-          type: 'RETURN_IN',
-          quantity: item.quantity,
-          unitCost: invItem?.unitCost || 0,
-          sellingPrice: invItem?.sellingPrice || 0,
-          isRestocked: item.shouldRestock,
-          note: `Returned from invoice ${data.invoiceNumber || 'Unknown'}. Reason: ${data.reason || 'None'}. ${item.shouldRestock ? 'Restocked.' : 'Not restocked.'}`,
-          transactionId: tx.id,
-          invoiceNumber: data.invoiceNumber,
-          recordedById: session.user.id,
-        },
-      })
     }
-  }
+
+    return returnTx
+  })
 
   revalidatePath('/')
   revalidatePath('/sales')
@@ -507,34 +518,50 @@ export async function getRecentSalesForRefund() {
 
 export async function getInvoiceDetails(invoiceNumber: string) {
   const session = await auth()
-  if (!session?.user?.id) throw new Error("Unauthorized")
+  if (!session?.user?.id) throw new Error('Unauthorized')
 
-  const transactions = await prisma.transaction.findMany({
-    where: { invoiceNumber, type: 'SALE' }
-  })
+  const [saleTxs, returnTxs, saleMovements, returnMovements] = await Promise.all([
+    prisma.transaction.findMany({ where: { invoiceNumber, type: 'SALE' } }),
+    // Check for existing refunds so UI can warn about double-refunds
+    prisma.transaction.findMany({ where: { invoiceNumber, type: 'RETURN' } }),
+    prisma.stockMovement.findMany({
+      where: { invoiceNumber, type: 'SALE_OUT' },
+      include: { item: true },
+    }),
+    prisma.stockMovement.findMany({
+      where: { invoiceNumber, type: 'RETURN_IN' },
+      include: { item: true },
+    }),
+  ])
 
-  if (transactions.length === 0) return null
+  if (saleTxs.length === 0) return null
 
-  const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0)
-  
-  const movements = await prisma.stockMovement.findMany({
-    where: { invoiceNumber, type: 'SALE_OUT' },
-    include: { item: true }
-  })
+  const totalAmount = saleTxs.reduce((sum, tx) => sum + tx.amount, 0)
+  const alreadyRefunded = returnTxs.reduce((sum, tx) => sum + tx.amount, 0)
+
+  // Build per-item quantity already returned
+  const returnedQtyByItem: Record<number, number> = {}
+  for (const m of returnMovements) {
+    returnedQtyByItem[m.itemId] = (returnedQtyByItem[m.itemId] || 0) + m.quantity
+  }
 
   return {
     invoiceNumber,
-    transactions,
+    transactions: saleTxs,
     totalAmount,
-    createdAt: transactions[0].createdAt,
-    description: transactions[0].description,
-    items: movements.map(m => ({
+    alreadyRefunded,          // total money already refunded for this invoice
+    hasExistingRefund: returnTxs.length > 0,
+    createdAt: saleTxs[0].createdAt,
+    description: saleTxs[0].description,
+    paymentMethods: [...new Set(saleTxs.map(t => t.method))],
+    items: saleMovements.map(m => ({
       itemId: m.itemId,
       name: m.item.name,
       sku: m.item.sku,
       unit: m.item.unit,
       quantitySold: Math.abs(m.quantity),
-      sellingPrice: m.sellingPrice || m.item.sellingPrice || 0
-    }))
+      quantityAlreadyReturned: returnedQtyByItem[m.itemId] || 0,
+      sellingPrice: m.sellingPrice || m.item.sellingPrice || 0,
+    })),
   }
 }
