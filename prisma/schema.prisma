@@ -110,7 +110,11 @@ model Transaction {
   salarySettlement    SalarySettlement? @relation(fields: [salarySettlementId], references: [id])
   recordedById        String?
   recordedBy          User?             @relation("UserRecords", fields: [recordedById], references: [id])
+  linkedTransactionId Int?
+  linkedTransaction   Transaction?      @relation("LinkedTransactions", fields: [linkedTransactionId], references: [id])
+  linkedBy            Transaction[]     @relation("LinkedTransactions")
   isInternal          Boolean           @default(false)
+  invoiceNumber       String?           // For tying split payments and stock movements
   createdAt           DateTime          @default(now())
 }
 
@@ -171,6 +175,7 @@ model StockMovement {
   purchaseOrderId Int?
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
   transactionId   Int?           // optional link to financial Transaction
+  invoiceNumber   String?        // to tie movements to specific sales invoices
   recordedById    String?
   recordedBy      User?          @relation(fields: [recordedById], references: [id])
   createdAt       DateTime       @default(now())

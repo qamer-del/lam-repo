@@ -151,6 +151,8 @@ export async function recordRefund(data: {
   amount: number
   method: 'CASH' | 'NETWORK'
   description?: string
+  invoiceNumber?: string
+  returnedItems?: { itemId: number; quantity: number }[]
 }) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("Unauthorized")
@@ -161,12 +163,36 @@ export async function recordRefund(data: {
       amount: data.amount,
       method: data.method,
       description: data.description,
+      invoiceNumber: data.invoiceNumber,
       recordedById: session.user.id
     }
   })
   
+  // Restock inventory items if returned
+  if (data.returnedItems && data.returnedItems.length > 0) {
+    for (const item of data.returnedItems) {
+      if (item.quantity <= 0) continue
+      await prisma.inventoryItem.update({
+        where: { id: item.itemId },
+        data: { currentStock: { increment: item.quantity } },
+      })
+      await prisma.stockMovement.create({
+        data: {
+          itemId: item.itemId,
+          type: 'RETURN_IN',
+          quantity: item.quantity,
+          note: `Returned from invoice ${data.invoiceNumber || 'Unknown'}`,
+          transactionId: tx.id,
+          invoiceNumber: data.invoiceNumber,
+          recordedById: session.user.id,
+        },
+      })
+    }
+  }
+
   revalidatePath('/')
   revalidatePath('/sales')
+  revalidatePath('/inventory')
   return tx
 }
 
@@ -388,28 +414,30 @@ export async function recordDailySales(data: {
     description?: string
     recordedById: string
     createdAt: Date
+    invoiceNumber: string
   }
 
   const exactTime = new Date()
+  const invoiceNumber = `INV-${Date.now()}` // Generate a unique serial number
   const transactions: SaleTx[] = []
 
   if (data.paymentMode === 'SPLIT') {
     const cashAmt = data.cashAmount ?? 0
     const netAmt = data.networkAmount ?? data.totalAmount - cashAmt
     if (cashAmt > 0) {
-      transactions.push({ type: 'SALE', method: 'CASH', amount: cashAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+      transactions.push({ type: 'SALE', method: 'CASH', amount: cashAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
     }
     if (netAmt > 0) {
-      transactions.push({ type: 'SALE', method: 'NETWORK', amount: netAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+      transactions.push({ type: 'SALE', method: 'NETWORK', amount: netAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
     }
   } else if (data.paymentMode === 'TABBY') {
-    transactions.push({ type: 'SALE', method: 'TABBY', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+    transactions.push({ type: 'SALE', method: 'TABBY', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
   } else if (data.paymentMode === 'TAMARA') {
-    transactions.push({ type: 'SALE', method: 'TAMARA', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+    transactions.push({ type: 'SALE', method: 'TAMARA', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
   } else if (data.paymentMode === 'NETWORK') {
-    transactions.push({ type: 'SALE', method: 'NETWORK', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+    transactions.push({ type: 'SALE', method: 'NETWORK', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
   } else {
-    transactions.push({ type: 'SALE', method: 'CASH', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+    transactions.push({ type: 'SALE', method: 'CASH', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
   }
 
   if (transactions.length > 0) {
@@ -430,6 +458,7 @@ export async function recordDailySales(data: {
           type: 'SALE_OUT',
           quantity: -ci.quantity,
           note: `Consumed in sale — ${data.description || 'no description'}`,
+          invoiceNumber: invoiceNumber,
           recordedById: session.user.id,
         },
       })
@@ -439,4 +468,49 @@ export async function recordDailySales(data: {
   revalidatePath('/')
   revalidatePath('/sales')
   revalidatePath('/inventory')
+}
+
+export async function getRecentSalesForRefund() {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+  
+  return prisma.transaction.findMany({
+    where: { type: 'SALE' },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+    select: { id: true, amount: true, description: true, createdAt: true, method: true, invoiceNumber: true }
+  })
+}
+
+export async function getInvoiceDetails(invoiceNumber: string) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  const transactions = await prisma.transaction.findMany({
+    where: { invoiceNumber, type: 'SALE' }
+  })
+
+  if (transactions.length === 0) return null
+
+  const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0)
+  
+  const movements = await prisma.stockMovement.findMany({
+    where: { invoiceNumber, type: 'SALE_OUT' },
+    include: { item: true }
+  })
+
+  return {
+    invoiceNumber,
+    transactions,
+    totalAmount,
+    createdAt: transactions[0].createdAt,
+    description: transactions[0].description,
+    items: movements.map(m => ({
+      itemId: m.itemId,
+      name: m.item.name,
+      sku: m.item.sku,
+      unit: m.item.unit,
+      quantitySold: Math.abs(m.quantity)
+    }))
+  }
 }

@@ -34,7 +34,7 @@ interface InventoryItem {
 }
 
 interface ConsumedItem {
-  itemId: number; quantity: string
+  itemId: number; quantity: string; price: string
 }
 
 const PAY_METHODS: { mode: PayMode; label: string; icon: any; color: string; bg: string; border: string }[] = [
@@ -56,7 +56,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
   const [cashAmt, setCashAmt] = useState('')
   const [netAmt, setNetAmt] = useState('')
   const [description, setDescription] = useState('')
-  const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([{ itemId: 0, quantity: '1' }])
+  const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([{ itemId: 0, quantity: '1', price: '' }])
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([])
   const [comboboxOpen, setComboboxOpen] = useState<{ [key: number]: boolean }>({})
 
@@ -77,7 +77,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
 
   const reset = () => {
     setPayMode('CASH'); setTotal(''); setCashAmt(''); setNetAmt('')
-    setDescription(''); setConsumedItems([{ itemId: 0, quantity: '1' }])
+    setDescription(''); setConsumedItems([{ itemId: 0, quantity: '1', price: '' }])
   }
 
   const validate = (): string | null => {
@@ -122,14 +122,13 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
     }
   }
 
-  const addConsumedItem = () => setConsumedItems(p => [...p, { itemId: 0, quantity: '1' }])
+  const addConsumedItem = () => setConsumedItems(p => [...p, { itemId: 0, quantity: '1', price: '' }])
   const removeConsumedItem = (i: number) => setConsumedItems(p => p.filter((_, idx) => idx !== i))
   const updateConsumedItem = (i: number, field: keyof ConsumedItem, val: string | number) => {
     setConsumedItems(p => {
       const newItems = p.map((ci, idx) => idx === i ? { ...ci, [field]: val } : ci)
       const newTotal = newItems.reduce((acc, curr) => {
-        const item = inventoryList.find(inv => inv.id === curr.itemId)
-        return acc + (parseFloat(curr.quantity || '0') * (item?.sellingPrice || 0))
+        return acc + (parseFloat(curr.quantity || '0') * parseFloat(curr.price || '0'))
       }, 0)
       if (newTotal > 0) setTotal(newTotal.toFixed(2))
       return newItems
@@ -285,7 +284,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                   {consumedItems.map((ci, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <div className="flex-1">
-                        <Popover open={comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
+                        <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
                           <PopoverTrigger
                             className={cn(
                               "flex w-full items-center justify-between h-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-medium shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
@@ -309,6 +308,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                                       value={`${item.name} ${item.sku || ''}`}
                                       onSelect={() => {
                                         updateConsumedItem(index, 'itemId', item.id)
+                                        setTimeout(() => updateConsumedItem(index, 'price', item.sellingPrice.toString()), 0)
                                         setComboboxOpen(p => ({ ...p, [index]: false }))
                                       }}
                                       className="py-2.5 font-medium cursor-pointer"
@@ -331,12 +331,18 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                           </PopoverContent>
                         </Popover>
                       </div>
-                      <div className="w-20">
+                      <div className="flex gap-2 w-48">
                         <Input
                           type="number" step="0.1" min="0" placeholder="Qty"
                           value={ci.quantity}
                           onChange={e => updateConsumedItem(index, 'quantity', e.target.value)}
-                          className="h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center"
+                          className="h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center w-20"
+                        />
+                        <Input
+                          type="number" step="0.01" min="0" placeholder="Price"
+                          value={ci.price}
+                          onChange={e => updateConsumedItem(index, 'price', e.target.value)}
+                          className="h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center w-28 text-teal-600 dark:text-teal-400"
                         />
                       </div>
                       <button
