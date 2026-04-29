@@ -60,6 +60,7 @@ export function DashboardContent({
     cashInDrawer: number, 
     networkSales: number, 
     salaryFundRemaining: number, 
+    totalOutstandingCredit: number,
     transactions: Transaction[],
     allStaffTransactions?: Transaction[],
     internalTransactions?: Transaction[],
