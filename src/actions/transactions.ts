@@ -176,11 +176,13 @@ export async function recordRefund(data: {
         where: { id: item.itemId },
         data: { currentStock: { increment: item.quantity } },
       })
+      const invItem = await prisma.inventoryItem.findUnique({ where: { id: item.itemId }, select: { unitCost: true } })
       await prisma.stockMovement.create({
         data: {
           itemId: item.itemId,
           type: 'RETURN_IN',
           quantity: item.quantity,
+          unitCost: invItem?.unitCost || 0,
           note: `Returned from invoice ${data.invoiceNumber || 'Unknown'}`,
           transactionId: tx.id,
           invoiceNumber: data.invoiceNumber,
@@ -456,11 +458,13 @@ export async function recordDailySales(data: {
         where: { id: ci.itemId },
         data: { currentStock: { decrement: ci.quantity } },
       })
+      const item = await prisma.inventoryItem.findUnique({ where: { id: ci.itemId }, select: { unitCost: true } })
       await prisma.stockMovement.create({
         data: {
           itemId: ci.itemId,
           type: 'SALE_OUT',
           quantity: -ci.quantity,
+          unitCost: item?.unitCost || 0,
           note: `Consumed in sale — ${data.description || 'no description'}`,
           invoiceNumber: invoiceNumber,
           recordedById: session.user.id,

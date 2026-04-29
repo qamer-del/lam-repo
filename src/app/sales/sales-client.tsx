@@ -26,14 +26,17 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
 export default function SalesPage({
-  initialSales
+  initialSales,
+  initialMovements
 }: {
   initialSales?: any[]
+  initialMovements?: any[]
 }) {
   const { t } = useLanguage()
   const { data: session } = useSession()
   const isCashier = session?.user?.role === 'CASHIER'
   const [sales, setSales] = useState<any[]>(initialSales || [])
+  const [movements] = useState<any[]>(initialMovements || [])
   const [fromDate, setFromDate] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
   const [toDate, setToDate] = useState<string>(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
   const [manualProfit, setManualProfit] = useState<string>('')
@@ -89,6 +92,25 @@ export default function SalesPage({
     g.methods.add(sale.method)
   })
 
+  // Calculate Auto Profit
+  const filteredMovements = movements.filter(m => {
+    const mDate = new Date(m.createdAt)
+    const start = new Date(fromDate)
+    start.setHours(0,0,0,0)
+    const end = new Date(toDate)
+    end.setHours(23,59,59,999)
+    return isWithinInterval(mDate, { start, end })
+  })
+
+  const totalCostOfSales = filteredMovements.reduce((acc, m) => {
+    // unitCost might be null for older records, fallback to item.unitCost
+    const costAtTime = m.unitCost || m.item?.unitCost || 0
+    const movementCost = Math.abs(m.quantity) * costAtTime
+    return acc + (m.type === 'SALE_OUT' ? movementCost : -movementCost)
+  }, 0)
+
+  const autoProfit = (totalCash + totalNetwork) - totalCostOfSales
+
   // Export grouped structure ordered by recency
   const aggregatedSales = Array.from(groups.values())
     .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -122,7 +144,7 @@ export default function SalesPage({
                     totalCash={totalCash} 
                     totalNetwork={totalNetwork} 
                     vatAmount={(totalCash + totalNetwork) * 0.15}
-                    manualProfit={parseFloat(manualProfit) || 0}
+                    manualProfit={manualProfit ? parseFloat(manualProfit) : autoProfit}
                     dateStr={`${fromDate} to ${toDate}`}
                   />
                 }
@@ -254,10 +276,15 @@ export default function SalesPage({
               <div className="p-2 bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 rounded-lg">
                 <Calculator size={18} />
               </div>
-              <CardTitle className="text-[10px] sm:text-xs font-black uppercase text-gray-400 tracking-wider">Net Profit</CardTitle>
+              <CardTitle className="text-[10px] sm:text-xs font-black uppercase text-gray-400 tracking-wider">Net Profit (Auto)</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-xl sm:text-2xl font-black text-emerald-600 tabular-nums">{parseFloat(manualProfit).toFixed(2) || '0.00'}</p>
+              <p className="text-xl sm:text-2xl font-black text-emerald-600 tabular-nums">
+                {(manualProfit ? parseFloat(manualProfit) : autoProfit).toFixed(2)}
+              </p>
+              <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">
+                {manualProfit ? 'Manual Override' : `Cost: ${totalCostOfSales.toFixed(2)}`}
+              </p>
             </CardContent>
           </Card>
         </div>

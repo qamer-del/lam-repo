@@ -21,5 +21,19 @@ export default async function SalesRoute() {
     orderBy: { createdAt: 'desc' }
   })
 
-  return <SalesClientPage initialSales={sales} />
+  // Also fetch stock movements for these sales to calculate cost
+  const invoiceNumbers = sales.map(s => s.invoiceNumber).filter(Boolean) as string[]
+  const movements = await prisma.stockMovement.findMany({
+    where: {
+      invoiceNumber: { in: invoiceNumbers },
+      type: { in: ['SALE_OUT', 'RETURN_IN'] }
+    },
+    include: {
+      item: {
+        select: { unitCost: true }
+      }
+    }
+  })
+
+  return <SalesClientPage initialSales={sales} initialMovements={movements} />
 }
