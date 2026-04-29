@@ -17,11 +17,13 @@ import { Receipt, Coins, CreditCard, Download, Filter, Calculator } from 'lucide
 import { AddSalesModal } from '@/components/add-sales-modal'
 import { AddRefundModal } from '@/components/add-refund-modal'
 import { SettleCashBtn } from '@/components/settle-cash-btn'
+import { ViewInvoiceModal } from '@/components/view-invoice-modal'
 import { SalesDocument } from '@/components/sales-document'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 export default function SalesPage({
   initialSales
@@ -35,6 +37,7 @@ export default function SalesPage({
   const [fromDate, setFromDate] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
   const [toDate, setToDate] = useState<string>(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
   const [manualProfit, setManualProfit] = useState<string>('')
+  const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
 
   const filteredSales = sales.filter(sale => {
     const saleDate = new Date(sale.createdAt)
@@ -266,7 +269,11 @@ export default function SalesPage({
             </TableHeader>
             <TableBody>
               {aggregatedSales.map(sale => (
-                <TableRow key={sale.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                <TableRow 
+                  key={sale.id} 
+                  className={cn("hover:bg-gray-50 dark:hover:bg-gray-800/50 transition", sale.invoiceNumber && "cursor-pointer")}
+                  onClick={() => sale.invoiceNumber && setSelectedInvoice(sale.invoiceNumber)}
+                >
                   <TableCell className="font-mono text-xs text-gray-600 dark:text-gray-400">
                     {sale.invoiceNumber || `#${sale.id}`}
                   </TableCell>
@@ -309,7 +316,11 @@ export default function SalesPage({
         {/* Mobile Card List View */}
         <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
           {aggregatedSales.map(sale => (
-            <div key={sale.id} className="p-5 space-y-4 active:bg-gray-50 dark:active:bg-gray-900/50 transition-colors">
+            <div 
+              key={sale.id} 
+              className={cn("p-5 space-y-4 active:bg-gray-50 dark:active:bg-gray-900/50 transition-colors", sale.invoiceNumber && "cursor-pointer")}
+              onClick={() => sale.invoiceNumber && setSelectedInvoice(sale.invoiceNumber)}
+            >
               <div className="flex justify-between items-start">
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
@@ -371,6 +382,12 @@ export default function SalesPage({
           </div>
         )}
       </Card>
+
+      <ViewInvoiceModal 
+        invoiceNumber={selectedInvoice} 
+        open={!!selectedInvoice} 
+        onOpenChange={(open) => !open && setSelectedInvoice(null)} 
+      />
     </div>
   )
 }
