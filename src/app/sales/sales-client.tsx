@@ -16,6 +16,7 @@ import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
 import { Receipt, Coins, CreditCard, Download, Filter, Calculator } from 'lucide-react'
 import { AddSalesModal } from '@/components/add-sales-modal'
 import { AddRefundModal } from '@/components/add-refund-modal'
+import { SettleCashBtn } from '@/components/settle-cash-btn'
 import { SalesDocument } from '@/components/sales-document'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { Button } from '@/components/ui/button'
@@ -67,6 +68,7 @@ export default function SalesPage({
     if (!groups.has(key)) {
       groups.set(key, {
         id: sale.id,
+        invoiceNumber: sale.invoiceNumber,
         type: sale.type,
         description: sale.description,
         createdAt: sale.createdAt,
@@ -97,6 +99,7 @@ export default function SalesPage({
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <AddSalesModal triggerClassName="flex-1 sm:flex-none h-10 px-4" />
           <AddRefundModal triggerClassName="flex-1 sm:flex-none h-10 px-4" />
+          <SettleCashBtn triggerClassName="flex-1 sm:flex-none h-10 px-4 bg-gray-900 text-white" />
           
           {!isCashier && (
             <div className="w-full sm:w-auto">
@@ -254,6 +257,7 @@ export default function SalesPage({
           <Table>
             <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
               <TableRow>
+                <TableHead className="whitespace-nowrap">Invoice No.</TableHead>
                 <TableHead className="whitespace-nowrap">{t('method')}</TableHead>
                 <TableHead className="whitespace-nowrap">{t('amount')}</TableHead>
                 <TableHead className="whitespace-nowrap">{t('description')}</TableHead>
@@ -263,7 +267,10 @@ export default function SalesPage({
             <TableBody>
               {aggregatedSales.map(sale => (
                 <TableRow key={sale.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                    <TableCell>
+                  <TableCell className="font-mono text-xs text-gray-600 dark:text-gray-400">
+                    {sale.invoiceNumber || `#${sale.id}`}
+                  </TableCell>
+                  <TableCell>
                       {(() => {
                         const ms = sale.methods as Set<string>
                         const isReturn = sale.type === 'RETURN'
@@ -317,6 +324,7 @@ export default function SalesPage({
                       const cls = isReturn ? 'bg-red-500' : isSplit ? 'bg-orange-500' : hasTabby ? 'bg-purple-600' : hasTamara ? 'bg-pink-500' : hasNet ? 'bg-blue-600' : 'bg-emerald-600'
                       return <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm text-white ${cls}`}>{label}</span>
                     })()}
+                    <span className="text-xs font-mono text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">{sale.invoiceNumber || `#${sale.id}`}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-gray-400 font-bold">
                     <p className="text-[10px] uppercase tracking-tight">{format(new Date(sale.createdAt), 'MMM dd, yyyy')}</p>
