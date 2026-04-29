@@ -152,38 +152,52 @@ export async function recordRefund(data: {
   method: 'CASH' | 'NETWORK'
   description?: string
   invoiceNumber?: string
-  returnedItems?: { itemId: number; quantity: number }[]
+  reason?: string
+  returnedItems?: { itemId: number; quantity: number; shouldRestock: boolean }[]
 }) {
   const session = await auth()
   if (!session?.user?.id) throw new Error("Unauthorized")
+
+  const fullDescription = data.reason ? `[${data.reason}] ${data.description || ''}` : data.description
 
   const tx = await prisma.transaction.create({
     data: {
       type: 'RETURN',
       amount: data.amount,
       method: data.method,
-      description: data.description,
+      description: fullDescription,
       invoiceNumber: data.invoiceNumber,
       recordedById: session.user.id
     }
   })
   
-  // Restock inventory items if returned
+  // Handle returned items
   if (data.returnedItems && data.returnedItems.length > 0) {
     for (const item of data.returnedItems) {
       if (item.quantity <= 0) continue
-      await prisma.inventoryItem.update({
-        where: { id: item.itemId },
-        data: { currentStock: { increment: item.quantity } },
+      
+      // Only increment stock if restock is toggled on
+      if (item.shouldRestock) {
+        await prisma.inventoryItem.update({
+          where: { id: item.itemId },
+          data: { currentStock: { increment: item.quantity } },
+        })
+      }
+
+      const invItem = await prisma.inventoryItem.findUnique({ 
+        where: { id: item.itemId }, 
+        select: { unitCost: true, sellingPrice: true } 
       })
-      const invItem = await prisma.inventoryItem.findUnique({ where: { id: item.itemId }, select: { unitCost: true } })
+
       await prisma.stockMovement.create({
         data: {
           itemId: item.itemId,
           type: 'RETURN_IN',
           quantity: item.quantity,
           unitCost: invItem?.unitCost || 0,
-          note: `Returned from invoice ${data.invoiceNumber || 'Unknown'}`,
+          sellingPrice: invItem?.sellingPrice || 0,
+          isRestocked: item.shouldRestock,
+          note: `Returned from invoice ${data.invoiceNumber || 'Unknown'}. Reason: ${data.reason || 'None'}. ${item.shouldRestock ? 'Restocked.' : 'Not restocked.'}`,
           transactionId: tx.id,
           invoiceNumber: data.invoiceNumber,
           recordedById: session.user.id,
@@ -458,13 +472,14 @@ export async function recordDailySales(data: {
         where: { id: ci.itemId },
         data: { currentStock: { decrement: ci.quantity } },
       })
-      const item = await prisma.inventoryItem.findUnique({ where: { id: ci.itemId }, select: { unitCost: true } })
+      const item = await prisma.inventoryItem.findUnique({ where: { id: ci.itemId }, select: { unitCost: true, sellingPrice: true } })
       await prisma.stockMovement.create({
         data: {
           itemId: ci.itemId,
           type: 'SALE_OUT',
           quantity: -ci.quantity,
           unitCost: item?.unitCost || 0,
+          sellingPrice: item?.sellingPrice || 0,
           note: `Consumed in sale — ${data.description || 'no description'}`,
           invoiceNumber: invoiceNumber,
           recordedById: session.user.id,
@@ -518,7 +533,8 @@ export async function getInvoiceDetails(invoiceNumber: string) {
       name: m.item.name,
       sku: m.item.sku,
       unit: m.item.unit,
-      quantitySold: Math.abs(m.quantity)
+      quantitySold: Math.abs(m.quantity),
+      sellingPrice: m.sellingPrice || m.item.sellingPrice || 0
     }))
   }
 }

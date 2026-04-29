@@ -171,6 +171,8 @@ model StockMovement {
   type            MovementType
   quantity        Float          // positive = in, negative = out
   unitCost        Float?         // cost at time of movement
+  sellingPrice    Float?         // selling price at time of movement
+  isRestocked     Boolean        @default(true)
   note            String?
   purchaseOrderId Int?
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])

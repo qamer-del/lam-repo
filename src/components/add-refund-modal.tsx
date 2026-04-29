@@ -31,12 +31,19 @@ interface InventoryItem {
 }
 
 interface ReturnedItem {
-  itemId: number; quantity: string
+  itemId: number; 
+  quantity: string;
+  shouldRestock: boolean;
+  priceAtSale?: number;
 }
 
-interface SaleInfo {
-  id: number; amount: number; description: string | null; createdAt: Date; method: string
-}
+const REFUND_REASONS = [
+  { value: 'CUSTOMER_REQUEST', label: 'Customer Request' },
+  { value: 'DAMAGED_ITEM', label: 'Damaged / Defective' },
+  { value: 'WRONG_ITEM', label: 'Wrong Item Delivered' },
+  { value: 'EXPIRED', label: 'Expired Product' },
+  { value: 'OTHER', label: 'Other' },
+]
 
 export function AddRefundModal({ triggerClassName }: { triggerClassName?: string }) {
   const { t } = useLanguage()
@@ -46,6 +53,7 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
 
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<'CASH' | 'NETWORK'>('CASH')
+  const [reason, setReason] = useState('CUSTOMER_REQUEST')
   const [description, setDescription] = useState('')
   
   const [invoiceSearch, setInvoiceSearch] = useState('')
@@ -62,6 +70,18 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
     }
   }, [open])
 
+  // Auto-calculate amount when returned items change
+  useEffect(() => {
+    if (invoiceDetails) {
+      const total = returnedItems.reduce((sum, item) => {
+        const qty = parseFloat(item.quantity) || 0
+        const price = item.priceAtSale || 0
+        return sum + (qty * price)
+      }, 0)
+      setAmount(total.toFixed(2))
+    }
+  }, [returnedItems, invoiceDetails])
+
   const handleSearchInvoice = async () => {
     if (!invoiceSearch) return
     setSearchingInvoice(true)
@@ -69,10 +89,12 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
       const details = await getInvoiceDetails(invoiceSearch)
       if (details) {
         setInvoiceDetails(details)
-        setAmount(details.totalAmount.toString())
+        // By default, assume they are returning everything from the invoice
         setReturnedItems(details.items.map((item: any) => ({
           itemId: item.itemId,
-          quantity: item.quantitySold.toString()
+          quantity: item.quantitySold.toString(),
+          shouldRestock: true,
+          priceAtSale: item.sellingPrice
         })))
       } else {
         alert('Invoice not found')
@@ -85,9 +107,9 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
     }
   }
 
-  const addReturnedItem = () => setReturnedItems(p => [...p, { itemId: 0, quantity: '1' }])
+  const addReturnedItem = () => setReturnedItems(p => [...p, { itemId: 0, quantity: '1', shouldRestock: true }])
   const removeReturnedItem = (i: number) => setReturnedItems(p => p.filter((_, idx) => idx !== i))
-  const updateReturnedItem = (i: number, field: keyof ReturnedItem, val: string | number) => {
+  const updateReturnedItem = (i: number, field: keyof ReturnedItem, val: any) => {
     setReturnedItems(p => p.map((ci, idx) => idx === i ? { ...ci, [field]: val } : ci))
   }
 
@@ -99,16 +121,22 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
       await recordRefund({
         amount: parseFloat(amount),
         method,
+        reason,
         description,
         invoiceNumber: invoiceDetails?.invoiceNumber || undefined,
         returnedItems: returnedItems
           .filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0)
-          .map(ci => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity) })),
+          .map(ci => ({ 
+            itemId: ci.itemId, 
+            quantity: parseFloat(ci.quantity),
+            shouldRestock: ci.shouldRestock
+          })),
       })
       
       setOpen(false)
       setAmount('')
       setMethod('CASH')
+      setReason('CUSTOMER_REQUEST')
       setDescription('')
       setInvoiceSearch('')
       setInvoiceDetails(null)
@@ -183,9 +211,9 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
                 )}
               </div>
 
-              {/* Amount & Method */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+              {/* Amount, Method & Reason */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Refund Amount</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-red-600 font-black text-sm">SAR</span>
@@ -193,14 +221,14 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
                       type="number" step="0.01" required
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      className="h-11 pl-11 rounded-xl border-none bg-white dark:bg-gray-950 font-black text-lg tabular-nums text-red-600"
+                      className="h-10 pl-11 rounded-xl border-none bg-white dark:bg-gray-950 font-black text-lg tabular-nums text-red-600"
                     />
                   </div>
                 </div>
-                <div className="space-y-2 p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Method</Label>
                   <Select value={method} onValueChange={(v: any) => setMethod(v)}>
-                    <SelectTrigger className="h-11 rounded-xl border-none bg-white dark:bg-gray-950 font-bold">
+                    <SelectTrigger className="h-10 rounded-xl border-none bg-white dark:bg-gray-950 font-bold">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-none shadow-2xl">
@@ -209,12 +237,25 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Reason</Label>
+                  <Select value={reason} onValueChange={(v: string | null) => { if (v) setReason(v) }}>
+                    <SelectTrigger className="h-10 rounded-xl border-none bg-white dark:bg-gray-950 font-bold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-none shadow-2xl">
+                      {REFUND_REASONS.map(r => (
+                        <SelectItem key={r.value} value={r.value} className="font-bold">{r.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Items Restock */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-1">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Restock Items</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Returned Items & Restocking</Label>
                   <button
                     type="button" onClick={addReturnedItem}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all text-[10px] font-black uppercase"
@@ -225,57 +266,83 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
 
                 <div className="space-y-3">
                   {returnedItems.map((ci, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm">
-                      <div className="flex-1">
-                        <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
-                          <PopoverTrigger render={
-                            <button className="flex w-full items-center justify-between h-10 rounded-xl bg-gray-50 dark:bg-gray-950 px-3 text-xs font-bold truncate">
-                              <span className="truncate">
-                                {ci.itemId ? inventoryList.find(i => i.id === ci.itemId)?.name : "Select Item"}
-                              </span>
-                              <ChevronsUpDown size={14} className="opacity-40 shrink-0" />
-                            </button>
-                          } />
-                          <PopoverContent className="p-0 rounded-xl shadow-2xl border-none overflow-hidden">
-                            <Command>
-                              <CommandInput placeholder="Search..." />
-                              <CommandList className="max-h-[200px]">
-                                {inventoryList.map(item => (
-                                  <CommandItem
-                                    key={item.id}
-                                    onSelect={() => {
-                                      updateReturnedItem(index, 'itemId', item.id)
-                                      setComboboxOpen(p => ({ ...p, [index]: false }))
-                                    }}
-                                    className="py-2.5 px-4 cursor-pointer"
-                                  >
-                                    <span className="font-bold">{item.name}</span>
-                                  </CommandItem>
-                                ))}
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                    <div key={index} className="flex flex-col gap-3 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
+                            <PopoverTrigger render={
+                              <button className="flex w-full items-center justify-between h-10 rounded-xl bg-gray-50 dark:bg-gray-950 px-3 text-xs font-bold truncate">
+                                <span className="truncate">
+                                  {ci.itemId ? inventoryList.find(i => i.id === ci.itemId)?.name : "Select Item"}
+                                </span>
+                                <ChevronsUpDown size={14} className="opacity-40 shrink-0" />
+                              </button>
+                            } />
+                            <PopoverContent className="p-0 rounded-xl shadow-2xl border-none overflow-hidden">
+                              <Command>
+                                <CommandInput placeholder="Search..." />
+                                <CommandList className="max-h-[200px]">
+                                  {inventoryList.map(item => (
+                                    <CommandItem
+                                      key={item.id}
+                                      onSelect={() => {
+                                        updateReturnedItem(index, 'itemId', item.id)
+                                        setComboboxOpen(p => ({ ...p, [index]: false }))
+                                      }}
+                                      className="py-2.5 px-4 cursor-pointer"
+                                    >
+                                      <span className="font-bold">{item.name}</span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <Input
+                          type="number" step="0.1" min="0" placeholder="Qty"
+                          value={ci.quantity}
+                          onChange={e => updateReturnedItem(index, 'quantity', e.target.value)}
+                          className="w-20 h-10 rounded-xl border-none bg-gray-50 dark:bg-gray-950 font-black text-center text-xs"
+                        />
+                        <button type="button" onClick={() => removeReturnedItem(index)} className="text-gray-300 hover:text-red-500 transition-colors">
+                          <Trash2 size={16} strokeWidth={2.5} />
+                        </button>
                       </div>
-                      <Input
-                        type="number" step="0.1" min="0" placeholder="Qty"
-                        value={ci.quantity}
-                        onChange={e => updateReturnedItem(index, 'quantity', e.target.value)}
-                        className="w-16 h-10 rounded-xl border-none bg-gray-50 dark:bg-gray-950 font-black text-center text-xs"
-                      />
-                      <button type="button" onClick={() => removeReturnedItem(index)} className="text-gray-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={16} strokeWidth={2.5} />
-                      </button>
+                      
+                      <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer group">
+                            <input 
+                              type="checkbox"
+                              checked={ci.shouldRestock}
+                              onChange={e => updateReturnedItem(index, 'shouldRestock', e.target.checked)}
+                              className="w-4 h-4 rounded border-red-200 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="text-[10px] font-black text-gray-500 group-hover:text-red-600 uppercase tracking-tight transition-colors">Return to Stock</span>
+                          </label>
+                          {ci.priceAtSale && (
+                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase">
+                              Unit: {ci.priceAtSale.toFixed(2)} SAR
+                            </span>
+                          )}
+                        </div>
+                        {ci.itemId > 0 && parseFloat(ci.quantity) > 0 && ci.priceAtSale && (
+                          <span className="text-xs font-black text-red-600">
+                            Subtotal: {(parseFloat(ci.quantity) * ci.priceAtSale).toFixed(2)} SAR
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Reason / Notes</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Additional Notes</Label>
                 <Input
                   value={description} onChange={e => setDescription(e.target.value)}
-                  placeholder="Why is this being returned?"
+                  placeholder="Additional details about the return..."
                   className="h-12 rounded-xl border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/40 focus:bg-white transition-all font-medium px-4"
                 />
               </div>
