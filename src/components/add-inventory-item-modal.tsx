@@ -137,9 +137,9 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
       {loading && <ModernLoader />}
       <Dialog open={open} onOpenChange={handleClose}>
         {trigger}
-        <DialogContent className="sm:max-w-[540px] p-0 overflow-hidden border-none shadow-2xl rounded-[2rem] bg-white dark:bg-gray-950">
-          <div className="h-2 w-full bg-gradient-to-r from-teal-400 via-emerald-500 to-teal-600" />
-          <div className="p-8 md:p-10 space-y-8">
+        <DialogContent className="sm:max-w-[540px] p-0 overflow-hidden border-none shadow-2xl rounded-[2rem] bg-white dark:bg-gray-950 max-h-[90vh] overflow-y-auto font-cairo">
+          <div className="h-2 w-full bg-gradient-to-r from-teal-400 via-emerald-500 to-teal-600 sticky top-0 z-10" />
+          <div className="p-5 sm:p-10 space-y-8">
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-4">

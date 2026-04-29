@@ -8,11 +8,12 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
-import { Receipt, Coins, CreditCard, Download, Filter, Calculator, TrendingDown, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
+import { Receipt, Coins, CreditCard, Download, Filter, Calculator, TrendingDown, ArrowUpRight, ArrowDownLeft, Users } from 'lucide-react'
 import { AddSalesModal } from '@/components/add-sales-modal'
 import { AddRefundModal } from '@/components/add-refund-modal'
 import { SettleCashBtn } from '@/components/settle-cash-btn'
 import { ViewInvoiceModal } from '@/components/view-invoice-modal'
+import { CreditSalesTable } from '@/components/credit-sales-table'
 import { SalesDocument } from '@/components/sales-document'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { Button } from '@/components/ui/button'
@@ -55,6 +56,7 @@ export default function SalesPage({
 
   filteredSales.forEach(sale => {
     const isNetworkLike = ['NETWORK', 'TABBY', 'TAMARA'].includes(sale.method)
+    const isCredit = sale.method === 'CREDIT'
 
     if (sale.type === 'SALE') {
       if (sale.method === 'CASH') totalCash    += sale.amount
@@ -64,13 +66,15 @@ export default function SalesPage({
       if (isNetworkLike)          totalNetwork -= sale.amount
     }
 
-    const key = `${sale.createdAt}_${sale.recordedById}_${sale.type}`
+    const key = sale.invoiceNumber || `${sale.createdAt}_${sale.recordedById}_${sale.type}`
     if (!groups.has(key)) {
       groups.set(key, {
         id: sale.id,
         invoiceNumber: sale.invoiceNumber,
         type: sale.type,
         description: sale.description,
+        customerName: sale.customerName,
+        customerPhone: sale.customerPhone,
         createdAt: sale.createdAt,
         totalAmount: 0,
         cashAmount: 0,
@@ -125,8 +129,10 @@ export default function SalesPage({
     const hasTabby  = ms.has('TABBY')  && !ms.has('CASH')
     const hasTamara = ms.has('TAMARA') && !ms.has('CASH')
     const hasNet    = ms.has('NETWORK') && !ms.has('CASH')
+    const hasCredit = ms.has('CREDIT')
 
     const label = isReturn  ? 'Refund'
+      : hasCredit ? 'Credit'
       : isSplit   ? 'Split'
       : hasTabby  ? 'Tabby'
       : hasTamara ? 'Tamara'
@@ -134,6 +140,7 @@ export default function SalesPage({
       : 'Cash'
 
     const cls = isReturn  ? 'bg-red-100    text-red-700    dark:bg-red-900/30    dark:text-red-400'
+      : hasCredit ? 'bg-amber-100  text-amber-700  dark:bg-amber-900/30  dark:text-amber-400'
       : isSplit   ? 'bg-orange-100  text-orange-700  dark:bg-orange-900/30  dark:text-orange-400'
       : hasTabby  ? 'bg-purple-100  text-purple-700  dark:bg-purple-900/30  dark:text-purple-400'
       : hasTamara ? 'bg-pink-100    text-pink-700    dark:bg-pink-900/30    dark:text-pink-400'
@@ -293,8 +300,25 @@ export default function SalesPage({
         </div>
       )}
 
-      {/* ── Transactions table ── */}
-      <div>
+      {/* ── Main Content Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Left Column: Credit Tracking (Only for Admins) */}
+        {!isCashier && (
+          <div className="lg:col-span-4 space-y-4">
+            <div className="flex items-center gap-2 px-1">
+              <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-600">
+                <Users size={18} />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white font-cairo">Unpaid Credit</h2>
+            </div>
+            <CreditSalesTable sales={sales} />
+          </div>
+        )}
+
+        {/* Right Column: Transactions table ── */}
+        <div className={cn("space-y-4", !isCashier ? "lg:col-span-8" : "lg:col-span-12")}>
+          <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-bold text-gray-800 dark:text-gray-200 font-cairo">Transactions</h2>
@@ -372,7 +396,18 @@ export default function SalesPage({
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500 max-w-[200px] truncate">{sale.description || '—'}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-900 dark:text-white font-medium truncate max-w-[200px]">
+                          {sale.description || '—'}
+                        </span>
+                        {(sale.customerName || sale.customerPhone) && (
+                          <span className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1">
+                            {sale.customerName || 'No Name'} · {sale.customerPhone}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-xs text-gray-500 whitespace-nowrap">{format(new Date(sale.createdAt), 'PP · p')}</TableCell>
                   </TableRow>
                 ))}
@@ -429,6 +464,15 @@ export default function SalesPage({
                   </div>
                 )}
 
+                {(sale.customerName || sale.customerPhone) && (
+                  <div className="flex items-center gap-2 p-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-lg border border-amber-200/20">
+                    <Users size={12} className="text-amber-600" />
+                    <p className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
+                      {sale.customerName || 'No Name'} · {sale.customerPhone}
+                    </p>
+                  </div>
+                )}
+
                 {sale.description && (
                   <p className="text-xs text-gray-500 italic truncate">{sale.description}</p>
                 )}
@@ -447,11 +491,13 @@ export default function SalesPage({
         </Card>
       </div>
 
-      <ViewInvoiceModal
-        invoiceNumber={selectedInvoice}
-        open={!!selectedInvoice}
-        onOpenChange={(open) => !open && setSelectedInvoice(null)}
-      />
+        <ViewInvoiceModal
+          invoiceNumber={selectedInvoice}
+          open={!!selectedInvoice}
+          onOpenChange={(open) => !open && setSelectedInvoice(null)}
+        />
+      </div>
     </div>
-  )
+  </div>
+)
 }

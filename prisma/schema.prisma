@@ -25,6 +25,7 @@ enum PayMethod {
   NETWORK
   TABBY
   TAMARA
+  CREDIT
 }
 
 enum Role {
@@ -115,6 +116,8 @@ model Transaction {
   linkedBy            Transaction[]     @relation("LinkedTransactions")
   isInternal          Boolean           @default(false)
   invoiceNumber       String?           // For tying split payments and stock movements
+  customerName        String?
+  customerPhone       String?
   createdAt           DateTime          @default(now())
 }
 

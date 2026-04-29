@@ -54,6 +54,7 @@ export async function getDashboardData() {
 
   let cashInDrawer = 0
   let networkSales = 0
+  let totalOutstandingCredit = 0
   let monthlySalaryPool = 0
   let salaryPayouts = 0
   
@@ -80,6 +81,8 @@ export async function getDashboardData() {
         if (isThisMonth) monthlySalaryPool += tx.amount
       } else if (tx.method === 'NETWORK' || tx.method === 'TABBY' || tx.method === 'TAMARA') {
         if (isActiveInDrawer) networkSales += tx.amount
+      } else if (tx.method === 'CREDIT' && !tx.isSettled) {
+        totalOutstandingCredit += tx.amount
       }
     } else if (tx.type === 'RETURN') {
       if (tx.method === 'CASH') {
@@ -103,6 +106,7 @@ export async function getDashboardData() {
     cashInDrawer,
     networkSales,
     salaryFundRemaining,
+    totalOutstandingCredit,
     transactions,
     allStaffTransactions: allTxs, // Complete list including internal corrections
     internalTransactions, // Passed to the client for Super Admin view
@@ -428,24 +432,28 @@ export async function createSettlement(actualCashCounted: number) {
 }
 
 export async function recordDailySales(data: {
-  paymentMode: 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA'
+  paymentMode: 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA' | 'CREDIT'
   totalAmount: number
   cashAmount?: number
   networkAmount?: number
   description?: string
   consumedItems?: { itemId: number; quantity: number }[]
+  customerName?: string
+  customerPhone?: string
 }) {
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthorized')
 
   type SaleTx = {
     type: 'SALE'
-    method: 'CASH' | 'NETWORK' | 'TABBY' | 'TAMARA'
+    method: 'CASH' | 'NETWORK' | 'TABBY' | 'TAMARA' | 'CREDIT'
     amount: number
     description?: string
     recordedById: string
     createdAt: Date
     invoiceNumber: string
+    customerName?: string
+    customerPhone?: string
   }
 
   const exactTime = new Date()
@@ -467,6 +475,19 @@ export async function recordDailySales(data: {
     transactions.push({ type: 'SALE', method: 'TAMARA', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
   } else if (data.paymentMode === 'NETWORK') {
     transactions.push({ type: 'SALE', method: 'NETWORK', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
+  } else if (data.paymentMode === 'CREDIT') {
+    if (!data.customerName || !data.customerPhone) throw new Error('Customer name and phone are required for credit sales.')
+    transactions.push({ 
+      type: 'SALE', 
+      method: 'CREDIT', 
+      amount: data.totalAmount, 
+      description: data.description, 
+      recordedById: session.user.id, 
+      createdAt: exactTime, 
+      invoiceNumber,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone
+    })
   } else {
     transactions.push({ type: 'SALE', method: 'CASH', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
   }
@@ -502,6 +523,48 @@ export async function recordDailySales(data: {
   revalidatePath('/')
   revalidatePath('/sales')
   revalidatePath('/inventory')
+}
+
+export async function settleCreditSale(data: {
+  transactionId: number
+  paymentMethod: 'CASH' | 'NETWORK'
+}) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  const originalTx = await prisma.transaction.findUnique({
+    where: { id: data.transactionId }
+  })
+
+  if (!originalTx || originalTx.method !== 'CREDIT') throw new Error("Invalid transaction")
+
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Mark original as settled
+    await tx.transaction.update({
+      where: { id: data.transactionId },
+      data: { isSettled: true }
+    })
+
+    // 2. Create the actual payment record
+    return await tx.transaction.create({
+      data: {
+        type: 'SALE',
+        amount: originalTx.amount,
+        method: data.paymentMethod,
+        description: `[SETTLEMENT] Payment for Invoice ${originalTx.invoiceNumber || originalTx.id}. Customer: ${originalTx.customerName || 'N/A'}`,
+        recordedById: session.user.id,
+        linkedTransactionId: originalTx.id,
+        invoiceNumber: originalTx.invoiceNumber,
+        customerName: originalTx.customerName,
+        customerPhone: originalTx.customerPhone,
+        isSettled: false // Standard sales are unsettled until cash handover
+      }
+    })
+  })
+
+  revalidatePath('/')
+  revalidatePath('/sales')
+  return result
 }
 
 export async function getRecentSalesForRefund() {

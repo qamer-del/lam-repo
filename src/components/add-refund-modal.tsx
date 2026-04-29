@@ -195,11 +195,11 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
           Refund
         </DialogTrigger>
 
-        <DialogContent className="sm:max-w-[520px] p-0 overflow-hidden border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto bg-white dark:bg-gray-950">
+        <DialogContent className="sm:max-w-[520px] p-0 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto bg-white dark:bg-gray-950 font-cairo">
           {/* Accent bar */}
-          <div className="h-1 w-full bg-gradient-to-r from-red-400 to-rose-600" />
+          <div className="h-1 w-full bg-gradient-to-r from-red-400 to-rose-600 sticky top-0 z-10" />
 
-          <div className="p-6 space-y-5">
+          <div className="p-5 sm:p-6 space-y-5">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                 <div className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl">

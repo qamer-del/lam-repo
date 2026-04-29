@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Plus, Receipt, Banknote, Wifi, SplitSquareHorizontal,
-  ShoppingBag, Trash2, ChevronDown, ChevronUp, Package, Check, ChevronsUpDown
+  ShoppingBag, Trash2, ChevronDown, ChevronUp, Package, Check, ChevronsUpDown, Users
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -27,7 +27,7 @@ import { getAllInventoryItemsForSelect } from '@/actions/inventory'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
 
-type PayMode = 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA'
+type PayMode = 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA' | 'CREDIT'
 
 interface InventoryItem {
   id: number; name: string; sku: string | null; unit: string; currentStock: number; sellingPrice: number
@@ -43,6 +43,7 @@ const PAY_METHODS: { mode: PayMode; label: string; icon: any; color: string; bg:
   { mode: 'SPLIT',   label: 'Split',   icon: SplitSquareHorizontal, color: 'text-orange-700',  bg: 'bg-orange-500',   border: 'border-orange-500' },
   { mode: 'TABBY',   label: 'Tabby',   icon: ShoppingBag,          color: 'text-purple-700',  bg: 'bg-purple-500',   border: 'border-purple-500' },
   { mode: 'TAMARA',  label: 'Tamara',  icon: ShoppingBag,          color: 'text-pink-700',    bg: 'bg-pink-500',     border: 'border-pink-500' },
+  { mode: 'CREDIT',  label: 'Credit',  icon: Users,                color: 'text-amber-700',   bg: 'bg-amber-500',    border: 'border-amber-500' },
 ]
 
 export function AddSalesModal({ triggerClassName }: { triggerClassName?: string }) {
@@ -56,6 +57,8 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
   const [cashAmt, setCashAmt] = useState('')
   const [netAmt, setNetAmt] = useState('')
   const [description, setDescription] = useState('')
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
   const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([{ itemId: 0, quantity: '1', price: '' }])
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([])
   const [comboboxOpen, setComboboxOpen] = useState<{ [key: number]: boolean }>({})
@@ -77,7 +80,8 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
 
   const reset = () => {
     setPayMode('CASH'); setTotal(''); setCashAmt(''); setNetAmt('')
-    setDescription(''); setConsumedItems([{ itemId: 0, quantity: '1', price: '' }])
+    setDescription(''); setCustomerName(''); setCustomerPhone('')
+    setConsumedItems([{ itemId: 0, quantity: '1', price: '' }])
   }
 
   const validate = (): string | null => {
@@ -91,6 +95,9 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
       const n = parseFloat(netAmt) || 0
       if (Math.abs(t - (c + n)) > 0.01) return 'Cash + Network must equal the total.'
       if (c <= 0 && n <= 0) return 'Enter at least one split amount.'
+    }
+    if (payMode === 'CREDIT') {
+      if (!customerName.trim() || !customerPhone.trim()) return 'Customer name and phone number are required for credit sales.'
     }
     return null
   }
@@ -107,6 +114,8 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
         cashAmount: payMode === 'SPLIT' ? (parseFloat(cashAmt) || 0) : undefined,
         networkAmount: payMode === 'SPLIT' ? (parseFloat(netAmt) || 0) : undefined,
         description: description || undefined,
+        customerName: payMode === 'CREDIT' ? customerName : undefined,
+        customerPhone: payMode === 'CREDIT' ? customerPhone : undefined,
         consumedItems: consumedItems
           .filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0)
           .map(ci => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity) })),
@@ -151,11 +160,11 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
           {t('addSales')}
         </DialogTrigger>
 
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] max-h-[92vh] overflow-y-auto bg-white dark:bg-gray-950">
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] max-h-[92vh] overflow-y-auto bg-white dark:bg-gray-950 font-cairo">
           {/* Status bar based on payment method */}
-          <div className={cn('h-2 w-full transition-all duration-700', selectedMethod.bg)} />
+          <div className={cn('h-2 w-full transition-all duration-700 sticky top-0 z-10', selectedMethod.bg)} />
 
-          <div className="p-8 md:p-10 space-y-8">
+          <div className="p-6 md:p-10 space-y-8">
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-4">
@@ -174,7 +183,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
               {/* ── Payment Method Picker ── */}
               <div className="space-y-3">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('paymentMethod')}</Label>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {PAY_METHODS.map(({ mode, label, icon: Icon, color, border }) => {
                     const active = payMode === mode
                     return (
@@ -260,6 +269,32 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                   )}
                 </div>
               </div>
+
+              {/* ── Customer Details (Only for Credit) ── */}
+              {payMode === 'CREDIT' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 bg-amber-500/5 dark:bg-amber-500/10 rounded-[2rem] border border-amber-200/50 dark:border-amber-800/30 shadow-inner animate-in fade-in slide-in-from-top-4 duration-500">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-amber-600 ml-1">Customer Name</Label>
+                    <Input
+                      required
+                      placeholder="e.g. Ahmad Al-Harbi"
+                      value={customerName}
+                      onChange={e => setCustomerName(e.target.value)}
+                      className="h-12 rounded-xl border-amber-100 dark:border-amber-900 bg-white dark:bg-gray-950 focus:border-amber-500 font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-amber-600 ml-1">Phone Number</Label>
+                    <Input
+                      required
+                      placeholder="05xxxxxxxx"
+                      value={customerPhone}
+                      onChange={e => setCustomerPhone(e.target.value)}
+                      className="h-12 rounded-xl border-amber-100 dark:border-amber-900 bg-white dark:bg-gray-950 focus:border-amber-500 font-bold"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* ── Items Selection ── */}
               <div className="space-y-4">
@@ -376,6 +411,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                   payMode === 'NETWORK' ? 'bg-gradient-to-r from-blue-500 to-blue-700 shadow-blue-500/30' :
                   payMode === 'SPLIT'   ? 'bg-gradient-to-r from-orange-500 to-orange-700 shadow-orange-500/30' :
                   payMode === 'TABBY'   ? 'bg-gradient-to-r from-purple-500 to-purple-700 shadow-purple-500/30' :
+                  payMode === 'CREDIT'  ? 'bg-gradient-to-r from-amber-500 to-amber-700 shadow-amber-500/30' :
                                          'bg-gradient-to-r from-pink-500 to-pink-700 shadow-pink-500/30'
                 )}
               >

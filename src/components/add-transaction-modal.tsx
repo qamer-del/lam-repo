@@ -101,9 +101,9 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
         <Plus size={18} />
         {t('addTransaction')}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
-        <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-indigo-700" />
-        <div className="p-6 md:p-8 space-y-6">
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto font-cairo">
+        <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-indigo-700 sticky top-0 z-10" />
+        <div className="p-5 sm:p-8 space-y-6">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl">

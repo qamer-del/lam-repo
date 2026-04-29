@@ -69,7 +69,7 @@ export function DashboardContent({
   inventorySummary?: { totalValue: number; lowStockCount: number; outOfStockCount: number; totalItems: number } | null
 }) {
   const { t } = useLanguage()
-  const { cashInDrawer, networkSales, salaryFundRemaining, transactions, setVaultData } = useStore()
+  const { cashInDrawer, networkSales, salaryFundRemaining, totalOutstandingCredit, transactions, setVaultData } = useStore()
   
   const isSuperAdmin = userRole === 'SUPER_ADMIN'
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
@@ -131,7 +131,7 @@ export function DashboardContent({
 
       {/* Stats Cards - Hidden for Cashiers */}
       {canViewStats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white">
             <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-8 translate-x-8" />
             <CardHeader className="flex flex-row items-center gap-3 pb-2">
@@ -168,6 +168,19 @@ export function DashboardContent({
             </CardHeader>
             <CardContent>
               <p className="text-4xl font-extrabold tracking-tight">{salaryFundRemaining.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+            <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-8 translate-x-8" />
+            <CardHeader className="flex flex-row items-center gap-3 pb-2">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Users size={20} />
+              </div>
+              <CardTitle className="text-sm font-medium opacity-90">Outstanding Credit</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-extrabold tracking-tight">{totalOutstandingCredit.toFixed(2)}</p>
             </CardContent>
           </Card>
         </div>

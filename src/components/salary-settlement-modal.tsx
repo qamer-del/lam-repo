@@ -65,7 +65,7 @@ export function SalarySettlementModal({
           <Wallet size={16} />
           Settle Salary
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[450px] max-h-[90vh] overflow-y-auto font-cairo">
           {!settledData ? (
             <>
               <DialogHeader>

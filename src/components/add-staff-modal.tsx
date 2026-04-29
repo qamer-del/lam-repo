@@ -53,9 +53,9 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
         <UserPlus size={16} />
         Add Staff
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent className="sm:max-w-[400px] max-h-[90vh] overflow-y-auto font-cairo">
         <DialogHeader>
-          <DialogTitle>Add New Staff Member</DialogTitle>
+          <DialogTitle className="text-xl font-bold">Add New Staff Member</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <div className="grid gap-2">
