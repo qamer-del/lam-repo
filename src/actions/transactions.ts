@@ -324,10 +324,13 @@ export async function editAdvance(transactionId: number, newAmount: number) {
 }
 
 export async function createSettlement(actualCashCounted: number) {
+  console.log('[createSettlement] Starting...', { actualCashCounted })
   const session = await auth()
+  console.log('[createSettlement] Session:', session?.user?.id)
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   // Finds all unsettled transactions that haven't been part of a cash settlement report yet
+  console.log('[createSettlement] Fetching unsettled transactions...')
   const unsettled = await prisma.transaction.findMany({
     where: { 
       isSettled: false,
@@ -372,6 +375,7 @@ export async function createSettlement(actualCashCounted: number) {
       }
     }
   })
+  console.log('[createSettlement] Settlement created:', settlement.id)
 
   // Mark as settled ONLY if they are not staff-related.
   // Staff ADVANCE and staff-linked EXPENSE must stay isSettled: false 

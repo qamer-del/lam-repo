@@ -60,8 +60,11 @@ export async function createInventoryItem(data: {
   sellingPrice?: number
   initialStock?: number
 }) {
+  console.log('[createInventoryItem] Starting...', data.name)
   const session = await requireAdminOrAbove()
+  console.log('[createInventoryItem] Auth session obtained')
 
+  console.log('[createInventoryItem] Creating item in DB...')
   const item = await prisma.inventoryItem.create({
     data: {
       name: data.name,
