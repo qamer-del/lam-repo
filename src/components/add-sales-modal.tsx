@@ -282,8 +282,8 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
 
                 <div className="p-4 space-y-3 bg-white dark:bg-gray-900">
                   {consumedItems.map((ci, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <div className="flex-1">
+                    <div key={index} className="flex flex-col sm:flex-row items-start gap-2">
+                      <div className="w-full sm:flex-1">
                         <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
                           <PopoverTrigger
                             className={cn(
@@ -331,26 +331,26 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                           </PopoverContent>
                         </Popover>
                       </div>
-                      <div className="flex gap-2 w-48">
+                      <div className="flex gap-2 w-full sm:w-auto items-center">
                         <Input
                           type="number" step="0.1" min="0" placeholder="Qty"
                           value={ci.quantity}
                           onChange={e => updateConsumedItem(index, 'quantity', e.target.value)}
-                          className="h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center w-20"
+                          className="flex-1 sm:flex-none sm:w-20 h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center"
                         />
                         <Input
                           type="number" step="0.01" min="0" placeholder="Price"
                           value={ci.price}
                           onChange={e => updateConsumedItem(index, 'price', e.target.value)}
-                          className="h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center w-28 text-teal-600 dark:text-teal-400"
+                          className="flex-1 sm:flex-none sm:w-28 h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center text-teal-600 dark:text-teal-400"
                         />
+                        <button
+                          type="button" onClick={() => removeConsumedItem(index)}
+                          className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition flex-shrink-0"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                      <button
-                        type="button" onClick={() => removeConsumedItem(index)}
-                        className="p-3 mt-0.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition flex-shrink-0"
-                      >
-                        <Trash2 size={16} />
-                      </button>
                     </div>
                   ))}
                   <button
