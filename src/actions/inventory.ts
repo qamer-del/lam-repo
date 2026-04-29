@@ -44,7 +44,7 @@ export async function getAllInventoryItemsForSelect() {
 
   return prisma.inventoryItem.findMany({
     where: { isActive: true },
-    select: { id: true, name: true, unit: true, currentStock: true, category: true },
+    select: { id: true, name: true, unit: true, currentStock: true, category: true, sellingPrice: true, sku: true },
     orderBy: { name: 'asc' },
   })
 }
@@ -56,6 +56,8 @@ export async function createInventoryItem(data: {
   unit: string
   reorderLevel: number
   unitCost: number
+  costIncludesVat?: boolean
+  sellingPrice?: number
   initialStock?: number
 }) {
   const session = await requireAdminOrAbove()
@@ -68,6 +70,8 @@ export async function createInventoryItem(data: {
       unit: data.unit,
       reorderLevel: data.reorderLevel,
       unitCost: data.unitCost,
+      costIncludesVat: data.costIncludesVat ?? false,
+      sellingPrice: data.sellingPrice ?? 0,
       currentStock: data.initialStock ?? 0,
     },
   })
@@ -99,6 +103,8 @@ export async function updateInventoryItem(
     unit?: string
     reorderLevel?: number
     unitCost?: number
+    costIncludesVat?: boolean
+    sellingPrice?: number
   }
 ) {
   await requireAdminOrAbove()

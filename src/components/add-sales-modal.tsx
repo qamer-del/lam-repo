@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Plus, Receipt, Banknote, Wifi, SplitSquareHorizontal,
-  ShoppingBag, Trash2, ChevronDown, ChevronUp, Package
+  ShoppingBag, Trash2, ChevronDown, ChevronUp, Package, Check, ChevronsUpDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,12 @@ import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command'
 import { useLanguage } from '@/providers/language-provider'
 import { recordDailySales } from '@/actions/transactions'
 import { getAllInventoryItemsForSelect } from '@/actions/inventory'
@@ -24,7 +30,7 @@ import { ModernLoader } from './ui/modern-loader'
 type PayMode = 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA'
 
 interface InventoryItem {
-  id: number; name: string; unit: string; currentStock: number
+  id: number; name: string; sku: string | null; unit: string; currentStock: number; sellingPrice: number
 }
 
 interface ConsumedItem {
@@ -50,9 +56,9 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
   const [cashAmt, setCashAmt] = useState('')
   const [netAmt, setNetAmt] = useState('')
   const [description, setDescription] = useState('')
-  const [showItems, setShowItems] = useState(false)
-  const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([])
+  const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([{ itemId: 0, quantity: '1' }])
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([])
+  const [comboboxOpen, setComboboxOpen] = useState<{ [key: number]: boolean }>({})
 
   // Auto-calc network from total - cash in split mode
   useEffect(() => {
@@ -71,10 +77,13 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
 
   const reset = () => {
     setPayMode('CASH'); setTotal(''); setCashAmt(''); setNetAmt('')
-    setDescription(''); setShowItems(false); setConsumedItems([])
+    setDescription(''); setConsumedItems([{ itemId: 0, quantity: '1' }])
   }
 
   const validate = (): string | null => {
+    const validItems = consumedItems.filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0)
+    if (validItems.length === 0) return 'You must select at least one item for the sales invoice.'
+
     const t = parseFloat(total) || 0
     if (t <= 0) return 'Please enter a valid total amount.'
     if (payMode === 'SPLIT') {
@@ -113,10 +122,19 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
     }
   }
 
-  const addConsumedItem = () => setConsumedItems(p => [...p, { itemId: 0, quantity: '' }])
+  const addConsumedItem = () => setConsumedItems(p => [...p, { itemId: 0, quantity: '1' }])
   const removeConsumedItem = (i: number) => setConsumedItems(p => p.filter((_, idx) => idx !== i))
-  const updateConsumedItem = (i: number, field: keyof ConsumedItem, val: string | number) =>
-    setConsumedItems(p => p.map((ci, idx) => idx === i ? { ...ci, [field]: val } : ci))
+  const updateConsumedItem = (i: number, field: keyof ConsumedItem, val: string | number) => {
+    setConsumedItems(p => {
+      const newItems = p.map((ci, idx) => idx === i ? { ...ci, [field]: val } : ci)
+      const newTotal = newItems.reduce((acc, curr) => {
+        const item = inventoryList.find(inv => inv.id === curr.itemId)
+        return acc + (parseFloat(curr.quantity || '0') * (item?.sellingPrice || 0))
+      }, 0)
+      if (newTotal > 0) setTotal(newTotal.toFixed(2))
+      return newItems
+    })
+  }
 
   const selectedMethod = PAY_METHODS.find(m => m.mode === payMode)!
 
@@ -249,71 +267,93 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                 />
               </div>
 
-              {/* ── Items Used (collapsible) ── */}
-              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowItems(v => !v)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                >
+              {/* ── Items Used (mandatory) ── */}
+              <div className="rounded-2xl border border-teal-100 dark:border-teal-900 overflow-hidden shadow-sm">
+                <div className="w-full flex items-center justify-between px-4 py-3 bg-teal-50/50 dark:bg-teal-900/20 border-b border-teal-100 dark:border-teal-900">
                   <div className="flex items-center gap-2">
-                    <Package size={15} className="text-teal-500" />
-                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">{t('itemsUsed')}</span>
+                    <Package size={15} className="text-teal-600" />
+                    <span className="text-xs font-black uppercase tracking-widest text-teal-700 dark:text-teal-400">Invoice Items <span className="text-red-500">*</span></span>
                     {consumedItems.filter(ci => ci.itemId > 0).length > 0 && (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
                         {consumedItems.filter(ci => ci.itemId > 0).length}
                       </span>
                     )}
                   </div>
-                  {showItems ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
-                </button>
+                </div>
 
-                {showItems && (
-                  <div className="p-4 space-y-3 bg-white dark:bg-gray-900">
-                    {consumedItems.map((ci, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <Select
-                            value={ci.itemId > 0 ? String(ci.itemId) : ''}
-                            onValueChange={(v: string | null) => { if (v) updateConsumedItem(index, 'itemId', parseInt(v)) }}
+                <div className="p-4 space-y-3 bg-white dark:bg-gray-900">
+                  {consumedItems.map((ci, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <Popover open={comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
+                          <PopoverTrigger
+                            className={cn(
+                              "flex w-full items-center justify-between h-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-medium shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                              !ci.itemId && "text-muted-foreground"
+                            )}
                           >
-                            <SelectTrigger className="h-9 rounded-xl border-gray-200 dark:border-gray-700 text-sm font-medium">
-                              <SelectValue placeholder={t('selectItem')} />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-none shadow-xl">
-                              {inventoryList.map(item => (
-                                <SelectItem key={item.id} value={String(item.id)} className="font-medium py-2">
-                                  {item.name}
-                                  <span className="text-xs text-gray-400 ml-2">({item.currentStock} {item.unit} left)</span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="w-20">
-                          <Input
-                            type="number" step="0.1" min="0" placeholder="Qty"
-                            value={ci.quantity}
-                            onChange={e => updateConsumedItem(index, 'quantity', e.target.value)}
-                            className="h-9 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center"
-                          />
-                        </div>
-                        <button
-                          type="button" onClick={() => removeConsumedItem(index)}
-                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition flex-shrink-0"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                            {ci.itemId
+                              ? inventoryList.find((item) => item.id === ci.itemId)?.name
+                              : t('selectItem')}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[320px] sm:w-[400px] p-0 rounded-xl shadow-xl border-none">
+                            <Command>
+                              <CommandInput placeholder="Search by name or SKU..." />
+                              <CommandList className="max-h-[250px]">
+                                <CommandEmpty>No item found.</CommandEmpty>
+                                <CommandGroup>
+                                  {inventoryList.map((item) => (
+                                    <CommandItem
+                                      key={item.id}
+                                      value={`${item.name} ${item.sku || ''}`}
+                                      onSelect={() => {
+                                        updateConsumedItem(index, 'itemId', item.id)
+                                        setComboboxOpen(p => ({ ...p, [index]: false }))
+                                      }}
+                                      className="py-2.5 font-medium cursor-pointer"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4 text-teal-600",
+                                          ci.itemId === item.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span>{item.name} {item.sku && <span className="text-gray-400 text-xs ml-1">({item.sku})</span>}</span>
+                                        <span className="text-xs text-gray-500">{item.currentStock} {item.unit} left • {item.sellingPrice} SAR</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       </div>
-                    ))}
-                    <button
-                      type="button" onClick={addConsumedItem}
-                      className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-teal-600 dark:text-teal-400 border-2 border-dashed border-teal-200 dark:border-teal-800 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
-                    >
-                      <Plus size={13} /> {t('addUsedItem')}
-                    </button>
-                  </div>
-                )}
+                      <div className="w-20">
+                        <Input
+                          type="number" step="0.1" min="0" placeholder="Qty"
+                          value={ci.quantity}
+                          onChange={e => updateConsumedItem(index, 'quantity', e.target.value)}
+                          className="h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center"
+                        />
+                      </div>
+                      <button
+                        type="button" onClick={() => removeConsumedItem(index)}
+                        className="p-3 mt-0.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition flex-shrink-0"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button" onClick={addConsumedItem}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold text-teal-600 dark:text-teal-400 border-2 border-dashed border-teal-200 dark:border-teal-800 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition mt-2"
+                  >
+                    <Plus size={14} /> Add Another Item
+                  </button>
+                </div>
               </div>
 
               {/* ── Submit ── */}

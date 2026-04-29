@@ -45,6 +45,8 @@ interface EditItem {
   unit: string
   reorderLevel: number
   unitCost: number
+  costIncludesVat?: boolean
+  sellingPrice?: number
 }
 
 interface Props {
@@ -67,6 +69,8 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
   const [unit, setUnit] = useState(editItem?.unit ?? 'pcs')
   const [reorderLevel, setReorderLevel] = useState(String(editItem?.reorderLevel ?? 5))
   const [unitCost, setUnitCost] = useState(String(editItem?.unitCost ?? 0))
+  const [costIncludesVat, setCostIncludesVat] = useState(editItem?.costIncludesVat ?? false)
+  const [sellingPrice, setSellingPrice] = useState(String(editItem?.sellingPrice ?? 0))
   const [initialStock, setInitialStock] = useState('0')
 
   const handleClose = (v: boolean) => {
@@ -86,6 +90,8 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
           unit,
           reorderLevel: parseFloat(reorderLevel) || 5,
           unitCost: parseFloat(unitCost) || 0,
+          costIncludesVat,
+          sellingPrice: parseFloat(sellingPrice) || 0,
         })
       } else {
         await createInventoryItem({
@@ -95,6 +101,8 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
           unit,
           reorderLevel: parseFloat(reorderLevel) || 5,
           unitCost: parseFloat(unitCost) || 0,
+          costIncludesVat,
+          sellingPrice: parseFloat(sellingPrice) || 0,
           initialStock: parseFloat(initialStock) || 0,
         })
       }
@@ -227,6 +235,35 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
                     value={reorderLevel}
                     onChange={(e) => setReorderLevel(e.target.value)}
                     className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Cost Includes VAT + Selling Price */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 flex flex-col justify-end">
+                  <label className="flex items-center gap-2 cursor-pointer h-11 px-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                    <input 
+                      type="checkbox"
+                      checked={costIncludesVat}
+                      onChange={(e) => setCostIncludesVat(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Cost includes VAT</span>
+                  </label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Selling Price</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    placeholder="0.00"
+                    value={sellingPrice}
+                    onChange={(e) => setSellingPrice(e.target.value)}
+                    className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-bold text-teal-600 dark:text-teal-400"
                   />
                 </div>
               </div>

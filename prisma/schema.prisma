@@ -150,6 +150,8 @@ model InventoryItem {
   currentStock Float             @default(0)
   reorderLevel Float             @default(5)
   unitCost     Float             @default(0)
+  costIncludesVat Boolean        @default(false)
+  sellingPrice Float             @default(0)
   isActive     Boolean           @default(true)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
