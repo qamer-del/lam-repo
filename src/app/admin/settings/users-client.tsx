@@ -217,7 +217,7 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
               <div className="max-w-2xl">
                 <h3 className="text-xl font-bold text-red-700 dark:text-red-400">Total System Factory Reset</h3>
                 <p className="text-sm text-red-600/80 dark:text-red-400/80 mt-2 leading-relaxed font-medium">
-                  This will PERMANENTLY ERASE all fuel sales, expenses, employee advances, agent ledgers, and settlement reports. 
+                  This will PERMANENTLY ERASE all fuel sales, expenses, employee advances, agent ledgers, inventory items, purchase orders, and settlement reports. 
                   User accounts will be preserved to maintain access. There is no way to recover this data.
                 </p>
               </div>
