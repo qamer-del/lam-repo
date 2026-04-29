@@ -44,7 +44,7 @@ const MOVEMENT_LABELS: Record<string, string> = {
 interface InventoryItem {
   id: number; name: string; sku: string | null; category: InventoryCategory
   unit: string; currentStock: number; reorderLevel: number; unitCost: number
-  isActive: boolean; createdAt: Date; updatedAt: Date
+  sellingPrice: number; isActive: boolean; createdAt: Date; updatedAt: Date
 }
 
 interface PurchaseOrder {
@@ -81,6 +81,7 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
   const { t } = useLanguage()
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('items')
+  const [searchQuery, setSearchQuery] = useState('')
   const [editItem, setEditItem] = useState<InventoryItem | null>(null)
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null)
 
@@ -98,6 +99,11 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
     router.refresh()
   }
 
+  const filteredItems = initialItems.filter(item => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
+
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: 'items', label: t('items'), icon: Package },
     { key: 'purchases', label: t('purchases'), icon: ShoppingCart },
@@ -105,12 +111,12 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
   ]
 
   return (
-    <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto space-y-8 font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-emerald-500 bg-clip-text text-transparent">{t('inventory')}</h1>
-          <p className="text-gray-500 mt-1 text-xs sm:text-sm">{t('inventorySubtitle')}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-teal-600 to-emerald-500 bg-clip-text text-transparent font-cairo">{t('inventory')}</h1>
+          <p className="text-gray-500 mt-1 text-xs sm:text-sm font-cairo">{t('inventorySubtitle')}</p>
         </div>
         {isAdmin && (
           <div className="flex flex-wrap gap-3">
@@ -163,22 +169,41 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
         </Card>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800/60 p-1.5 rounded-2xl w-full sm:w-auto sm:inline-flex">
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 sm:flex-none justify-center ${
-              tab === key
-                ? 'bg-white dark:bg-gray-900 text-teal-600 dark:text-teal-400 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
-          >
-            <Icon size={15} />
-            {label}
-          </button>
-        ))}
+      {/* Tabs & Search */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800/60 p-1.5 rounded-2xl w-full sm:w-auto sm:inline-flex font-cairo">
+          {tabs.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 sm:flex-none justify-center ${
+                tab === key
+                  ? 'bg-white dark:bg-gray-900 text-teal-600 dark:text-teal-400 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
+        </div>
+        
+        {tab === 'items' && (
+          <div className="relative w-full sm:w-72">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Search items by name or SKU..."
+              className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl leading-5 bg-white dark:bg-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 sm:text-sm transition duration-150 ease-in-out font-cairo"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       {/* ── ITEMS TAB ── */}
@@ -194,16 +219,17 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                   <TableHead>Stock</TableHead>
                   <TableHead>Reorder At</TableHead>
                   <TableHead>Unit Cost</TableHead>
+                  <TableHead>Sell Price</TableHead>
                   <TableHead>Value</TableHead>
                   <TableHead>Status</TableHead>
                   {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {initialItems.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-12 text-gray-400">{t('noItemsYet')}</TableCell></TableRow>
+                {filteredItems.length === 0 && (
+                  <TableRow><TableCell colSpan={9} className="text-center py-12 text-gray-400">{t('noItemsYet')}</TableCell></TableRow>
                 )}
-                {initialItems.map(item => (
+                {filteredItems.map(item => (
                   <TableRow key={item.id} className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition ${item.currentStock <= 0 ? 'opacity-60' : ''}`}>
                     <TableCell>
                       <div>
@@ -219,6 +245,7 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                     <TableCell className="font-bold tabular-nums">{item.currentStock} <span className="text-xs text-gray-400">{item.unit}</span></TableCell>
                     <TableCell className="text-sm text-gray-500 tabular-nums">{item.reorderLevel} {item.unit}</TableCell>
                     <TableCell className="tabular-nums font-medium">{item.unitCost.toFixed(2)}</TableCell>
+                    <TableCell className="tabular-nums font-bold text-teal-600">{item.sellingPrice?.toFixed(2)}</TableCell>
                     <TableCell className="font-bold tabular-nums text-blue-600">{(item.currentStock * item.unitCost).toFixed(2)}</TableCell>
                     <TableCell><StockBadge item={item} /></TableCell>
                     {isAdmin && (
@@ -246,8 +273,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
 
           {/* Mobile */}
           <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-            {initialItems.length === 0 && <div className="py-12 text-center text-gray-400 text-sm">{t('noItemsYet')}</div>}
-            {initialItems.map(item => (
+            {filteredItems.length === 0 && <div className="py-12 text-center text-gray-400 text-sm">{t('noItemsYet')}</div>}
+            {filteredItems.map(item => (
               <div key={item.id} className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
@@ -257,18 +284,22 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                   </div>
                   <StockBadge item={item} />
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-2 text-center">
                     <p className="text-[10px] text-gray-400 font-bold uppercase">Stock</p>
-                    <p className="font-black text-gray-900 dark:text-white tabular-nums">{item.currentStock}<span className="text-xs text-gray-400 ml-1">{item.unit}</span></p>
+                    <p className="font-black text-gray-900 dark:text-white tabular-nums">{item.currentStock}</p>
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-2 text-center">
                     <p className="text-[10px] text-gray-400 font-bold uppercase">Cost</p>
                     <p className="font-black text-gray-900 dark:text-white tabular-nums">{item.unitCost.toFixed(2)}</p>
                   </div>
+                  <div className="bg-teal-50 dark:bg-teal-900/20 rounded-xl p-2 text-center border border-teal-100 dark:border-teal-900/30">
+                    <p className="text-[10px] text-teal-600 font-bold uppercase">Sell</p>
+                    <p className="font-black text-teal-700 dark:text-teal-400 tabular-nums">{item.sellingPrice?.toFixed(2)}</p>
+                  </div>
                   <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-2 text-center">
                     <p className="text-[10px] text-blue-400 font-bold uppercase">Value</p>
-                    <p className="font-black text-blue-600 dark:text-blue-400 tabular-nums">{(item.currentStock * item.unitCost).toFixed(2)}</p>
+                    <p className="font-black text-blue-600 dark:text-blue-400 tabular-nums">{(item.currentStock * item.unitCost).toFixed(0)}</p>
                   </div>
                 </div>
                 {isAdmin && (

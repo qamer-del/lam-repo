@@ -38,6 +38,7 @@ export default function SalesPage({
   const [toDate, setToDate] = useState<string>(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
   const [manualProfit, setManualProfit] = useState<string>('')
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const filteredSales = sales.filter(sale => {
     const saleDate = new Date(sale.createdAt)
@@ -89,14 +90,22 @@ export default function SalesPage({
   })
 
   // Export grouped structure ordered by recency
-  const aggregatedSales = Array.from(groups.values()).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const aggregatedSales = Array.from(groups.values())
+    .sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .filter(sale => {
+      if (!searchQuery) return true
+      const q = searchQuery.toLowerCase()
+      return (sale.invoiceNumber?.toLowerCase().includes(q) || 
+              sale.description?.toLowerCase().includes(q) ||
+              sale.id.toString().includes(q))
+    })
 
   return (
-    <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto space-y-8 font-sans">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">{t('salesReport')}</h1>
-          <p className="text-gray-500 mt-1 text-xs sm:text-sm">{t('salesSubtitle')}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent font-cairo">{t('salesReport')}</h1>
+          <p className="text-gray-500 mt-1 text-xs sm:text-sm font-cairo">{t('salesSubtitle')}</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -253,6 +262,26 @@ export default function SalesPage({
           </Card>
         </div>
       )}
+
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-2">
+        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200 font-cairo flex items-center gap-2">
+          Transactions <span className="bg-emerald-100 text-emerald-700 text-xs py-0.5 px-2 rounded-full">{aggregatedSales.length}</span>
+        </h2>
+        <div className="relative w-full sm:w-72">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Search by Invoice No. or description..."
+            className="block w-full pl-10 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl leading-5 bg-white dark:bg-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm transition duration-150 ease-in-out font-cairo"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
 
       <Card className="shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden">
         {/* Desktop Table View */}
