@@ -13,9 +13,13 @@ export async function factoryReset() {
 
   try {
     // Delete in reverse order of relationships to prevent foreign key constraints
+    await prisma.purchaseOrderItem.deleteMany({})
+    await prisma.stockMovement.deleteMany({})
     await prisma.transaction.deleteMany({})
+    await prisma.purchaseOrder.deleteMany({})
     await prisma.salarySettlement.deleteMany({})
     await prisma.settlement.deleteMany({})
+    await prisma.inventoryItem.deleteMany({})
     await prisma.agent.deleteMany({})
     await prisma.staff.deleteMany({})
     
@@ -25,6 +29,7 @@ export async function factoryReset() {
     revalidatePath('/staff')
     revalidatePath('/sales')
     revalidatePath('/agents')
+    revalidatePath('/inventory')
     return { success: true }
   } catch (error: any) {
     console.error('Factory reset failed:', error)
