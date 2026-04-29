@@ -228,14 +228,14 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
                     <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm">
                       <div className="flex-1">
                         <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
-                          <PopoverTrigger>
+                          <PopoverTrigger render={
                             <button className="flex w-full items-center justify-between h-10 rounded-xl bg-gray-50 dark:bg-gray-950 px-3 text-xs font-bold truncate">
                               <span className="truncate">
                                 {ci.itemId ? inventoryList.find(i => i.id === ci.itemId)?.name : "Select Item"}
                               </span>
                               <ChevronsUpDown size={14} className="opacity-40 shrink-0" />
                             </button>
-                          </PopoverTrigger>
+                          } />
                           <PopoverContent className="p-0 rounded-xl shadow-2xl border-none overflow-hidden">
                             <Command>
                               <CommandInput placeholder="Search..." />

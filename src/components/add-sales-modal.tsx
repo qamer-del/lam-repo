@@ -278,7 +278,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                     <div key={index} className="group relative flex flex-col sm:flex-row items-center gap-3 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl shadow-sm hover:shadow-md transition-all">
                       <div className="w-full sm:flex-1">
                         <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
-                          <PopoverTrigger>
+                          <PopoverTrigger render={
                             <button
                               className={cn(
                                 "flex w-full items-center justify-between h-12 rounded-2xl border-none bg-gray-50 dark:bg-gray-950 px-4 py-2 text-sm font-bold shadow-inner transition-colors",
@@ -295,7 +295,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                               </div>
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
                             </button>
-                          </PopoverTrigger>
+                          } />
                           <PopoverContent className="w-[320px] sm:w-[400px] p-0 rounded-2xl shadow-2xl border-none overflow-hidden">
                             <Command>
                               <CommandInput placeholder="Search items..." className="h-12" />
