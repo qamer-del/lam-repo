@@ -78,7 +78,7 @@ export async function getDashboardData() {
       if (tx.method === 'CASH') {
         if (isActiveInDrawer) cashInDrawer += tx.amount
         if (isThisMonth) monthlySalaryPool += tx.amount
-      } else if (tx.method === 'NETWORK') {
+      } else if (tx.method === 'NETWORK' || tx.method === 'TABBY' || tx.method === 'TAMARA') {
         if (isActiveInDrawer) networkSales += tx.amount
       }
     } else if (tx.type === 'RETURN') {
@@ -86,7 +86,7 @@ export async function getDashboardData() {
         if (isActiveInDrawer) cashInDrawer -= tx.amount
         if (isThisMonth) monthlySalaryPool -= tx.amount
       }
-      if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
+      if ((tx.method === 'NETWORK' || tx.method === 'TABBY' || tx.method === 'TAMARA') && isActiveInDrawer) networkSales -= tx.amount
     } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
       if (tx.method === 'CASH' && isActiveInDrawer) cashInDrawer -= tx.amount
       else if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
@@ -371,53 +371,72 @@ export async function createSettlement(actualCashCounted: number) {
 }
 
 export async function recordDailySales(data: {
+  paymentMode: 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA'
   totalAmount: number
-  cashAmount: number
-  networkAmount: number
+  cashAmount?: number
+  networkAmount?: number
   description?: string
+  consumedItems?: { itemId: number; quantity: number }[]
 }) {
   const session = await auth()
-  if (!session?.user?.id) throw new Error("Unauthorized")
+  if (!session?.user?.id) throw new Error('Unauthorized')
 
   type SaleTx = {
     type: 'SALE'
-    method: 'CASH' | 'NETWORK'
+    method: 'CASH' | 'NETWORK' | 'TABBY' | 'TAMARA'
     amount: number
     description?: string
     recordedById: string
     createdAt: Date
   }
-  const transactions: SaleTx[] = []
-  const exactTime = new Date()
-  
-  if (data.cashAmount > 0) {
-    transactions.push({
-      type: 'SALE' as const,
-      method: 'CASH' as const,
-      amount: data.cashAmount,
-      description: data.description,
-      recordedById: session.user.id,
-      createdAt: exactTime
-    })
-  }
 
-  if (data.networkAmount > 0) {
-    transactions.push({
-      type: 'SALE' as const,
-      method: 'NETWORK' as const,
-      amount: data.networkAmount,
-      description: data.description,
-      recordedById: session.user.id,
-      createdAt: exactTime
-    })
+  const exactTime = new Date()
+  const transactions: SaleTx[] = []
+
+  if (data.paymentMode === 'SPLIT') {
+    const cashAmt = data.cashAmount ?? 0
+    const netAmt = data.networkAmount ?? data.totalAmount - cashAmt
+    if (cashAmt > 0) {
+      transactions.push({ type: 'SALE', method: 'CASH', amount: cashAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+    }
+    if (netAmt > 0) {
+      transactions.push({ type: 'SALE', method: 'NETWORK', amount: netAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+    }
+  } else if (data.paymentMode === 'TABBY') {
+    transactions.push({ type: 'SALE', method: 'TABBY', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+  } else if (data.paymentMode === 'TAMARA') {
+    transactions.push({ type: 'SALE', method: 'TAMARA', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+  } else if (data.paymentMode === 'NETWORK') {
+    transactions.push({ type: 'SALE', method: 'NETWORK', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime })
+  } else {
+    transactions.push({ type: 'SALE', method: 'CASH', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime })
   }
 
   if (transactions.length > 0) {
-    await prisma.transaction.createMany({
-      data: transactions
-    })
-    revalidatePath('/')
-    revalidatePath('/sales')
+    await prisma.transaction.createMany({ data: transactions })
   }
-}
 
+  // Consume inventory items if provided
+  if (data.consumedItems && data.consumedItems.length > 0) {
+    for (const ci of data.consumedItems) {
+      if (ci.quantity <= 0) continue
+      await prisma.inventoryItem.update({
+        where: { id: ci.itemId },
+        data: { currentStock: { decrement: ci.quantity } },
+      })
+      await prisma.stockMovement.create({
+        data: {
+          itemId: ci.itemId,
+          type: 'SALE_OUT',
+          quantity: -ci.quantity,
+          note: `Consumed in sale — ${data.description || 'no description'}`,
+          recordedById: session.user.id,
+        },
+      })
+    }
+  }
+
+  revalidatePath('/')
+  revalidatePath('/sales')
+  revalidatePath('/inventory')
+}

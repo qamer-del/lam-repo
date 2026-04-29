@@ -1,0 +1,333 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { ShoppingCart, Plus, Trash2, DollarSign, Wifi } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { useLanguage } from '@/providers/language-provider'
+import { createPurchaseOrder, getAllInventoryItemsForSelect } from '@/actions/inventory'
+import { getAgents } from '@/actions/agents'
+import { useRouter } from 'next/navigation'
+import { ModernLoader } from './ui/modern-loader'
+
+interface InventoryItem {
+  id: number
+  name: string
+  unit: string
+  currentStock: number
+}
+
+interface Agent {
+  id: number
+  name: string
+  companyName?: string | null
+}
+
+interface LineItem {
+  itemId: number
+  quantity: string
+  unitCost: string
+}
+
+export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: string }) {
+  const { t } = useLanguage()
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const [agentId, setAgentId] = useState<string>('none')
+  const [method, setMethod] = useState<'CASH' | 'NETWORK'>('CASH')
+  const [note, setNote] = useState('')
+  const [lineItems, setLineItems] = useState<LineItem[]>([{ itemId: 0, quantity: '', unitCost: '' }])
+
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+  const [agents, setAgents] = useState<Agent[]>([])
+
+  useEffect(() => {
+    if (open) {
+      getAllInventoryItemsForSelect().then(setInventoryItems)
+      getAgents().then(setAgents)
+    }
+  }, [open])
+
+  const addLineItem = () => {
+    setLineItems((prev) => [...prev, { itemId: 0, quantity: '', unitCost: '' }])
+  }
+
+  const removeLineItem = (index: number) => {
+    setLineItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
+    setLineItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    )
+  }
+
+  const totalCost = lineItems.reduce((sum, item) => {
+    const qty = parseFloat(item.quantity) || 0
+    const cost = parseFloat(item.unitCost) || 0
+    return sum + qty * cost
+  }, 0)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const validItems = lineItems.filter(
+      (i) => i.itemId > 0 && parseFloat(i.quantity) > 0
+    )
+    if (validItems.length === 0) {
+      alert('Please add at least one item with a valid quantity.')
+      return
+    }
+    setLoading(true)
+    try {
+      await createPurchaseOrder({
+        agentId: agentId !== 'none' ? parseInt(agentId) : undefined,
+        method,
+        note: note || undefined,
+        items: validItems.map((i) => ({
+          itemId: i.itemId,
+          quantity: parseFloat(i.quantity),
+          unitCost: parseFloat(i.unitCost) || 0,
+        })),
+      })
+      setOpen(false)
+      setLineItems([{ itemId: 0, quantity: '', unitCost: '' }])
+      setAgentId('none')
+      setNote('')
+      router.refresh()
+    } catch (err) {
+      console.error(err)
+      alert('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      {loading && <ModernLoader />}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger
+          render={
+            <Button
+              className={cn(
+                'flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all active:scale-95',
+                triggerClassName
+              )}
+            />
+          }
+        >
+          <ShoppingCart size={16} />
+          {t('addPurchase')}
+        </DialogTrigger>
+
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
+          <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-indigo-600 sticky top-0 z-10" />
+          <div className="p-6 md:p-8 space-y-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl">
+                  <ShoppingCart size={22} />
+                </div>
+                {t('addPurchase')}
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Supplier (optional) */}
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('supplier')}</Label>
+                <Select value={agentId} onValueChange={(v: string | null) => { if (v) setAgentId(v) }}>
+                  <SelectTrigger className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-medium">
+                    <SelectValue placeholder={t('noSupplier')} />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-none shadow-xl">
+                    <SelectItem value="none" className="font-medium py-2.5 text-gray-400 italic">
+                      {t('noSupplier')}
+                    </SelectItem>
+                    {agents.map((a) => (
+                      <SelectItem key={a.id} value={String(a.id)} className="font-medium py-2.5">
+                        {a.name}{a.companyName ? ` — ${a.companyName}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Payment Method */}
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('method')}</Label>
+                <div className="grid grid-cols-2 gap-2 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl h-12">
+                  <button
+                    type="button"
+                    onClick={() => setMethod('CASH')}
+                    className={cn(
+                      'flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm',
+                      method === 'CASH'
+                        ? 'bg-white dark:bg-gray-900 text-blue-600 shadow-sm'
+                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                    )}
+                  >
+                    <DollarSign size={15} />
+                    {t('cash')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMethod('NETWORK')}
+                    className={cn(
+                      'flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm',
+                      method === 'NETWORK'
+                        ? 'bg-white dark:bg-gray-900 text-blue-600 shadow-sm'
+                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                    )}
+                  >
+                    <Wifi size={15} />
+                    {t('network')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Line Items */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('purchaseItems')}</Label>
+                </div>
+
+                <div className="space-y-3">
+                  {lineItems.map((line, index) => (
+                    <div
+                      key={index}
+                      className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-3"
+                    >
+                      <div className="grid grid-cols-[1fr_auto] gap-2 items-start">
+                        <Select
+                          value={line.itemId > 0 ? String(line.itemId) : ''}
+                          onValueChange={(v: string | null) => {
+                            if (v) updateLineItem(index, 'itemId', parseInt(v))
+                          }}
+                        >
+                          <SelectTrigger className="h-10 rounded-xl border-gray-200 dark:border-gray-700 font-medium text-sm bg-white dark:bg-gray-900">
+                            <SelectValue placeholder={t('selectItem')} />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-none shadow-xl">
+                            {inventoryItems.map((item) => (
+                              <SelectItem key={item.id} value={String(item.id)} className="font-medium py-2">
+                                {item.name}
+                                <span className="text-xs text-gray-400 ml-2">({item.unit})</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {lineItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeLineItem(index)}
+                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('amount')}</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            placeholder="0"
+                            value={line.quantity}
+                            onChange={(e) => updateLineItem(index, 'quantity', e.target.value)}
+                            className="h-9 rounded-xl text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 font-bold"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('unitCost')}</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            value={line.unitCost}
+                            onChange={(e) => updateLineItem(index, 'unitCost', e.target.value)}
+                            className="h-9 rounded-xl text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      {line.itemId > 0 && parseFloat(line.quantity) > 0 && (
+                        <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 text-right">
+                          Subtotal: {(parseFloat(line.quantity) * (parseFloat(line.unitCost) || 0)).toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addLineItem}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-teal-600 dark:text-teal-400 border-2 border-dashed border-teal-200 dark:border-teal-800 rounded-xl hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
+                >
+                  <Plus size={16} />
+                  {t('addLineItem')}
+                </button>
+              </div>
+
+              {/* Note */}
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('description')}</Label>
+                <Input
+                  placeholder="Optional note..."
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-medium"
+                />
+              </div>
+
+              {/* Total */}
+              {totalCost > 0 && (
+                <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800">
+                  <span className="text-sm font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">{t('totalCost')}</span>
+                  <span className="text-2xl font-black tabular-nums text-blue-700 dark:text-blue-300">{totalCost.toFixed(2)}</span>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-13 text-base font-black uppercase tracking-widest text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-2xl shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all mt-2"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                    {t('processing')}
+                  </div>
+                ) : t('received')}
+              </Button>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}

@@ -24,7 +24,8 @@ export async function proxy(request: NextRequest) {
     if (
       request.nextUrl.pathname.startsWith('/admin') ||
       request.nextUrl.pathname.startsWith('/staff') ||
-      request.nextUrl.pathname.startsWith('/agents')
+      request.nextUrl.pathname.startsWith('/agents') ||
+      request.nextUrl.pathname.startsWith('/inventory')
     ) {
       return NextResponse.redirect(new URL('/sales', request.url))
     }

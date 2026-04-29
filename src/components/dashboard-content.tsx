@@ -42,15 +42,19 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Package,
+  AlertTriangle
 } from 'lucide-react'
+import Link from 'next/link'
 import { format } from 'date-fns'
 
 const ITEMS_PER_PAGE = 10
 
 export function DashboardContent({ 
   initialData,
-  userRole
+  userRole,
+  inventorySummary
 }: { 
   initialData: { 
     cashInDrawer: number, 
@@ -62,6 +66,7 @@ export function DashboardContent({
     recentSettlements: any[]
   } 
   userRole?: string
+  inventorySummary?: { totalValue: number; lowStockCount: number; outOfStockCount: number; totalItems: number } | null
 }) {
   const { t } = useLanguage()
   const { cashInDrawer, networkSales, salaryFundRemaining, transactions, setVaultData } = useStore()
@@ -166,6 +171,26 @@ export function DashboardContent({
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Inventory Low-Stock Alert Card */}
+      {canViewStats && inventorySummary && (inventorySummary.lowStockCount > 0 || inventorySummary.outOfStockCount > 0) && (
+        <Link href="/inventory">
+          <div className="flex items-center gap-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl hover:bg-amber-100 dark:hover:bg-amber-900/30 transition cursor-pointer">
+            <div className="p-2.5 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
+              <AlertTriangle size={22} />
+            </div>
+            <div className="flex-1">
+              <p className="font-black text-amber-800 dark:text-amber-300">Inventory Alert</p>
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                {inventorySummary.outOfStockCount > 0 && <span className="font-bold">{inventorySummary.outOfStockCount} out of stock</span>}
+                {inventorySummary.outOfStockCount > 0 && inventorySummary.lowStockCount > 0 && ' · '}
+                {inventorySummary.lowStockCount > 0 && <span>{inventorySummary.lowStockCount} low stock</span>}
+              </p>
+            </div>
+            <Package size={18} className="text-amber-400" />
+          </div>
+        </Link>
       )}
 
       {/* Actions */}

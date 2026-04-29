@@ -23,6 +23,8 @@ enum TransType {
 enum PayMethod {
   CASH
   NETWORK
+  TABBY
+  TAMARA
 }
 
 enum Role {
@@ -30,6 +32,28 @@ enum Role {
   ADMIN
   CASHIER
   OWNER
+}
+
+enum InventoryCategory {
+  POLISH
+  COATING
+  CONSUMABLE
+  EQUIPMENT
+  CHEMICAL
+  OTHER
+}
+
+enum MovementType {
+  PURCHASE_IN
+  SALE_OUT
+  ADJUSTMENT
+  RETURN_IN
+}
+
+enum PurchaseStatus {
+  PENDING
+  RECEIVED
+  PARTIAL
 }
 
 model User {
@@ -42,8 +66,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  records   Transaction[] @relation("UserRecords")
-  settlements Settlement[] @relation("UserSettlements")
+  records        Transaction[]   @relation("UserRecords")
+  settlements    Settlement[]    @relation("UserSettlements")
+  stockMovements StockMovement[]
+  purchaseOrders PurchaseOrder[]
 }
 
 model Staff {
@@ -58,12 +84,13 @@ model Staff {
 }
 
 model Agent {
-  id              Int           @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   name            String
   companyName     String?
-  openingBalance  Float         @default(0)
-  isActive        Boolean       @default(true)
+  openingBalance  Float           @default(0)
+  isActive        Boolean         @default(true)
   transactions    Transaction[]
+  purchaseOrders  PurchaseOrder[]
 }
 
 model Transaction {
@@ -110,4 +137,68 @@ model SalarySettlement {
   method        PayMethod     @default(CASH)
   paidAt        DateTime      @default(now())
   transactions  Transaction[]
+}
+
+// ── Inventory ──────────────────────────────────────────────
+
+model InventoryItem {
+  id           Int               @id @default(autoincrement())
+  name         String
+  sku          String?           @unique
+  category     InventoryCategory @default(OTHER)
+  unit         String            @default("pcs") // pcs, L, kg, roll, etc.
+  currentStock Float             @default(0)
+  reorderLevel Float             @default(5)
+  unitCost     Float             @default(0)
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  stockMovements    StockMovement[]
+  purchaseOrderItems PurchaseOrderItem[]
+}
+
+model StockMovement {
+  id              Int            @id @default(autoincrement())
+  itemId          Int
+  item            InventoryItem  @relation(fields: [itemId], references: [id])
+  type            MovementType
+  quantity        Float          // positive = in, negative = out
+  unitCost        Float?         // cost at time of movement
+  note            String?
+  purchaseOrderId Int?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  transactionId   Int?           // optional link to financial Transaction
+  recordedById    String?
+  recordedBy      User?          @relation(fields: [recordedById], references: [id])
+  createdAt       DateTime       @default(now())
+}
+
+model PurchaseOrder {
+  id           Int            @id @default(autoincrement())
+  agentId      Int?           // optional — can purchase without a linked agent
+  agent        Agent?         @relation(fields: [agentId], references: [id])
+  status       PurchaseStatus @default(RECEIVED)
+  totalCost    Float
+  method       PayMethod      @default(CASH)
+  note         String?
+  transactionId Int?          // links to AGENT_PURCHASE transaction in cash flow
+  receivedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  recordedById String?
+  recordedBy   User?          @relation(fields: [recordedById], references: [id])
+
+  items     PurchaseOrderItem[]
+  movements StockMovement[]
+}
+
+model PurchaseOrderItem {
+  id              Int           @id @default(autoincrement())
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  itemId          Int
+  item            InventoryItem @relation(fields: [itemId], references: [id])
+  quantity        Float
+  unitCost        Float
+  totalCost       Float
 }

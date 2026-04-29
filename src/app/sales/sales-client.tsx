@@ -46,19 +46,20 @@ export default function SalesPage({
 
   // Calculate metrics
   let totalCash = 0
-  let totalNetwork = 0
+  let totalNetwork = 0  // includes NETWORK, TABBY, TAMARA
 
   // Group sales for display
   const groups = new Map<string, any>()
   
   filteredSales.forEach(sale => {
+    const isNetworkLike = ['NETWORK', 'TABBY', 'TAMARA'].includes(sale.method)
     // Process metrics
     if (sale.type === 'SALE') {
       if (sale.method === 'CASH') totalCash += sale.amount
-      if (sale.method === 'NETWORK') totalNetwork += sale.amount
+      if (isNetworkLike) totalNetwork += sale.amount
     } else if (sale.type === 'RETURN') {
       if (sale.method === 'CASH') totalCash -= sale.amount
-      if (sale.method === 'NETWORK') totalNetwork -= sale.amount
+      if (isNetworkLike) totalNetwork -= sale.amount
     }
 
     // Grouping strictly by exact ISO timestamp string and cashier ID guarantees split records
@@ -78,7 +79,7 @@ export default function SalesPage({
     const g = groups.get(key)
     g.totalAmount += sale.amount
     if (sale.method === 'CASH') g.cashAmount += sale.amount
-    if (sale.method === 'NETWORK') g.networkAmount += sale.amount
+    if (isNetworkLike) g.networkAmount += sale.amount
     g.methods.add(sale.method)
   })
 
@@ -262,23 +263,24 @@ export default function SalesPage({
             <TableBody>
               {aggregatedSales.map(sale => (
                 <TableRow key={sale.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
-                      sale.type === 'RETURN'
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        : sale.methods.has('CASH') && sale.methods.has('NETWORK')
-                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                          : sale.methods.has('CASH')
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                            : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                    }`}>
-                      {sale.type === 'RETURN' 
-                        ? 'REFUND'
-                        : sale.methods.has('CASH') && sale.methods.has('NETWORK') 
-                          ? 'SPLIT' 
-                          : sale.methods.has('CASH') ? t('cash') : t('network')}
-                    </span>
-                  </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const ms = sale.methods as Set<string>
+                        const isReturn = sale.type === 'RETURN'
+                        const isSplit = ms.has('CASH') && (ms.has('NETWORK') || ms.has('TABBY') || ms.has('TAMARA'))
+                        const hasTabby = ms.has('TABBY') && !ms.has('CASH')
+                        const hasTamara = ms.has('TAMARA') && !ms.has('CASH')
+                        const hasNet = ms.has('NETWORK') && !ms.has('CASH')
+                        let label = isReturn ? 'REFUND' : isSplit ? 'SPLIT' : hasTabby ? 'TABBY' : hasTamara ? 'TAMARA' : hasNet ? t('network') : t('cash')
+                        let cls = isReturn ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : isSplit ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          : hasTabby ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                          : hasTamara ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
+                          : hasNet ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        return <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${cls}`}>{label}</span>
+                      })()}
+                    </TableCell>
                   <TableCell>
                     <div className={`font-bold whitespace-nowrap ${sale.type === 'RETURN' ? 'text-red-600' : ''}`}>
                       {sale.type === 'RETURN' ? '-' : ''}{sale.totalAmount.toFixed(2)}
@@ -304,44 +306,40 @@ export default function SalesPage({
               <div className="flex justify-between items-start">
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm ${
-                      sale.type === 'RETURN'
-                        ? 'bg-red-500 text-white'
-                        : sale.methods.has('CASH') && sale.methods.has('NETWORK')
-                          ? 'bg-orange-500 text-white'
-                          : sale.methods.has('CASH')
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-purple-600 text-white'
-                    }`}>
-                      {sale.type === 'RETURN' ? 'Sales Return' : sale.methods.has('CASH') && sale.methods.has('NETWORK') ? 'Split Payment' : sale.methods.has('CASH') ? 'Cash Sale' : 'Network Sale'}
-                    </span>
+                    {(() => {
+                      const ms = sale.methods as Set<string>
+                      const isReturn = sale.type === 'RETURN'
+                      const isSplit = ms.has('CASH') && (ms.has('NETWORK') || ms.has('TABBY') || ms.has('TAMARA'))
+                      const hasTabby = ms.has('TABBY') && !ms.has('CASH')
+                      const hasTamara = ms.has('TAMARA') && !ms.has('CASH')
+                      const hasNet = ms.has('NETWORK') && !ms.has('CASH')
+                      const label = isReturn ? 'Sales Return' : isSplit ? 'Split Payment' : hasTabby ? 'Tabby' : hasTamara ? 'Tamara' : hasNet ? 'Network' : 'Cash'
+                      const cls = isReturn ? 'bg-red-500' : isSplit ? 'bg-orange-500' : hasTabby ? 'bg-purple-600' : hasTamara ? 'bg-pink-500' : hasNet ? 'bg-blue-600' : 'bg-emerald-600'
+                      return <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm text-white ${cls}`}>{label}</span>
+                    })()}
                   </div>
                   <div className="flex items-center gap-1.5 text-gray-400 font-bold">
-                    <p className="text-[10px] uppercase tracking-tight">
-                      {format(new Date(sale.createdAt), 'MMM dd, yyyy')}
-                    </p>
+                    <p className="text-[10px] uppercase tracking-tight">{format(new Date(sale.createdAt), 'MMM dd, yyyy')}</p>
                     <span className="w-1 h-1 rounded-full bg-gray-300" />
-                    <p className="text-[10px] uppercase tracking-tight">
-                      {format(new Date(sale.createdAt), 'h:mm a')}
-                    </p>
+                    <p className="text-[10px] uppercase tracking-tight">{format(new Date(sale.createdAt), 'h:mm a')}</p>
                   </div>
                 </div>
-                  <div className="text-right">
-                    <p className={`text-2xl font-black tabular-nums leading-none tracking-tight ${sale.type === 'RETURN' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
-                      {sale.type === 'RETURN' ? '-' : ''}{sale.totalAmount.toFixed(2)}
-                    </p>
-                  </div>
+                <div className="text-right">
+                  <p className={`text-2xl font-black tabular-nums leading-none tracking-tight ${sale.type === 'RETURN' ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+                    {sale.type === 'RETURN' ? '-' : ''}{sale.totalAmount.toFixed(2)}
+                  </p>
+                </div>
               </div>
 
-              {sale.methods.has('CASH') && sale.methods.has('NETWORK') && (
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded-2xl border border-blue-100 dark:border-blue-800/30 text-center">
-                    <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest mb-1">Cash</p>
-                    <p className="text-sm font-black text-blue-700 dark:text-blue-300 tabular-nums">{sale.cashAmount.toFixed(2)}</p>
+              {sale.cashAmount > 0 && sale.networkAmount > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 p-2.5 rounded-2xl border border-emerald-100 dark:border-emerald-800/30 text-center">
+                    <p className="text-[9px] text-emerald-500 font-black uppercase tracking-widest mb-1">Cash</p>
+                    <p className="text-sm font-black text-emerald-700 dark:text-emerald-300 tabular-nums">{sale.cashAmount.toFixed(2)}</p>
                   </div>
-                  <div className="bg-purple-50 dark:bg-purple-900/20 p-2.5 rounded-2xl border border-purple-100 dark:border-purple-800/30 text-center">
-                    <p className="text-[9px] text-purple-500 font-black uppercase tracking-widest mb-1">Network</p>
-                    <p className="text-sm font-black text-purple-700 dark:text-purple-300 tabular-nums">{sale.networkAmount.toFixed(2)}</p>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded-2xl border border-blue-100 dark:border-blue-800/30 text-center">
+                    <p className="text-[9px] text-blue-500 font-black uppercase tracking-widest mb-1">Network</p>
+                    <p className="text-sm font-black text-blue-700 dark:text-blue-300 tabular-nums">{sale.networkAmount.toFixed(2)}</p>
                   </div>
                 </div>
               )}
