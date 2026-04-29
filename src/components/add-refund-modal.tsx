@@ -130,152 +130,164 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
           <Undo2 size={16} />
           Refund
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="text-red-600 flex items-center gap-2">
-              <Undo2 size={18} />
-              Process Sales Return / Refund
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="refund-amount">Refund Amount</Label>
-              <Input
-                id="refund-amount"
-                type="number"
-                step="0.01"
-                required
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="text-lg font-bold border-red-300 focus-visible:ring-red-500"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Refund Method</Label>
-              <Select value={method} onValueChange={(v: any) => setMethod(v)}>
-                <SelectTrigger className="border-red-200"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CASH">Cash Refund (Deducts from Drawer)</SelectItem>
-                  <SelectItem value="NETWORK">Network Refund (Deducts from Network Total)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Search Sales Invoice</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={invoiceSearch}
-                  onChange={(e) => setInvoiceSearch(e.target.value)}
-                  placeholder="e.g. INV-1714400000"
-                  className="border-red-200"
-                />
-                <Button type="button" onClick={handleSearchInvoice} disabled={searchingInvoice} className="bg-red-100 text-red-700 hover:bg-red-200">
-                  {searchingInvoice ? 'Searching...' : 'Search'}
-                </Button>
+        <DialogContent className="sm:max-w-[540px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] max-h-[92vh] overflow-y-auto bg-white dark:bg-gray-950">
+          <div className="h-2 w-full bg-gradient-to-r from-red-400 via-rose-500 to-red-600" />
+          <div className="p-8 md:p-10 space-y-8">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-4">
+                  <div className="p-3 bg-red-500/10 text-red-600 dark:text-red-400 rounded-2xl shadow-inner">
+                    <Undo2 size={28} strokeWidth={2.5} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="leading-tight">Refund Process</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Returns & Adjustments</span>
+                  </div>
+                </DialogTitle>
               </div>
-              {invoiceDetails && (
-                <div className="text-xs text-red-600 bg-red-50 p-2 rounded-xl mt-1">
-                  Found Invoice: {invoiceDetails.totalAmount} SAR on {new Date(invoiceDetails.createdAt).toLocaleString()}
-                </div>
-              )}
-            </div>
+            </DialogHeader>
 
-            <div className="grid gap-2">
-              <Label htmlFor="refund-description">{t('description')}</Label>
-              <Input
-                id="refund-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Reason for return..."
-                className="border-red-200"
-              />
-            </div>
-
-            {/* ── Returned Items ── */}
-            <div className="rounded-2xl border border-red-100 overflow-hidden shadow-sm mt-2">
-              <div className="w-full flex items-center justify-between px-4 py-3 bg-red-50/50 border-b border-red-100">
-                <div className="flex items-center gap-2">
-                  <Package size={15} className="text-red-600" />
-                  <span className="text-xs font-black uppercase tracking-widest text-red-700">Restock Items</span>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Invoice Search Section */}
+              <div className="p-6 bg-red-50/50 dark:bg-red-900/10 rounded-[2rem] border border-red-100 dark:border-red-900/30 space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-red-600 dark:text-red-400 ml-1">Search Sales Invoice</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={invoiceSearch}
+                      onChange={(e) => setInvoiceSearch(e.target.value)}
+                      placeholder="e.g. INV-1714400000"
+                      className="h-12 rounded-xl border-transparent bg-white dark:bg-gray-950 focus:border-red-500 font-bold px-4"
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={handleSearchInvoice} 
+                      disabled={searchingInvoice || !invoiceSearch} 
+                      className="h-12 px-6 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[10px]"
+                    >
+                      {searchingInvoice ? '...' : 'Find'}
+                    </Button>
+                  </div>
                 </div>
+                {invoiceDetails && (
+                  <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 rounded-2xl border border-red-200 dark:border-red-900 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black uppercase text-gray-400">Total Paid</span>
+                      <span className="text-lg font-black text-red-600">{invoiceDetails.totalAmount} SAR</span>
+                    </div>
+                    <div className="text-right flex flex-col">
+                      <span className="text-[10px] font-black uppercase text-gray-400">Date</span>
+                      <span className="text-xs font-bold text-gray-600 dark:text-gray-400">{new Date(invoiceDetails.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="p-4 space-y-3">
-                {returnedItems.map((ci, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <div className="flex-1">
-                      <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
-                        <PopoverTrigger
-                          className={cn(
-                            "flex w-full items-center justify-between h-11 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium shadow-sm hover:bg-red-50 transition-colors",
-                            !ci.itemId && "text-muted-foreground"
-                          )}
-                        >
-                          {ci.itemId
-                            ? inventoryList.find((item) => item.id === ci.itemId)?.name
-                            : "Select item to restock..."}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[320px] sm:w-[400px] p-0 rounded-xl shadow-xl border-none">
-                          <Command>
-                            <CommandInput placeholder="Search by name or SKU..." />
-                            <CommandList className="max-h-[250px]">
-                              <CommandEmpty>No item found.</CommandEmpty>
-                              <CommandGroup>
-                                {inventoryList.map((item) => (
+              {/* Amount & Method */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Refund Amount</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-red-600 font-black text-sm">SAR</span>
+                    <Input
+                      type="number" step="0.01" required
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="h-11 pl-11 rounded-xl border-none bg-white dark:bg-gray-950 font-black text-lg tabular-nums text-red-600"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Method</Label>
+                  <Select value={method} onValueChange={(v: any) => setMethod(v)}>
+                    <SelectTrigger className="h-11 rounded-xl border-none bg-white dark:bg-gray-950 font-bold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-none shadow-2xl">
+                      <SelectItem value="CASH" className="font-bold">Cash</SelectItem>
+                      <SelectItem value="NETWORK" className="font-bold">Network</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Items Restock */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Restock Items</Label>
+                  <button
+                    type="button" onClick={addReturnedItem}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-red-500/10 text-red-600 hover:bg-red-500/20 transition-all text-[10px] font-black uppercase"
+                  >
+                    <Plus size={12} strokeWidth={3} /> Add Item
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {returnedItems.map((ci, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm">
+                      <div className="flex-1">
+                        <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
+                          <PopoverTrigger>
+                            <button className="flex w-full items-center justify-between h-10 rounded-xl bg-gray-50 dark:bg-gray-950 px-3 text-xs font-bold truncate">
+                              <span className="truncate">
+                                {ci.itemId ? inventoryList.find(i => i.id === ci.itemId)?.name : "Select Item"}
+                              </span>
+                              <ChevronsUpDown size={14} className="opacity-40 shrink-0" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="p-0 rounded-xl shadow-2xl border-none overflow-hidden">
+                            <Command>
+                              <CommandInput placeholder="Search..." />
+                              <CommandList className="max-h-[200px]">
+                                {inventoryList.map(item => (
                                   <CommandItem
                                     key={item.id}
-                                    value={`${item.name} ${item.sku || ''}`}
                                     onSelect={() => {
                                       updateReturnedItem(index, 'itemId', item.id)
                                       setComboboxOpen(p => ({ ...p, [index]: false }))
                                     }}
-                                    className="py-2.5 font-medium cursor-pointer"
+                                    className="py-2.5 px-4 cursor-pointer"
                                   >
-                                    <Check className={cn("mr-2 h-4 w-4 text-red-600", ci.itemId === item.id ? "opacity-100" : "opacity-0")} />
-                                    <div className="flex flex-col">
-                                      <span>{item.name}</span>
-                                      <span className="text-xs text-gray-500">{item.currentStock} {item.unit} in stock</span>
-                                    </div>
+                                    <span className="font-bold">{item.name}</span>
                                   </CommandItem>
                                 ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="w-20">
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                       <Input
                         type="number" step="0.1" min="0" placeholder="Qty"
                         value={ci.quantity}
                         onChange={e => updateReturnedItem(index, 'quantity', e.target.value)}
-                        className="h-11 rounded-xl text-sm font-bold border-red-200 text-center"
+                        className="w-16 h-10 rounded-xl border-none bg-gray-50 dark:bg-gray-950 font-black text-center text-xs"
                       />
+                      <button type="button" onClick={() => removeReturnedItem(index)} className="text-gray-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={16} strokeWidth={2.5} />
+                      </button>
                     </div>
-                    <button
-                      type="button" onClick={() => removeReturnedItem(index)}
-                      className="p-3 mt-0.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition flex-shrink-0"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button" onClick={addReturnedItem}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold text-red-600 border-2 border-dashed border-red-200 rounded-xl hover:bg-red-50 transition mt-2"
-                >
-                  <Plus size={14} /> Add Restock Item
-                </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <Button type="submit" disabled={loading} className="mt-4 text-white bg-red-600 hover:bg-red-700 font-bold py-6">
-              Confirm Refund
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Reason / Notes</Label>
+                <Input
+                  value={description} onChange={e => setDescription(e.target.value)}
+                  placeholder="Why is this being returned?"
+                  className="h-12 rounded-xl border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/40 focus:bg-white transition-all font-medium px-4"
+                />
+              </div>
+
+              <Button
+                type="submit" disabled={loading}
+                className="w-full h-16 text-lg font-black uppercase tracking-widest text-white bg-gradient-to-r from-red-600 to-rose-700 rounded-3xl shadow-2xl shadow-red-500/20 active:scale-[0.98] transition-all mt-4"
+              >
+                {loading ? 'Processing...' : 'Confirm Refund'}
+              </Button>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </>

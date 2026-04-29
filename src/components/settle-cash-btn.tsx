@@ -76,96 +76,110 @@ export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string 
       >
         {t('settleCash')}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-none rounded-[2rem]">
-        <div className="bg-gradient-to-br from-gray-900 to-black p-8 text-white relative">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl rounded-[3rem] bg-white dark:bg-gray-950">
+        <div className="bg-gradient-to-br from-gray-900 via-slate-900 to-black p-10 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full -mr-32 -mt-32 blur-3xl animate-pulse" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full -ml-24 -mb-24 blur-3xl" />
+          
           <DialogHeader className="relative text-left">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-4">
-              <Banknote size={24} className="text-emerald-400" />
+            <div className="w-16 h-16 rounded-[1.5rem] bg-white/10 flex items-center justify-center mb-6 shadow-inner border border-white/5">
+              <Banknote size={32} className="text-emerald-400" strokeWidth={2.5} />
             </div>
-            <DialogTitle className="text-2xl font-black">{t('finalizeSettlement')}</DialogTitle>
-            <DialogDescription className="text-gray-400 mt-2 leading-relaxed">
+            <DialogTitle className="text-3xl font-black tracking-tight">{t('finalizeSettlement')}</DialogTitle>
+            <DialogDescription className="text-gray-400 mt-3 text-base leading-relaxed">
               {t('verifyPhysicalCash')}
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="p-8 space-y-8 bg-white dark:bg-gray-950">
-          <div className="flex flex-col gap-3 p-5 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-inner">
-            <div className="flex items-center gap-2 text-gray-400">
-              <Calculator size={14} />
-              <Label className="text-[10px] uppercase font-black tracking-widest">{t('systemExpectedCash')}</Label>
+        <div className="p-10 space-y-10">
+          <div className="relative group">
+            <div className="absolute -inset-4 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-900/50 dark:to-gray-900/20 rounded-[2.5rem] -z-10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2 text-gray-400">
+                  <Calculator size={14} strokeWidth={3} />
+                  <Label className="text-[10px] uppercase font-black tracking-[0.2em]">{t('systemExpectedCash')}</Label>
+                </div>
+                <span className="text-[10px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full">System Record</span>
+              </div>
+              <p className="text-6xl font-black text-gray-900 dark:text-white tabular-nums tracking-tighter">
+                {cashInDrawer.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                <span className="text-xl ml-3 text-gray-300 dark:text-gray-700 italic font-medium tracking-normal">SAR</span>
+              </p>
             </div>
-            <p className="text-4xl font-black text-gray-900 dark:text-white tabular-nums">
-              {cashInDrawer.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </p>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="actual-cash" className="font-black text-xs uppercase tracking-widest text-gray-500">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <Label htmlFor="actual-cash" className="font-black text-[10px] uppercase tracking-[0.2em] text-gray-500">
                 {t('physicallyCountedCash')}
               </Label>
               {actualCount && (
-                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${diff === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {diff === 0 ? 'Perfect Match' : 'Discrepancy Found'}
-                </span>
+                <div className={cn(
+                  'text-[9px] font-black uppercase px-3 py-1 rounded-full animate-in fade-in zoom-in-90',
+                  diff === 0 ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
+                )}>
+                  {diff === 0 ? 'Perfect Reconciliation' : 'Discrepancy Detected'}
+                </div>
               )}
             </div>
             <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors">
-                <Banknote size={20} />
+              <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-500 transition-all">
+                <Banknote size={24} strokeWidth={2.5} />
               </div>
               <Input
                 id="actual-cash"
                 type="number"
-                placeholder="0.00"
+                placeholder="Enter actual amount..."
                 value={actualCount}
                 onChange={(e) => setActualCount(e.target.value)}
-                className="text-2xl font-black h-16 pl-12 bg-white dark:bg-black border-2 border-gray-100 dark:border-gray-800 focus:border-blue-500 rounded-2xl transition-all shadow-sm focus:shadow-xl focus:shadow-blue-500/10"
+                className="text-3xl font-black h-20 pl-16 rounded-[1.5rem] bg-gray-50 dark:bg-gray-900 border-2 border-transparent focus:bg-white dark:focus:bg-black focus:border-blue-500 transition-all shadow-inner focus:shadow-2xl focus:shadow-blue-500/10"
                 autoFocus
               />
             </div>
           </div>
 
           {actualCount && (
-            <div className={`p-5 rounded-3xl border-2 flex justify-between items-center animate-in zoom-in-95 duration-300 ${
+            <div className={cn(
+              'p-6 rounded-[2rem] border-2 flex justify-between items-center animate-in slide-in-from-bottom-4 duration-500',
               diff === 0 
-                ? 'bg-emerald-50/50 border-emerald-100 text-emerald-700 dark:bg-emerald-900/10 dark:border-emerald-900/30' 
-                : 'bg-amber-50/50 border-amber-100 text-amber-700 dark:bg-amber-900/10 dark:border-amber-900/30'
-            }`}>
-              <div className="flex items-center gap-3">
-                {diff === 0 ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
+                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-600' 
+                : 'bg-amber-500/5 border-amber-500/20 text-amber-600'
+            )}>
+              <div className="flex items-center gap-4">
+                <div className={cn('p-3 rounded-xl', diff === 0 ? 'bg-emerald-500/10' : 'bg-amber-500/10')}>
+                  {diff === 0 ? <CheckCircle2 size={28} /> : <AlertCircle size={28} />}
+                </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('discrepancy')}</span>
-                  <span className="text-xl font-black tabular-nums">
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Variance Amount</span>
+                  <span className="text-2xl font-black tabular-nums tracking-tight">
                     {diff > 0 ? '+' : ''}{diff.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <span className="text-xs ml-1.5 opacity-60">SAR</span>
                   </span>
                 </div>
               </div>
             </div>
           )}
-        </div>
 
-        <DialogFooter className="p-8 pt-0 bg-white dark:bg-gray-950">
           <Button 
-            className="w-full h-16 bg-blue-600 hover:bg-blue-700 text-white font-black text-lg rounded-2xl shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            className="w-full h-20 bg-blue-600 hover:bg-blue-700 text-white font-black text-xl rounded-[1.5rem] shadow-2xl shadow-blue-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-4 group"
             onClick={handleSettle}
             disabled={loading || !actualCount}
           >
             {loading ? (
               <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
                 {t('processing')}
               </>
             ) : (
               <>
-                {t('confirmHandover')}
-                <CheckCircle2 size={20} />
+                <span>{t('confirmHandover')}</span>
+                <CheckCircle2 size={24} className="group-hover:scale-110 transition-transform" />
               </>
             )}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )

@@ -151,25 +151,30 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
           {t('addSales')}
         </DialogTrigger>
 
-        <DialogContent className="sm:max-w-[520px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto">
-          {/* Coloured accent top bar — changes with payment method */}
-          <div className={cn('h-2 w-full transition-all duration-500', selectedMethod.bg)} />
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] max-h-[92vh] overflow-y-auto bg-white dark:bg-gray-950">
+          {/* Status bar based on payment method */}
+          <div className={cn('h-2 w-full transition-all duration-700', selectedMethod.bg)} />
 
-          <div className="p-6 space-y-6">
+          <div className="p-8 md:p-10 space-y-8">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-3">
-                <div className={cn('p-2 rounded-xl', `bg-${payMode === 'CASH' ? 'emerald' : payMode === 'NETWORK' ? 'blue' : payMode === 'SPLIT' ? 'orange' : payMode === 'TABBY' ? 'purple' : 'pink'}-100 dark:bg-opacity-20`)}>
-                  <Receipt size={22} className={selectedMethod.color} />
-                </div>
-                {t('addSales')}
-              </DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-4">
+                  <div className={cn('p-3 rounded-2xl shadow-inner', `bg-${payMode === 'CASH' ? 'emerald' : payMode === 'NETWORK' ? 'blue' : payMode === 'SPLIT' ? 'orange' : payMode === 'TABBY' ? 'purple' : 'pink'}-500/10 dark:bg-opacity-20`)}>
+                    <Receipt size={28} className={selectedMethod.color} strokeWidth={2.5} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="leading-tight">{t('addSales')}</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Transaction Entry</span>
+                  </div>
+                </DialogTitle>
+              </div>
             </DialogHeader>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-8">
               {/* ── Payment Method Picker ── */}
-              <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('paymentMethod')}</Label>
-                <div className="grid grid-cols-5 gap-1.5">
+              <div className="space-y-3">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('paymentMethod')}</Label>
+                <div className="grid grid-cols-5 gap-2">
                   {PAY_METHODS.map(({ mode, label, icon: Icon, color, border }) => {
                     const active = payMode === mode
                     return (
@@ -178,14 +183,14 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                         type="button"
                         onClick={() => setPayMode(mode)}
                         className={cn(
-                          'flex flex-col items-center gap-1.5 p-2.5 rounded-2xl border-2 transition-all duration-200',
+                          'group flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all duration-300',
                           active
-                            ? `${border} bg-white dark:bg-gray-900 shadow-lg scale-[1.04]`
-                            : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 hover:border-gray-300 dark:hover:border-gray-600'
+                            ? `${border} bg-white dark:bg-gray-900 shadow-xl scale-[1.05] z-10`
+                            : 'border-transparent bg-gray-50 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-800'
                         )}
                       >
-                        <Icon size={18} className={active ? color : 'text-gray-400'} />
-                        <span className={cn('text-[10px] font-black uppercase tracking-tight', active ? color : 'text-gray-400')}>
+                        <Icon size={20} className={active ? color : 'text-gray-400 group-hover:text-gray-600 transition-colors'} />
+                        <span className={cn('text-[9px] font-black uppercase tracking-tight', active ? color : 'text-gray-400 group-hover:text-gray-600')}>
                           {label}
                         </span>
                       </button>
@@ -194,112 +199,107 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                 </div>
               </div>
 
-              {/* ── Amount Fields ── */}
-              {payMode === 'SPLIT' ? (
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Total Amount</Label>
-                    <Input
-                      type="number" step="0.01" min="0" required placeholder="0.00"
-                      value={total} onChange={e => setTotal(e.target.value)}
-                      className="h-14 text-2xl font-black rounded-2xl border-2 border-orange-200 focus:border-orange-500 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase tracking-widest text-gray-400 flex items-center gap-1.5">
-                        <Banknote size={12} className="text-emerald-500" /> Cash
-                      </Label>
-                      <Input
-                        type="number" step="0.01" min="0" placeholder="0.00"
-                        value={cashAmt} onChange={e => setCashAmt(e.target.value)}
-                        className="h-11 font-bold rounded-xl border-2 border-emerald-200 focus:border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 dark:border-emerald-800"
-                      />
+              {/* ── Main Amount Section ── */}
+              <div className="relative overflow-hidden p-8 rounded-[2rem] bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 shadow-inner">
+                <div className="relative z-10">
+                  {payMode === 'SPLIT' ? (
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-orange-500 ml-1">Total Amount</Label>
+                        <div className="relative">
+                          <span className="absolute left-5 top-1/2 -translate-y-1/2 text-orange-400 font-black text-xl">SAR</span>
+                          <Input
+                            type="number" step="0.01" min="0" required placeholder="0.00"
+                            value={total} onChange={e => setTotal(e.target.value)}
+                            className="h-20 text-4xl pl-16 font-black rounded-3xl border-transparent bg-white dark:bg-gray-950 focus:border-orange-500 shadow-sm transition-all tabular-nums text-orange-600"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2 p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-2">
+                            <Banknote size={14} /> Cash Part
+                          </Label>
+                          <Input
+                            type="number" step="0.01" min="0" placeholder="0.00"
+                            value={cashAmt} onChange={e => setCashAmt(e.target.value)}
+                            className="h-12 rounded-xl border-transparent bg-white dark:bg-gray-950 focus:border-emerald-500 font-black text-xl tabular-nums"
+                          />
+                        </div>
+                        <div className="space-y-2 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 flex items-center gap-2">
+                            <Wifi size={14} /> Network Part
+                          </Label>
+                          <Input
+                            readOnly value={netAmt}
+                            className="h-12 rounded-xl border-transparent bg-blue-50/50 dark:bg-blue-900/20 font-black text-xl tabular-nums text-blue-600"
+                          />
+                        </div>
+                      </div>
                     </div>
+                  ) : (
                     <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase tracking-widest text-gray-400 flex items-center gap-1.5">
-                        <Wifi size={12} className="text-blue-500" /> Network
+                      <Label className={cn('text-[10px] font-black uppercase tracking-widest ml-1', selectedMethod.color)}>
+                        {t('totalSales')}
                       </Label>
-                      <Input
-                        readOnly value={netAmt} tabIndex={-1}
-                        className="h-11 font-bold rounded-xl border-2 border-blue-100 bg-blue-50/60 dark:bg-blue-900/10 dark:border-blue-900 text-blue-700 dark:text-blue-400"
-                      />
-                    </div>
-                  </div>
-                  {parseFloat(total) > 0 && (
-                    <div className="flex items-center justify-between text-sm px-1">
-                      <span className="text-gray-400 font-medium">Balance check</span>
-                      <span className={cn(
-                        'font-black tabular-nums',
-                        Math.abs(parseFloat(total) - ((parseFloat(cashAmt) || 0) + (parseFloat(netAmt) || 0))) < 0.01
-                          ? 'text-emerald-600' : 'text-red-500'
-                      )}>
-                        {((parseFloat(cashAmt) || 0) + (parseFloat(netAmt) || 0)).toFixed(2)} / {parseFloat(total).toFixed(2)}
-                      </span>
+                      <div className="relative">
+                        <span className={cn('absolute left-5 top-1/2 -translate-y-1/2 font-black text-xl opacity-40', selectedMethod.color)}>SAR</span>
+                        <Input
+                          type="number" step="0.01" min="0" required placeholder="0.00"
+                          value={total} onChange={e => setTotal(e.target.value)}
+                          className={cn(
+                            'h-20 text-4xl pl-16 font-black rounded-3xl border-transparent bg-white dark:bg-gray-950 shadow-sm transition-all tabular-nums',
+                            payMode === 'CASH'    ? 'focus:border-emerald-500 text-emerald-600' :
+                            payMode === 'NETWORK' ? 'focus:border-blue-500 text-blue-600' :
+                            payMode === 'TABBY'   ? 'focus:border-purple-500 text-purple-600' :
+                                                   'focus:border-pink-500 text-pink-600'
+                          )}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('totalSales')}</Label>
-                  <Input
-                    type="number" step="0.01" min="0" required placeholder="0.00"
-                    value={total} onChange={e => setTotal(e.target.value)}
-                    className={cn(
-                      'h-14 text-2xl font-black rounded-2xl border-2 transition-colors',
-                      payMode === 'CASH'    ? 'border-emerald-200 focus:border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 dark:border-emerald-800' :
-                      payMode === 'NETWORK' ? 'border-blue-200 focus:border-blue-500 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800' :
-                      payMode === 'TABBY'   ? 'border-purple-200 focus:border-purple-500 bg-purple-50 dark:bg-purple-900/10 dark:border-purple-800' :
-                                             'border-pink-200 focus:border-pink-500 bg-pink-50 dark:bg-pink-900/10 dark:border-pink-800'
-                    )}
-                  />
-                </div>
-              )}
-
-              {/* ── Description ── */}
-              <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('description')}</Label>
-                <Input
-                  placeholder="e.g. Full detail package — Toyota Camry"
-                  value={description} onChange={e => setDescription(e.target.value)}
-                  className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-medium"
-                />
               </div>
 
-              {/* ── Items Used (mandatory) ── */}
-              <div className="rounded-2xl border border-teal-100 dark:border-teal-900 overflow-hidden shadow-sm">
-                <div className="w-full flex items-center justify-between px-4 py-3 bg-teal-50/50 dark:bg-teal-900/20 border-b border-teal-100 dark:border-teal-900">
-                  <div className="flex items-center gap-2">
-                    <Package size={15} className="text-teal-600" />
-                    <span className="text-xs font-black uppercase tracking-widest text-teal-700 dark:text-teal-400">Invoice Items <span className="text-red-500">*</span></span>
-                    {consumedItems.filter(ci => ci.itemId > 0).length > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
-                        {consumedItems.filter(ci => ci.itemId > 0).length}
-                      </span>
-                    )}
-                  </div>
+              {/* ── Items Selection ── */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Inventory Items</Label>
+                  <button
+                    type="button" onClick={addConsumedItem}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-teal-500/10 text-teal-600 hover:bg-teal-500/20 transition-all text-[10px] font-black uppercase tracking-wider"
+                  >
+                    <Plus size={12} strokeWidth={3} /> {t('addSales')}
+                  </button>
                 </div>
 
-                <div className="p-4 space-y-3 bg-white dark:bg-gray-900">
+                <div className="space-y-3">
                   {consumedItems.map((ci, index) => (
-                    <div key={index} className="flex flex-col sm:flex-row items-start gap-2">
+                    <div key={index} className="group relative flex flex-col sm:flex-row items-center gap-3 p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl shadow-sm hover:shadow-md transition-all">
                       <div className="w-full sm:flex-1">
                         <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
-                          <PopoverTrigger
-                            className={cn(
-                              "flex w-full items-center justify-between h-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm font-medium shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
-                              !ci.itemId && "text-muted-foreground"
-                            )}
-                          >
-                            {ci.itemId
-                              ? inventoryList.find((item) => item.id === ci.itemId)?.name
-                              : t('selectItem')}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          <PopoverTrigger>
+                            <button
+                              className={cn(
+                                "flex w-full items-center justify-between h-12 rounded-2xl border-none bg-gray-50 dark:bg-gray-950 px-4 py-2 text-sm font-bold shadow-inner transition-colors",
+                                !ci.itemId && "text-gray-400"
+                              )}
+                            >
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <Package size={16} className="text-teal-500 shrink-0" />
+                                <span className="truncate">
+                                  {ci.itemId
+                                    ? inventoryList.find((item) => item.id === ci.itemId)?.name
+                                    : t('selectItem')}
+                                </span>
+                              </div>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
+                            </button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-[320px] sm:w-[400px] p-0 rounded-xl shadow-xl border-none">
+                          <PopoverContent className="w-[320px] sm:w-[400px] p-0 rounded-2xl shadow-2xl border-none overflow-hidden">
                             <Command>
-                              <CommandInput placeholder="Search by name or SKU..." />
-                              <CommandList className="max-h-[250px]">
+                              <CommandInput placeholder="Search items..." className="h-12" />
+                              <CommandList className="max-h-[300px]">
                                 <CommandEmpty>No item found.</CommandEmpty>
                                 <CommandGroup>
                                   {inventoryList.map((item) => (
@@ -311,17 +311,14 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                                         setTimeout(() => updateConsumedItem(index, 'price', item.sellingPrice.toString()), 0)
                                         setComboboxOpen(p => ({ ...p, [index]: false }))
                                       }}
-                                      className="py-2.5 font-medium cursor-pointer"
+                                      className="py-3 px-4 cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-950"
                                     >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4 text-teal-600",
-                                          ci.itemId === item.id ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
+                                      <Check className={cn("mr-2 h-4 w-4 text-teal-600", ci.itemId === item.id ? "opacity-100" : "opacity-0")} />
                                       <div className="flex flex-col">
-                                        <span>{item.name} {item.sku && <span className="text-gray-400 text-xs ml-1">({item.sku})</span>}</span>
-                                        <span className="text-xs text-gray-500">{item.currentStock} {item.unit} left • {item.sellingPrice} SAR</span>
+                                        <span className="font-bold">{item.name}</span>
+                                        <span className="text-[10px] text-gray-500 font-black uppercase tracking-tight">
+                                          {item.currentStock} {item.unit} available • {item.sellingPrice} SAR
+                                        </span>
                                       </div>
                                     </CommandItem>
                                   ))}
@@ -331,55 +328,68 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                           </PopoverContent>
                         </Popover>
                       </div>
-                      <div className="flex gap-2 w-full sm:w-auto items-center">
-                        <Input
-                          type="number" step="0.1" min="0" placeholder="Qty"
-                          value={ci.quantity}
-                          onChange={e => updateConsumedItem(index, 'quantity', e.target.value)}
-                          className="flex-1 sm:flex-none sm:w-20 h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center"
-                        />
-                        <Input
-                          type="number" step="0.01" min="0" placeholder="Price"
-                          value={ci.price}
-                          onChange={e => updateConsumedItem(index, 'price', e.target.value)}
-                          className="flex-1 sm:flex-none sm:w-28 h-11 rounded-xl text-sm font-bold border-gray-200 dark:border-gray-700 text-center text-teal-600 dark:text-teal-400"
-                        />
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <div className="flex-1 sm:w-20">
+                          <Input
+                            type="number" step="0.1" min="0" placeholder="Qty"
+                            value={ci.quantity}
+                            onChange={e => updateConsumedItem(index, 'quantity', e.target.value)}
+                            className="h-12 rounded-2xl border-none bg-gray-50 dark:bg-gray-950 shadow-inner font-black text-center"
+                          />
+                        </div>
+                        <div className="flex-1 sm:w-28">
+                          <Input
+                            type="number" step="0.01" min="0" placeholder="Price"
+                            value={ci.price}
+                            onChange={e => updateConsumedItem(index, 'price', e.target.value)}
+                            className="h-12 rounded-2xl border-none bg-teal-500/5 dark:bg-teal-500/10 shadow-inner font-black text-center text-teal-600"
+                          />
+                        </div>
                         <button
                           type="button" onClick={() => removeConsumedItem(index)}
-                          className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition flex-shrink-0"
+                          className="p-3 text-gray-300 hover:text-red-500 transition-colors"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={20} strokeWidth={2.5} />
                         </button>
                       </div>
                     </div>
                   ))}
-                  <button
-                    type="button" onClick={addConsumedItem}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold text-teal-600 dark:text-teal-400 border-2 border-dashed border-teal-200 dark:border-teal-800 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition mt-2"
-                  >
-                    <Plus size={14} /> Add Another Item
-                  </button>
                 </div>
+              </div>
+
+              {/* ── Description ── */}
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('description')}</Label>
+                <Input
+                  placeholder="e.g. Full detail package — Toyota Camry"
+                  value={description} onChange={e => setDescription(e.target.value)}
+                  className="h-14 rounded-2xl border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/40 focus:bg-white dark:focus:bg-gray-900 transition-all font-medium px-5"
+                />
               </div>
 
               {/* ── Submit ── */}
               <Button
                 type="submit" disabled={loading}
                 className={cn(
-                  'w-full h-13 text-base font-black uppercase tracking-widest text-white rounded-2xl shadow-xl active:scale-[0.98] transition-all',
-                  payMode === 'CASH'    ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-emerald-500/20' :
-                  payMode === 'NETWORK' ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-blue-500/20' :
-                  payMode === 'SPLIT'   ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/20' :
-                  payMode === 'TABBY'   ? 'bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 shadow-purple-500/20' :
-                                         'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-pink-500/20'
+                  'w-full h-18 text-lg font-black uppercase tracking-widest text-white rounded-3xl shadow-2xl active:scale-[0.98] transition-all duration-500 mt-6',
+                  payMode === 'CASH'    ? 'bg-gradient-to-r from-emerald-500 to-emerald-700 shadow-emerald-500/30' :
+                  payMode === 'NETWORK' ? 'bg-gradient-to-r from-blue-500 to-blue-700 shadow-blue-500/30' :
+                  payMode === 'SPLIT'   ? 'bg-gradient-to-r from-orange-500 to-orange-700 shadow-orange-500/30' :
+                  payMode === 'TABBY'   ? 'bg-gradient-to-r from-purple-500 to-purple-700 shadow-purple-500/30' :
+                                         'bg-gradient-to-r from-pink-500 to-pink-700 shadow-pink-500/30'
                 )}
               >
                 {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
                     {t('processing')}
                   </div>
-                ) : `Record ${selectedMethod.label} Sale`}
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Check className="w-6 h-6" />
+                    <span>Record {selectedMethod.label} Sale</span>
+                  </div>
+                )}
               </Button>
             </form>
           </div>

@@ -131,6 +131,7 @@ export const en = {
   quantityUsed: 'Qty Used',
   editItem: 'Edit Item',
   deactivate: 'Deactivate',
+  inventoryManagement: 'Inventory Management',
 }
 
 export const ar = {
@@ -266,4 +267,5 @@ export const ar = {
   quantityUsed: 'الكمية المستخدمة',
   editItem: 'تعديل',
   deactivate: 'تعطيل',
+  inventoryManagement: 'إدارة المخزون',
 }

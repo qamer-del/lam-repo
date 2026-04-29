@@ -43,84 +43,120 @@ export function ViewInvoiceModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-emerald-700">
-            <Receipt size={18} />
-            Invoice Details
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white dark:bg-gray-950">
+        <div className="h-2 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600" />
         
-        {loading ? (
-          <div className="py-10 flex justify-center"><ModernLoader /></div>
-        ) : details ? (
-          <div className="space-y-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Invoice Number</p>
-                <p className="font-mono text-sm font-bold text-gray-900">{details.invoiceNumber}</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Date</p>
-                <p className="text-sm font-bold text-gray-900">{format(new Date(details.createdAt), 'PPp')}</p>
-              </div>
+        <div className="p-8 md:p-10 space-y-8">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-4">
+                <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl shadow-inner">
+                  <Receipt size={28} strokeWidth={2.5} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="leading-tight">Invoice Details</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Digital Receipt</span>
+                </div>
+              </DialogTitle>
             </div>
+          </DialogHeader>
 
-            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex justify-between items-center">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Total Amount</p>
-                <p className="text-2xl font-black text-emerald-700 tabular-nums">{details.totalAmount.toFixed(2)} SAR</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Methods</p>
-                <div className="flex gap-1 justify-end flex-wrap">
-                  {details.transactions.map((t: any) => (
-                    <span key={t.id} className="text-xs font-bold bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-md">
-                      {t.method} ({t.amount.toFixed(2)})
-                    </span>
-                  ))}
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-4">
+              <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin" />
+              <p className="text-xs font-black uppercase tracking-widest text-emerald-600 animate-pulse">Loading Receipt</p>
+            </div>
+          ) : details ? (
+            <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
+              {/* Header Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Invoice #</p>
+                  <p className="font-mono text-sm font-black text-gray-900 dark:text-white">{details.invoiceNumber}</p>
+                </div>
+                <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Issued On</p>
+                  <p className="text-sm font-black text-gray-900 dark:text-white leading-tight">
+                    {format(new Date(details.createdAt), 'MMM dd, yyyy')}<br/>
+                    <span className="text-[10px] opacity-50">{format(new Date(details.createdAt), 'hh:mm a')}</span>
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {details.description && (
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Description / Notes</p>
-                <p className="text-sm text-gray-700">{details.description}</p>
-              </div>
-            )}
-
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Package size={15} className="text-gray-500" />
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-700">Items Included</h3>
-              </div>
-              {details.items && details.items.length > 0 ? (
-                <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-                  {details.items.map((item: any, i: number) => (
-                    <div key={i} className="flex justify-between items-center p-3 bg-white">
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">{item.name}</p>
-                        {item.sku && <p className="text-xs text-gray-500 font-mono">{item.sku}</p>}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-gray-900">{item.quantitySold} <span className="text-xs font-normal text-gray-500">{item.unit}</span></p>
-                      </div>
+              {/* Total Section */}
+              <div className="relative overflow-hidden p-8 rounded-[2rem] bg-emerald-600 text-white shadow-xl shadow-emerald-600/20">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+                <div className="relative z-10 flex justify-between items-end">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100 mb-2">Grand Total</p>
+                    <p className="text-5xl font-black tabular-nums tracking-tighter">
+                      {details.totalAmount.toFixed(2)}
+                      <span className="text-lg ml-2 opacity-80 italic">SAR</span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100 mb-2">Method</p>
+                    <div className="flex gap-2 justify-end flex-wrap">
+                      {details.transactions.map((t: any) => (
+                        <span key={t.id} className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full uppercase tracking-wider">
+                          {t.method}
+                        </span>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              ) : (
-                <div className="text-center p-6 bg-gray-50 rounded-xl border border-gray-100 border-dashed">
-                  <p className="text-sm text-gray-500">No items recorded for this invoice.</p>
+              </div>
+
+              {/* Items Table */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 px-1">
+                  <Package size={16} className="text-gray-400" />
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Purchased Items</h3>
+                </div>
+                
+                {details.items && details.items.length > 0 ? (
+                  <div className="space-y-3">
+                    {details.items.map((item: any, i: number) => (
+                      <div key={i} className="group flex justify-between items-center p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl hover:border-emerald-200 transition-all shadow-sm">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-950 flex items-center justify-center text-xs font-black text-gray-400 group-hover:text-emerald-500 transition-colors">
+                            {i + 1}
+                          </div>
+                          <div>
+                            <p className="font-black text-gray-900 dark:text-white leading-tight">{item.name}</p>
+                            {item.sku && <p className="text-[10px] text-gray-400 font-mono mt-0.5">{item.sku}</p>}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.quantitySold}</p>
+                          <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">{item.unit}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center p-10 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border-2 border-dashed border-gray-100 dark:border-gray-800">
+                    <p className="text-sm font-bold text-gray-400">No items found.</p>
+                  </div>
+                )}
+              </div>
+
+              {details.description && (
+                <div className="p-6 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-2">Notes</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 italic">"{details.description}"</p>
                 </div>
               )}
             </div>
-          </div>
-        ) : (
-          <div className="py-10 text-center text-gray-500">
-            Invoice details not found or not a sales invoice.
-          </div>
-        )}
+          ) : (
+            <div className="py-20 text-center space-y-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto text-gray-400">
+                <Receipt size={32} />
+              </div>
+              <p className="text-sm font-bold text-gray-500">Invoice not found.</p>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )

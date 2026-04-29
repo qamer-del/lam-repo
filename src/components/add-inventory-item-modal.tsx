@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Package } from 'lucide-react'
+import { Plus, Package, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -137,149 +137,138 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
       {loading && <ModernLoader />}
       <Dialog open={open} onOpenChange={handleClose}>
         {trigger}
-        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
-          <div className="h-2 w-full bg-gradient-to-r from-teal-500 to-emerald-600" />
-          <div className="p-6 md:p-8 space-y-6">
+        <DialogContent className="sm:max-w-[540px] p-0 overflow-hidden border-none shadow-2xl rounded-[2rem] bg-white dark:bg-gray-950">
+          <div className="h-2 w-full bg-gradient-to-r from-teal-400 via-emerald-500 to-teal-600" />
+          <div className="p-8 md:p-10 space-y-8">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-3">
-                <div className="p-2 bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-xl">
-                  <Package size={22} />
-                </div>
-                {isEdit ? t('editItem') : t('addItem')}
-              </DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-4">
+                  <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-2xl shadow-inner">
+                    <Package size={28} strokeWidth={2.5} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="leading-tight">{isEdit ? t('editItem') : t('addItem')}</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">{t('inventoryManagement')}</span>
+                  </div>
+                </DialogTitle>
+              </div>
             </DialogHeader>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Name */}
-              <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('itemName')}</Label>
-                <Input
-                  required
-                  placeholder="e.g. Meguiar's G17 Polish"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-medium"
-                />
-              </div>
-
-              {/* SKU */}
-              <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('sku')}</Label>
-                <Input
-                  placeholder="e.g. POL-001 (optional)"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-medium"
-                />
-              </div>
-
-              {/* Category + Unit */}
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Main Info Section */}
+              <div className="grid gap-6 p-6 bg-gray-50/50 dark:bg-gray-900/30 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-inner">
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('category')}</Label>
-                  <Select value={category} onValueChange={(v: string | null) => { if (v) setCategory(v as InventoryCategory) }}>
-                    <SelectTrigger className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-medium">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-none shadow-xl">
-                      {CATEGORIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value} className="font-medium py-2.5">
-                          {c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('unit')}</Label>
-                  <Select value={unit} onValueChange={(v: string | null) => { if (v) setUnit(v) }}>
-                    <SelectTrigger className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-medium">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-none shadow-xl">
-                      {UNITS.map((u) => (
-                        <SelectItem key={u} value={u} className="font-medium py-2.5">
-                          {u}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Unit Cost + Reorder Level */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('unitCost')}</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('itemName')}</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
                     required
-                    placeholder="0.00"
-                    value={unitCost}
-                    onChange={(e) => setUnitCost(e.target.value)}
-                    className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-bold"
+                    placeholder="e.g. Meguiar's G17 Polish"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-14 rounded-2xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-teal-500 focus:ring-teal-500/10 shadow-sm text-lg font-bold transition-all px-5"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('reorderLevel')}</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    required
-                    placeholder="5"
-                    value={reorderLevel}
-                    onChange={(e) => setReorderLevel(e.target.value)}
-                    className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-bold"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('sku')}</Label>
+                    <Input
+                      placeholder="POL-001"
+                      value={sku}
+                      onChange={(e) => setSku(e.target.value)}
+                      className="h-12 rounded-xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-teal-500 font-bold transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('category')}</Label>
+                    <Select value={category} onValueChange={(v: string | null) => { if (v) setCategory(v as InventoryCategory) }}>
+                      <SelectTrigger className="h-12 rounded-xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-teal-500 font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-none shadow-2xl p-2">
+                        {CATEGORIES.map((c) => (
+                          <SelectItem key={c.value} value={c.value} className="rounded-lg py-3 font-bold">
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
-              {/* Cost Includes VAT + Selling Price */}
+              {/* Pricing & Stock Section */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 flex flex-col justify-end">
-                  <label className="flex items-center gap-2 cursor-pointer h-11 px-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <div className="p-5 bg-teal-50/30 dark:bg-teal-900/10 rounded-[1.5rem] border border-teal-100 dark:border-teal-900/30 space-y-3">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-teal-600 dark:text-teal-400 ml-1">{t('unitCost')}</Label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-teal-600 font-black text-sm">SAR</span>
+                    <Input
+                      type="number" step="0.01" min="0" required
+                      value={unitCost}
+                      onChange={(e) => setUnitCost(e.target.value)}
+                      className="h-12 pl-12 rounded-xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-teal-500 font-black text-xl tabular-nums"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer pt-1 opacity-80 hover:opacity-100 transition-opacity">
                     <input 
                       type="checkbox"
                       checked={costIncludesVat}
                       onChange={(e) => setCostIncludesVat(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                      className="w-4 h-4 rounded border-teal-200 text-teal-600 focus:ring-teal-500"
                     />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Cost includes VAT</span>
+                    <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-tight">Incl. VAT</span>
                   </label>
                 </div>
 
+                <div className="p-5 bg-emerald-50/30 dark:bg-emerald-900/10 rounded-[1.5rem] border border-emerald-100 dark:border-emerald-900/30 space-y-3">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 ml-1">Selling Price</Label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 font-black text-sm">SAR</span>
+                    <Input
+                      type="number" step="0.01" min="0" required
+                      value={sellingPrice}
+                      onChange={(e) => setSellingPrice(e.target.value)}
+                      className="h-12 pl-12 rounded-xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-emerald-500 font-black text-xl tabular-nums text-emerald-600 dark:text-emerald-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Advanced Settings */}
+              <div className="grid grid-cols-2 gap-4 px-2">
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">Selling Price</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('unit')}</Label>
+                  <Select value={unit} onValueChange={(v: string | null) => { if (v) setUnit(v) }}>
+                    <SelectTrigger className="h-11 rounded-xl border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 font-bold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl p-1">
+                      {UNITS.map((u) => (
+                        <SelectItem key={u} value={u} className="rounded-lg py-2 font-medium">{u}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('reorderLevel')}</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    placeholder="0.00"
-                    value={sellingPrice}
-                    onChange={(e) => setSellingPrice(e.target.value)}
-                    className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-bold text-teal-600 dark:text-teal-400"
+                    type="number" step="0.1" min="0" required
+                    value={reorderLevel}
+                    onChange={(e) => setReorderLevel(e.target.value)}
+                    className="h-11 rounded-xl border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 font-bold text-center"
                   />
                 </div>
               </div>
 
-              {/* Initial Stock — only on create */}
               {!isEdit && (
-                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('initialStock')}</Label>
+                <div className="p-6 bg-blue-50/30 dark:bg-blue-900/10 rounded-[1.5rem] border border-blue-100 dark:border-blue-900/30 space-y-3">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 ml-1">{t('initialStock')}</Label>
                   <Input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    placeholder="0"
+                    type="number" step="0.1" min="0"
                     value={initialStock}
                     onChange={(e) => setInitialStock(e.target.value)}
-                    className="h-11 rounded-xl border-gray-200 dark:border-gray-700 font-bold"
+                    className="h-12 rounded-xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-blue-500 font-black text-xl tabular-nums text-center"
                   />
                 </div>
               )}
@@ -287,14 +276,19 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-13 text-base font-black uppercase tracking-widest text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 rounded-2xl shadow-xl shadow-teal-500/20 active:scale-[0.98] transition-all mt-2"
+                className="w-full h-16 text-lg font-black uppercase tracking-widest text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 rounded-[1.25rem] shadow-2xl shadow-teal-500/20 active:scale-[0.98] transition-all mt-4"
               >
                 {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
                     {t('processing')}
                   </div>
-                ) : t('submit')}
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Check className="w-5 h-5" />
+                    {t('submit')}
+                  </div>
+                )}
               </Button>
             </form>
           </div>
