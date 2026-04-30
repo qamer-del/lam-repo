@@ -584,7 +584,10 @@ export async function getInvoiceDetails(invoiceNumber: string) {
   if (!session?.user?.id) throw new Error('Unauthorized')
 
   const [saleTxs, returnTxs, saleMovements, returnMovements] = await Promise.all([
-    prisma.transaction.findMany({ where: { invoiceNumber, type: 'SALE' } }),
+    prisma.transaction.findMany({ 
+      where: { invoiceNumber, type: 'SALE' },
+      include: { recordedBy: { select: { name: true } } }
+    }),
     // Check for existing refunds so UI can warn about double-refunds
     prisma.transaction.findMany({ where: { invoiceNumber, type: 'RETURN' } }),
     prisma.stockMovement.findMany({
@@ -616,6 +619,7 @@ export async function getInvoiceDetails(invoiceNumber: string) {
     hasExistingRefund: returnTxs.length > 0,
     createdAt: saleTxs[0].createdAt,
     description: saleTxs[0].description,
+    salesperson: saleTxs[0].recordedBy?.name || 'Unknown',
     paymentMethods: [...new Set(saleTxs.map(t => t.method))],
     items: saleMovements.map(m => ({
       itemId: m.itemId,

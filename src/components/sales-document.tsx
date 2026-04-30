@@ -56,31 +56,44 @@ interface SalesDocumentProps {
   sales: any[];
   totalCash: number;
   totalNetwork: number;
+  totalCredit: number;
   vatAmount: number;
   manualProfit: number;
   dateStr?: string;
+  summaryOnly?: boolean;
 }
 
-export function SalesDocument({ sales, totalCash, totalNetwork, vatAmount, manualProfit, dateStr }: SalesDocumentProps) {
+export function SalesDocument({ sales, totalCash, totalNetwork, totalCredit, vatAmount, manualProfit, dateStr, summaryOnly }: SalesDocumentProps) {
   const currentDate = dateStr || format(new Date(), 'PPP p');
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>OFFICIAL SALES REPORT</Text>
+          <Text style={styles.title}>OFFICIAL SALES REPORT {summaryOnly ? '(SUMMARY)' : ''}</Text>
           <Text style={styles.subtitle}>Generated at: {currentDate}</Text>
         </View>
 
         <View style={styles.summaryBox}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Net Cash Sales</Text>
+            <Text style={styles.summaryLabel}>Gross Sales</Text>
+            <Text style={styles.summaryValue}>{(totalCash + totalNetwork + totalCredit).toFixed(2)}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Net Cash</Text>
             <Text style={styles.summaryValue}>{totalCash.toFixed(2)}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Net Network Sales</Text>
+            <Text style={styles.summaryLabel}>Net Network</Text>
             <Text style={styles.summaryValue}>{totalNetwork.toFixed(2)}</Text>
           </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Net Credit</Text>
+            <Text style={styles.summaryValue}>{totalCredit.toFixed(2)}</Text>
+          </View>
+        </View>
+
+        <View style={[styles.summaryBox, { marginTop: -20 }]}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>VAT (15%)</Text>
             <Text style={[styles.summaryValue, { color: '#f59e0b' }]}>{vatAmount.toFixed(2)}</Text>
@@ -91,25 +104,27 @@ export function SalesDocument({ sales, totalCash, totalNetwork, vatAmount, manua
           </View>
         </View>
 
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.colMethod}>Method</Text>
-            <Text style={styles.colAmount}>Amount</Text>
-            <Text style={styles.colDesc}>Notes</Text>
-            <Text style={styles.colDate}>Date</Text>
-          </View>
-
-          {sales.map((sale) => (
-            <View key={sale.id} style={[styles.tableRow, sale.type === 'RETURN' ? { backgroundColor: '#fef2f2' } : {}]}>
-              <Text style={styles.colMethod}>{sale.type === 'RETURN' ? 'REFUND' : sale.method}</Text>
-              <Text style={[styles.colAmount, sale.type === 'RETURN' ? { color: '#b91c1c', fontWeight: 'bold' } : {}]}>
-                {sale.type === 'RETURN' ? '-' : ''}{sale.amount.toFixed(2)}
-              </Text>
-              <Text style={styles.colDesc}>{sale.description || '-'}</Text>
-              <Text style={styles.colDate}>{format(new Date(sale.createdAt), 'MM/dd/yy HH:mm')}</Text>
+        {!summaryOnly && (
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={styles.colMethod}>Method</Text>
+              <Text style={styles.colAmount}>Amount</Text>
+              <Text style={styles.colDesc}>Notes</Text>
+              <Text style={styles.colDate}>Date</Text>
             </View>
-          ))}
-        </View>
+
+            {sales.map((sale) => (
+              <View key={sale.id} style={[styles.tableRow, sale.type === 'RETURN' ? { backgroundColor: '#fef2f2' } : {}]}>
+                <Text style={styles.colMethod}>{sale.type === 'RETURN' ? 'REFUND' : sale.method}</Text>
+                <Text style={[styles.colAmount, sale.type === 'RETURN' ? { color: '#b91c1c', fontWeight: 'bold' } : {}]}>
+                  {sale.type === 'RETURN' ? '-' : ''}{sale.amount.toFixed(2)}
+                </Text>
+                <Text style={styles.colDesc}>{sale.description || '-'}</Text>
+                <Text style={styles.colDate}>{format(new Date(sale.createdAt), 'MM/dd/yy HH:mm')}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
       </Page>
     </Document>

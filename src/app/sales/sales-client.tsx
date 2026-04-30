@@ -8,7 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
-import { Receipt, Coins, CreditCard, Download, Filter, Calculator, TrendingDown, ArrowUpRight, ArrowDownLeft, Users } from 'lucide-react'
+import { Receipt, Coins, CreditCard, Download, Filter, Calculator, TrendingDown, ArrowUpRight, ArrowDownLeft, Users, CheckCircle } from 'lucide-react'
 import { AddSalesModal } from '@/components/add-sales-modal'
 import { AddRefundModal } from '@/components/add-refund-modal'
 import { SettleCashBtn } from '@/components/settle-cash-btn'
@@ -51,27 +51,39 @@ export default function SalesPage({
   // ── Aggregate into invoice groups ─────────────────────────────────────────
   let totalCash    = 0
   let totalNetwork = 0
+  let totalGrossRevenue = 0
+
+  // Net Credit represents total unpaid credit all-time, not just in this date range
+  const totalCredit = sales.filter(s => s.method === 'CREDIT' && !s.isSettled).reduce((sum, s) => sum + s.amount, 0)
 
   const groups = new Map<string, any>()
 
   filteredSales.forEach(sale => {
     const isNetworkLike = ['NETWORK', 'TABBY', 'TAMARA'].includes(sale.method)
     const isCredit = sale.method === 'CREDIT'
+    const isSettlement = !!sale.linkedTransactionId
 
     if (sale.type === 'SALE') {
       if (sale.method === 'CASH') totalCash    += sale.amount
       if (isNetworkLike)          totalNetwork += sale.amount
+      if (!isSettlement)          totalGrossRevenue += sale.amount
     } else if (sale.type === 'RETURN') {
       if (sale.method === 'CASH') totalCash    -= sale.amount
       if (isNetworkLike)          totalNetwork -= sale.amount
+      if (!isSettlement)          totalGrossRevenue -= sale.amount
     }
 
-    const key = sale.invoiceNumber || `${sale.createdAt}_${sale.recordedById}_${sale.type}`
+    // Settlements should be separate rows, not grouped into the original invoice
+    const key = isSettlement 
+      ? `settlement_${sale.id}` 
+      : (sale.invoiceNumber || `${sale.createdAt}_${sale.recordedById}_${sale.type}`)
+
     if (!groups.has(key)) {
       groups.set(key, {
         id: sale.id,
         invoiceNumber: sale.invoiceNumber,
         type: sale.type,
+        isSettlement: isSettlement,
         description: sale.description,
         customerName: sale.customerName,
         customerPhone: sale.customerPhone,
@@ -79,6 +91,7 @@ export default function SalesPage({
         totalAmount: 0,
         cashAmount: 0,
         networkAmount: 0,
+        creditAmount: 0,
         methods: new Set<string>(),
       })
     }
@@ -86,6 +99,7 @@ export default function SalesPage({
     g.totalAmount += sale.amount
     if (sale.method === 'CASH') g.cashAmount += sale.amount
     if (isNetworkLike)          g.networkAmount += sale.amount
+    if (isCredit)               g.creditAmount += sale.amount
     g.methods.add(sale.method)
   })
 
@@ -103,7 +117,9 @@ export default function SalesPage({
     return acc + (m.type === 'SALE_OUT' ? Math.abs(m.quantity) * cost : -(Math.abs(m.quantity) * cost))
   }, 0)
 
-  const autoProfit = totalCash + totalNetwork - totalCostOfSales
+  const vatAmount = totalGrossRevenue - (totalGrossRevenue / 1.15)
+  const netRevenue = totalGrossRevenue / 1.15
+  const autoProfit = netRevenue - totalCostOfSales
 
   // ── Final row list ────────────────────────────────────────────────────────
   const aggregatedSales = Array.from(groups.values())
@@ -166,26 +182,51 @@ export default function SalesPage({
           <SettleCashBtn triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm bg-gray-900 text-white" />
 
           {!isCashier && (
-            <PDFDownloadLink
-              document={
-                <SalesDocument
-                  sales={filteredSales}
-                  totalCash={totalCash}
-                  totalNetwork={totalNetwork}
-                  vatAmount={(totalCash + totalNetwork) * 0.15}
-                  manualProfit={manualProfit ? parseFloat(manualProfit) : autoProfit}
-                  dateStr={`${fromDate} to ${toDate}`}
-                />
-              }
-              fileName={`Sales_Report_${fromDate}_to_${toDate}.pdf`}
-            >
-              {({ loading }) => (
-                <Button variant="outline" disabled={loading} className="flex-1 sm:flex-none h-9 px-4 text-sm gap-2 border-gray-300 hover:bg-gray-50">
-                  <Download size={14} />
-                  {loading ? '…' : t('generatePdf')}
-                </Button>
-              )}
-            </PDFDownloadLink>
+            <>
+              <PDFDownloadLink
+                document={
+                  <SalesDocument
+                    sales={filteredSales}
+                    totalCash={totalCash}
+                    totalNetwork={totalNetwork}
+                    totalCredit={totalCredit}
+                    vatAmount={vatAmount}
+                    manualProfit={manualProfit ? parseFloat(manualProfit) : autoProfit}
+                    dateStr={`${fromDate} to ${toDate}`}
+                  />
+                }
+                fileName={`Sales_Report_Detailed_${fromDate}_to_${toDate}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="outline" disabled={loading} className="flex-1 sm:flex-none h-9 px-4 text-sm gap-2 border-gray-300 hover:bg-gray-50">
+                    <Download size={14} />
+                    {loading ? '…' : t('detailedPdf')}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+              <PDFDownloadLink
+                document={
+                  <SalesDocument
+                    sales={filteredSales}
+                    totalCash={totalCash}
+                    totalNetwork={totalNetwork}
+                    totalCredit={totalCredit}
+                    vatAmount={vatAmount}
+                    manualProfit={manualProfit ? parseFloat(manualProfit) : autoProfit}
+                    dateStr={`${fromDate} to ${toDate}`}
+                    summaryOnly={true}
+                  />
+                }
+                fileName={`Sales_Report_Summary_${fromDate}_to_${toDate}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="outline" disabled={loading} className="flex-1 sm:flex-none h-9 px-4 text-sm gap-2 border-gray-300 hover:bg-gray-50">
+                    <Download size={14} />
+                    {loading ? '…' : t('summaryPdf')}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            </>
           )}
         </div>
       </div>
@@ -195,7 +236,7 @@ export default function SalesPage({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              <Filter size={12} /> From
+              <Filter size={12} /> {t('from')}
             </Label>
             <Input
               type="date"
@@ -206,7 +247,7 @@ export default function SalesPage({
           </div>
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              <Filter size={12} /> To
+              <Filter size={12} /> {t('toDate')}
             </Label>
             <Input
               type="date"
@@ -217,7 +258,7 @@ export default function SalesPage({
           </div>
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              <Calculator size={12} /> Manual Net Profit Override
+              <Calculator size={12} /> {t('manualNetProfitOverride')}
             </Label>
             <Input
               type="number"
@@ -233,15 +274,15 @@ export default function SalesPage({
 
       {/* ── Summary metric cards (admin only) ── */}
       {!isCashier && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {/* Total Sales */}
           <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
             <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
               <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Receipt size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Total Sales</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('totalSales')}</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">
-              <p className="text-xl font-black text-emerald-600 tabular-nums">{(totalCash + totalNetwork).toFixed(2)}</p>
+              <p className="text-xl font-black text-emerald-600 tabular-nums">{totalGrossRevenue.toFixed(2)}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">SAR</p>
             </CardContent>
           </Card>
@@ -250,7 +291,7 @@ export default function SalesPage({
           <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
             <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
               <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><Coins size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Net Cash</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('netCash')}</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">
               <p className={cn('text-xl font-black tabular-nums', totalCash < 0 ? 'text-red-500' : 'text-blue-600')}>{totalCash.toFixed(2)}</p>
@@ -262,10 +303,21 @@ export default function SalesPage({
           <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
             <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
               <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><CreditCard size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Net Network</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('netNetwork')}</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">
               <p className={cn('text-xl font-black tabular-nums', totalNetwork < 0 ? 'text-red-500' : 'text-purple-600')}>{totalNetwork.toFixed(2)}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">SAR</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
+            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
+              <div className="p-1.5 bg-amber-100 text-amber-600 rounded-lg"><Users size={14} /></div>
+              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('netCredit')}</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <p className={cn('text-xl font-black tabular-nums', totalCredit < 0 ? 'text-red-500' : 'text-amber-600')}>{totalCredit.toFixed(2)}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">SAR</p>
             </CardContent>
           </Card>
@@ -274,10 +326,10 @@ export default function SalesPage({
           <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
             <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
               <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg"><TrendingDown size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">VAT 15%</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('vat15')}</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">
-              <p className="text-xl font-black text-orange-600 tabular-nums">{((totalCash + totalNetwork) * 0.15).toFixed(2)}</p>
+              <p className="text-xl font-black text-orange-600 tabular-nums">{vatAmount.toFixed(2)}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">SAR</p>
             </CardContent>
           </Card>
@@ -286,14 +338,14 @@ export default function SalesPage({
           <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
             <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
               <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Calculator size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Net Profit</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('netProfit')}</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">
               <p className={cn('text-xl font-black tabular-nums', (manualProfit ? parseFloat(manualProfit) : autoProfit) < 0 ? 'text-red-500' : 'text-emerald-600')}>
                 {(manualProfit ? parseFloat(manualProfit) : autoProfit).toFixed(2)}
               </p>
               <p className="text-[10px] text-gray-400 mt-0.5">
-                {manualProfit ? 'Manual override' : `Cost: ${totalCostOfSales.toFixed(2)} SAR`}
+                {manualProfit ? t('manualOverride') : `${t('cost')}: ${totalCostOfSales.toFixed(2)} SAR`}
               </p>
             </CardContent>
           </Card>
@@ -310,7 +362,7 @@ export default function SalesPage({
               <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-600">
                 <Users size={18} />
               </div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white font-cairo">Unpaid Credit</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white font-cairo">{t('unpaidCredit')}</h2>
             </div>
             <CreditSalesTable sales={sales} />
           </div>
@@ -321,7 +373,7 @@ export default function SalesPage({
           <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-gray-800 dark:text-gray-200 font-cairo">Transactions</h2>
+            <h2 className="text-base font-bold text-gray-800 dark:text-gray-200 font-cairo">{t('transactions')}</h2>
             <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-semibold px-2 py-0.5 rounded-full">
               {totalSales} sales
             </span>
@@ -337,7 +389,7 @@ export default function SalesPage({
             </svg>
             <input
               type="text"
-              placeholder="Search invoice or description…"
+              placeholder={t('searchInvoiceOrDesc')}
               className="block w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -351,10 +403,10 @@ export default function SalesPage({
             <Table>
               <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
                 <TableRow>
-                  <TableHead className="whitespace-nowrap text-xs">Type</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">Invoice No.</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">Method</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">Amount (SAR)</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs">{t('type')}</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs">{t('invoiceNo')}</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs">{t('method')}</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs">{t('amount')} (SAR)</TableHead>
                   <TableHead className="whitespace-nowrap text-xs">{t('description')}</TableHead>
                   <TableHead className="whitespace-nowrap text-xs">{t('reportDate')}</TableHead>
                 </TableRow>
@@ -370,15 +422,18 @@ export default function SalesPage({
                     )}
                     onClick={() => sale.invoiceNumber && setSelectedInvoice(sale.invoiceNumber)}
                   >
-                    {/* Type badge */}
                     <TableCell>
-                      {sale.type === 'SALE' ? (
+                      {sale.isSettlement ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-blue-700 uppercase">
+                          <CheckCircle size={12} className="text-blue-500" /> Payment
+                        </span>
+                      ) : sale.type === 'SALE' ? (
                         <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 uppercase">
-                          <ArrowUpRight size={12} className="text-emerald-500" /> Sale
+                          <ArrowUpRight size={12} className="text-emerald-500" /> {t('sale')}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-[10px] font-bold text-red-700 uppercase">
-                          <ArrowDownLeft size={12} className="text-red-500" /> Refund
+                          <ArrowDownLeft size={12} className="text-red-500" /> {t('refund')}
                         </span>
                       )}
                     </TableCell>
@@ -403,7 +458,7 @@ export default function SalesPage({
                         </span>
                         {(sale.customerName || sale.customerPhone) && (
                           <span className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1">
-                            {sale.customerName || 'No Name'} · {sale.customerPhone}
+                            {sale.customerName || t('noName')} · {sale.customerPhone}
                           </span>
                         )}
                       </div>
@@ -430,14 +485,18 @@ export default function SalesPage({
                 <div className="flex justify-between items-start">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Sale/Refund type indicator */}
-                      {sale.type === 'RETURN' ? (
+                      {/* Sale/Refund/Settlement type indicator */}
+                      {sale.isSettlement ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
+                          <CheckCircle size={10} /> Payment
+                        </span>
+                      ) : sale.type === 'RETURN' ? (
                         <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full">
-                          <ArrowDownLeft size={10} /> Refund
+                          <ArrowDownLeft size={10} /> {t('refund')}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">
-                          <ArrowUpRight size={10} /> Sale
+                          <ArrowUpRight size={10} /> {t('sale')}
                         </span>
                       )}
                       <MethodBadge sale={sale} />
@@ -454,11 +513,11 @@ export default function SalesPage({
                 {sale.cashAmount > 0 && sale.networkAmount > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-lg text-center">
-                      <p className="text-[10px] text-emerald-600 font-semibold uppercase">Cash</p>
+                      <p className="text-[10px] text-emerald-600 font-semibold uppercase">{t('cash')}</p>
                       <p className="text-sm font-bold text-emerald-700 tabular-nums">{sale.cashAmount.toFixed(2)}</p>
                     </div>
                     <div className="bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg text-center">
-                      <p className="text-[10px] text-blue-600 font-semibold uppercase">Network</p>
+                      <p className="text-[10px] text-blue-600 font-semibold uppercase">{t('network')}</p>
                       <p className="text-sm font-bold text-blue-700 tabular-nums">{sale.networkAmount.toFixed(2)}</p>
                     </div>
                   </div>
@@ -468,7 +527,7 @@ export default function SalesPage({
                   <div className="flex items-center gap-2 p-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-lg border border-amber-200/20">
                     <Users size={12} className="text-amber-600" />
                     <p className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
-                      {sale.customerName || 'No Name'} · {sale.customerPhone}
+                      {sale.customerName || t('noName')} · {sale.customerPhone}
                     </p>
                   </div>
                 )}

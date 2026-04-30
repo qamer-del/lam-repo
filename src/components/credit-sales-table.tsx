@@ -1,5 +1,6 @@
 'use client'
 
+import { ViewInvoiceModal } from '@/components/view-invoice-modal'
 import { useState } from 'react'
 import { 
   Users, 
@@ -35,6 +36,7 @@ export function CreditSalesTable({ sales }: { sales: any[] }) {
   const [loading, setLoading] = useState(false)
   const [selectedSale, setSelectedSale] = useState<any | null>(null)
   const [settleOpen, setSettleOpen] = useState(false)
+  const [invoiceOpen, setInvoiceOpen] = useState(false)
 
   const unpaidSales = sales.filter(s => s.method === 'CREDIT' && !s.isSettled)
 
@@ -122,7 +124,10 @@ export function CreditSalesTable({ sales }: { sales: any[] }) {
                         >
                           <CheckCircle2 size={16} /> Collect Payment
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-gray-500 gap-2 cursor-pointer">
+                        <DropdownMenuItem 
+                          onClick={() => { setSelectedSale(sale); setInvoiceOpen(true); }}
+                          className="text-gray-500 gap-2 cursor-pointer"
+                        >
                           <AlertCircle size={16} /> View Invoice
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -193,6 +198,12 @@ export function CreditSalesTable({ sales }: { sales: any[] }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ViewInvoiceModal
+        invoiceNumber={selectedSale?.invoiceNumber || null}
+        open={invoiceOpen}
+        onOpenChange={setInvoiceOpen}
+      />
     </>
   )
 }

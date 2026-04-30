@@ -69,16 +69,22 @@ export function ViewInvoiceModal({
           ) : details ? (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
               {/* Header Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="p-4 sm:p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Invoice #</p>
-                  <p className="font-mono text-sm font-black text-gray-900 dark:text-white">{details.invoiceNumber}</p>
+                  <p className="font-mono text-xs sm:text-sm font-black text-gray-900 dark:text-white">{details.invoiceNumber}</p>
                 </div>
-                <div className="p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
+                <div className="p-4 sm:p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Issued On</p>
-                  <p className="text-sm font-black text-gray-900 dark:text-white leading-tight">
+                  <p className="text-xs sm:text-sm font-black text-gray-900 dark:text-white leading-tight">
                     {format(new Date(details.createdAt), 'MMM dd, yyyy')}<br/>
                     <span className="text-[10px] opacity-50">{format(new Date(details.createdAt), 'hh:mm a')}</span>
+                  </p>
+                </div>
+                <div className="col-span-2 sm:col-span-1 p-4 sm:p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Cashier</p>
+                  <p className="text-xs sm:text-sm font-black text-gray-900 dark:text-white truncate">
+                    {details.salesperson}
                   </p>
                 </div>
               </div>

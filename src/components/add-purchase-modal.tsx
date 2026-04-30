@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ShoppingCart, Plus, Trash2, DollarSign, Wifi } from 'lucide-react'
+import { ShoppingCart, Plus, Trash2, DollarSign, Wifi, Package, ChevronsUpDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -20,6 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command'
 import { useLanguage } from '@/providers/language-provider'
 import { createPurchaseOrder, getAllInventoryItemsForSelect } from '@/actions/inventory'
 import { getAgents } from '@/actions/agents'
@@ -55,6 +61,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
   const [method, setMethod] = useState<'CASH' | 'NETWORK'>('CASH')
   const [note, setNote] = useState('')
   const [lineItems, setLineItems] = useState<LineItem[]>([{ itemId: 0, quantity: '', unitCost: '' }])
+  const [comboboxOpen, setComboboxOpen] = useState<{ [key: number]: boolean }>({})
 
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
@@ -217,24 +224,58 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
                       className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-3"
                     >
                       <div className="grid grid-cols-[1fr_auto] gap-2 items-start">
-                        <Select
-                          value={line.itemId > 0 ? String(line.itemId) : ''}
-                          onValueChange={(v: string | null) => {
-                            if (v) updateLineItem(index, 'itemId', parseInt(v))
-                          }}
-                        >
-                          <SelectTrigger className="h-10 rounded-xl border-gray-200 dark:border-gray-700 font-medium text-sm bg-white dark:bg-gray-900">
-                            <SelectValue placeholder={t('selectItem')} />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl border-none shadow-xl">
-                            {inventoryItems.map((item) => (
-                              <SelectItem key={item.id} value={String(item.id)} className="font-medium py-2">
-                                {item.name}
-                                <span className="text-xs text-gray-400 ml-2">({item.unit})</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="w-full sm:flex-1">
+                          <Popover open={!!comboboxOpen[index]} onOpenChange={(v) => setComboboxOpen(p => ({ ...p, [index]: v }))}>
+                            <PopoverTrigger render={
+                              <button
+                                type="button"
+                                className={cn(
+                                  "flex w-full items-center justify-between h-10 rounded-xl border-gray-200 dark:border-gray-700 font-medium text-sm bg-white dark:bg-gray-900 px-3 py-2 shadow-sm",
+                                  !line.itemId && "text-gray-400"
+                                )}
+                              >
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                  <Package size={16} className="text-blue-500 shrink-0" />
+                                  <span className="truncate">
+                                    {line.itemId
+                                      ? inventoryItems.find((item) => item.id === line.itemId)?.name
+                                      : t('selectItem')}
+                                  </span>
+                                </div>
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
+                              </button>
+                            } />
+                            <PopoverContent className="w-[320px] sm:w-[400px] p-0 rounded-2xl shadow-2xl border-none overflow-hidden">
+                              <Command>
+                                <CommandInput placeholder="Search items..." className="h-12" />
+                                <CommandList className="max-h-[300px]">
+                                  <CommandEmpty>No item found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {inventoryItems.map((item) => (
+                                      <CommandItem
+                                        key={item.id}
+                                        value={`${item.name} ${item.unit || ''}`}
+                                        onSelect={() => {
+                                          updateLineItem(index, 'itemId', item.id)
+                                          setComboboxOpen(p => ({ ...p, [index]: false }))
+                                        }}
+                                        className="py-3 px-4 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950"
+                                      >
+                                        <Check className={cn("mr-2 h-4 w-4 text-blue-600", line.itemId === item.id ? "opacity-100" : "opacity-0")} />
+                                        <div className="flex flex-col">
+                                          <span className="font-bold">{item.name}</span>
+                                          <span className="text-[10px] text-gray-500 font-black uppercase tracking-tight">
+                                            {item.currentStock} {item.unit} available
+                                          </span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
 
                         {lineItems.length > 1 && (
                           <button
@@ -249,7 +290,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('amount')}</Label>
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('quantity')}</Label>
                           <Input
                             type="number"
                             step="0.1"
