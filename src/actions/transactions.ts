@@ -90,7 +90,7 @@ export async function getDashboardData() {
         if (isThisMonth) monthlySalaryPool -= tx.amount
       }
       if ((tx.method === 'NETWORK' || tx.method === 'TABBY' || tx.method === 'TAMARA') && isActiveInDrawer) networkSales -= tx.amount
-    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT'].includes(tx.type)) {
+    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'AGENT_PURCHASE'].includes(tx.type)) {
       if (tx.method === 'CASH' && isActiveInDrawer) cashInDrawer -= tx.amount
       else if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
     } else if (tx.type === 'SALARY_PAYMENT') {
@@ -430,6 +430,79 @@ export async function createSettlement(actualCashCounted: number) {
   revalidatePath('/staff')
   return settlement
 }
+
+export async function createCashierHandover(actualCashCounted: number) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  // Finds all unsettled transactions recorded by THIS user
+  const unsettled = await prisma.transaction.findMany({
+    where: { 
+      isSettled: false,
+      settlementId: null,
+      recordedById: session.user.id
+    }
+  })
+
+  if (unsettled.length === 0) return null
+
+  type UnsettledTx = (typeof unsettled)[number]
+
+  const cashHanded = unsettled.reduce((acc: number, tx: UnsettledTx) => {
+    if (tx.description?.includes('[DRAWER_NEUTRAL]')) return acc;
+    if (tx.type === 'SALE' && tx.method === 'CASH') return acc + tx.amount;
+    if (tx.type === 'RETURN' && tx.method === 'CASH') return acc - tx.amount;
+    if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type) && tx.method === 'CASH') return acc - tx.amount;
+    return acc;
+  }, 0)
+
+  const networkVolume = unsettled.reduce((acc: number, tx: UnsettledTx) => {
+    if (tx.description?.includes('[DRAWER_NEUTRAL]')) return acc;
+    if (tx.type === 'SALE' && tx.method === 'NETWORK') return acc + tx.amount;
+    if (tx.type === 'RETURN' && tx.method === 'NETWORK') return acc - tx.amount;
+    if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type) && tx.method === 'NETWORK') return acc - tx.amount;
+    return acc;
+  }, 0)
+
+  const settlement = await prisma.settlement.create({
+    data: {
+      totalCashHanded: cashHanded,
+      actualCashCounted: actualCashCounted,
+      totalNetworkVolume: networkVolume,
+      performedById: session.user.id,
+      transactions: {
+        connect: unsettled.map((t: UnsettledTx) => ({ id: t.id }))
+      }
+    },
+    include: {
+      transactions: true,
+      performedBy: {
+        select: { name: true }
+      }
+    }
+  })
+
+  // Mark as settled ONLY if they are not staff-related.
+  await prisma.transaction.updateMany({
+    where: { 
+      id: { in: unsettled.map((t: UnsettledTx) => t.id) },
+      method: 'CASH',
+      NOT: {
+        OR: [
+          { type: 'ADVANCE' },
+          { type: 'SALARY_PAYMENT' },
+          { AND: [{ type: 'EXPENSE' }, { NOT: { staffId: null } }] }
+        ]
+      }
+    },
+    data: { isSettled: true }
+  })
+
+  revalidatePath('/')
+  revalidatePath('/sales')
+  return settlement
+}
+
 
 export async function recordDailySales(data: {
   paymentMode: 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA' | 'CREDIT'

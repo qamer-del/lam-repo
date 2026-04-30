@@ -52,7 +52,7 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
         type: txType,
         amount: parseFloat(amount),
         description,
-        method: txType === 'AGENT_PAYMENT' ? method : 'CASH'
+        method: txType === 'AGENT_PAYMENT' ? method : 'CREDIT'
       })
       setAmount('')
       setDescription('')
@@ -66,7 +66,7 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
   // Calculate Net Balance for selected agent
   let netBalance = 0
   if (selectedAgent) {
-    const totalPurchases = selectedAgent.transactions.filter((t: any) => t.type === 'AGENT_PURCHASE').reduce((s: number, t: any) => s + t.amount, 0)
+    const totalPurchases = selectedAgent.transactions.filter((t: any) => t.type === 'AGENT_PURCHASE' && t.method === 'CREDIT').reduce((s: number, t: any) => s + t.amount, 0)
     const totalPayments = selectedAgent.transactions.filter((t: any) => t.type === 'AGENT_PAYMENT').reduce((s: number, t: any) => s + t.amount, 0)
     netBalance = selectedAgent.openingBalance + totalPurchases - totalPayments
   }

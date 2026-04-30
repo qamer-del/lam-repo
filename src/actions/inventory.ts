@@ -184,7 +184,7 @@ export async function getPurchaseOrders() {
 
 export async function createPurchaseOrder(data: {
   agentId?: number
-  method: 'CASH' | 'NETWORK'
+  method: 'CASH' | 'NETWORK' | 'CREDIT'
   note?: string
   items: {
     itemId: number
@@ -196,6 +196,10 @@ export async function createPurchaseOrder(data: {
 
   if (!data.items || data.items.length === 0) {
     throw new Error('Purchase order must have at least one item')
+  }
+
+  if (data.method === 'CREDIT' && !data.agentId) {
+    throw new Error('Agent must be selected for CREDIT purchases')
   }
 
   const totalCost = data.items.reduce(

@@ -139,6 +139,7 @@ export const en = {
   netCash: 'Net Cash',
   netNetwork: 'Net Network',
   netCredit: 'Net Credit',
+  credit: 'Credit',
   vat15: 'VAT 15%',
   netProfit: 'Net Profit',
   manualOverride: 'Manual override',
@@ -151,6 +152,11 @@ export const en = {
   noName: 'No Name',
   detailedPdf: 'Detailed PDF',
   summaryPdf: 'Summary PDF',
+  closeMyShift: 'Close My Shift',
+  shiftHandover: 'Shift Handover',
+  handoverToManagerNote: 'Please verify the physical cash being handed over to the manager.',
+  cashSales: 'Cash Sales',
+  physicallyHandedCash: 'Physically Handed Cash',
 }
 
 export const ar = {
@@ -294,6 +300,7 @@ export const ar = {
   netCash: 'صافي النقد',
   netNetwork: 'صافي الشبكة',
   netCredit: 'صافي الآجل',
+  credit: 'آجل',
   vat15: 'ضريبة القيمة المضافة 15%',
   netProfit: 'صافي الربح',
   manualOverride: 'تعديل يدوي',
@@ -306,4 +313,9 @@ export const ar = {
   noName: 'بدون اسم',
   detailedPdf: 'تقرير مفصل PDF',
   summaryPdf: 'تقرير ملخص PDF',
+  closeMyShift: 'إغلاق ورديتي',
+  shiftHandover: 'تسليم الوردية',
+  handoverToManagerNote: 'يرجى التحقق من النقدية الفعلية التي يتم تسليمها للمدير.',
+  cashSales: 'المبيعات النقدية',
+  physicallyHandedCash: 'النقدية المسلمة فعلياً',
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ShoppingCart, Plus, Trash2, DollarSign, Wifi, Package, ChevronsUpDown, Check } from 'lucide-react'
+import { ShoppingCart, Plus, Trash2, DollarSign, Wifi, Package, ChevronsUpDown, Check, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -58,7 +58,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
   const [loading, setLoading] = useState(false)
 
   const [agentId, setAgentId] = useState<string>('none')
-  const [method, setMethod] = useState<'CASH' | 'NETWORK'>('CASH')
+  const [method, setMethod] = useState<'CASH' | 'NETWORK' | 'CREDIT'>('CASH')
   const [note, setNote] = useState('')
   const [lineItems, setLineItems] = useState<LineItem[]>([{ itemId: 0, quantity: '', unitCost: '' }])
   const [comboboxOpen, setComboboxOpen] = useState<{ [key: number]: boolean }>({})
@@ -100,6 +100,10 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
     )
     if (validItems.length === 0) {
       alert('Please add at least one item with a valid quantity.')
+      return
+    }
+    if (method === 'CREDIT' && agentId === 'none') {
+      alert('Please select a supplier for credit purchases.')
       return
     }
     setLoading(true)
@@ -181,19 +185,19 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
               {/* Payment Method */}
               <div className="space-y-2">
                 <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('method')}</Label>
-                <div className="grid grid-cols-2 gap-2 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl h-12">
+                <div className="grid grid-cols-3 gap-2 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl h-12">
                   <button
                     type="button"
                     onClick={() => setMethod('CASH')}
                     className={cn(
                       'flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm',
                       method === 'CASH'
-                        ? 'bg-white dark:bg-gray-900 text-blue-600 shadow-sm'
+                        ? 'bg-white dark:bg-gray-900 text-emerald-600 shadow-sm'
                         : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                     )}
                   >
                     <DollarSign size={15} />
-                    {t('cash')}
+                    {t('cash') || 'Cash'}
                   </button>
                   <button
                     type="button"
@@ -206,7 +210,20 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
                     )}
                   >
                     <Wifi size={15} />
-                    {t('network')}
+                    {t('network') || 'Network'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMethod('CREDIT')}
+                    className={cn(
+                      'flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm',
+                      method === 'CREDIT'
+                        ? 'bg-white dark:bg-gray-900 text-amber-600 shadow-sm'
+                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                    )}
+                  >
+                    <Users size={15} />
+                    {t('credit') || 'Credit'}
                   </button>
                 </div>
               </div>

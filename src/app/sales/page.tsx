@@ -41,5 +41,5 @@ export default async function SalesRoute() {
     },
   })
 
-  return <SalesClientPage initialSales={sales} initialMovements={movements} />
+  return <SalesClientPage initialSales={sales} initialMovements={movements} userRole={role} />
 }

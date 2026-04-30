@@ -12,6 +12,7 @@ import { Receipt, Coins, CreditCard, Download, Filter, Calculator, TrendingDown,
 import { AddSalesModal } from '@/components/add-sales-modal'
 import { AddRefundModal } from '@/components/add-refund-modal'
 import { SettleCashBtn } from '@/components/settle-cash-btn'
+import { CloseShiftBtn } from '@/components/close-shift-btn'
 import { ViewInvoiceModal } from '@/components/view-invoice-modal'
 import { CreditSalesTable } from '@/components/credit-sales-table'
 import { SalesDocument } from '@/components/sales-document'
@@ -24,13 +25,15 @@ import { cn } from '@/lib/utils'
 export default function SalesPage({
   initialSales,
   initialMovements,
+  userRole,
 }: {
   initialSales?: any[]
   initialMovements?: any[]
+  userRole?: string
 }) {
   const { t } = useLanguage()
   const { data: session } = useSession()
-  const isCashier = session?.user?.role === 'CASHIER'
+  const isCashier = userRole === 'CASHIER' || session?.user?.role === 'CASHIER'
 
   const [sales] = useState<any[]>(initialSales || [])
   const [movements] = useState<any[]>(initialMovements || [])
@@ -178,8 +181,19 @@ export default function SalesPage({
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <AddSalesModal triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm" />
-          <AddRefundModal triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm" />
-          <SettleCashBtn triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm bg-gray-900 text-white" />
+          {!isCashier && (
+            <>
+              <AddRefundModal triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm" />
+              <SettleCashBtn triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm bg-gray-900 text-white" />
+            </>
+          )}
+          {isCashier && (
+            <CloseShiftBtn 
+              triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm" 
+              cashTotal={totalCash} 
+              networkTotal={totalNetwork} 
+            />
+          )}
 
           {!isCashier && (
             <>

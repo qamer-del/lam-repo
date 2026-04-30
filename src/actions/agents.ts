@@ -38,7 +38,7 @@ export async function addAgentTransaction(data: {
   type: 'AGENT_PURCHASE' | 'AGENT_PAYMENT'
   amount: number
   description?: string
-  method: 'CASH' | 'NETWORK'
+  method: 'CASH' | 'NETWORK' | 'CREDIT'
 }) {
   const session = await auth()
   if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error('Unauthorized')
