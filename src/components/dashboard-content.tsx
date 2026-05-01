@@ -42,7 +42,8 @@ export function DashboardContent({
 }: { 
   initialData: { 
     cashInDrawer: number, 
-    networkSales: number, 
+    tabbyBalance: number,
+    tamaraBalance: number,
     salaryFundRemaining: number, 
     totalOutstandingCredit: number,
     transactions: Transaction[],
@@ -54,7 +55,7 @@ export function DashboardContent({
   inventorySummary?: { totalValue: number; lowStockCount: number; outOfStockCount: number; totalItems: number } | null
 }) {
   const { t } = useLanguage()
-  const { cashInDrawer, networkSales, salaryFundRemaining, totalOutstandingCredit, transactions, setVaultData } = useStore()
+  const { cashInDrawer, networkSales, tabbyBalance, tamaraBalance, salaryFundRemaining, totalOutstandingCredit, transactions, setVaultData } = useStore()
   
   const isSuperAdmin = userRole === 'SUPER_ADMIN'
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
@@ -168,6 +169,34 @@ export function DashboardContent({
               <p className="text-4xl font-extrabold tracking-tight">{totalOutstandingCredit.toFixed(2)}</p>
             </CardContent>
           </Card>
+
+          {/* Tabby Balance */}
+          <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-purple-500 to-purple-800 text-white">
+            <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-8 translate-x-8" />
+            <CardHeader className="flex flex-row items-center gap-3 pb-2">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Package size={20} />
+              </div>
+              <CardTitle className="text-sm font-medium opacity-90">Tabby Account</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-extrabold tracking-tight">{tabbyBalance.toFixed(2)}</p>
+            </CardContent>
+          </Card>
+
+          {/* Tamara Balance */}
+          <Card className="relative overflow-hidden border-none shadow-lg bg-gradient-to-br from-pink-500 to-rose-700 text-white">
+            <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-8 translate-x-8" />
+            <CardHeader className="flex flex-row items-center gap-3 pb-2">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Package size={20} />
+              </div>
+              <CardTitle className="text-sm font-medium opacity-90">Tamara Account</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-extrabold tracking-tight">{tamaraBalance.toFixed(2)}</p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -196,7 +225,37 @@ export function DashboardContent({
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
           <AddTransactionModal triggerClassName="flex-1 sm:flex-none h-11 sm:h-10 px-6 font-bold" />
           {isAdmin && (
-            <SettleCashBtn triggerClassName="flex-1 sm:flex-none h-11 sm:h-10 px-6 font-bold" />
+            <div className="flex items-center gap-2">
+              <SettleCashBtn triggerClassName="flex-1 sm:flex-none h-11 sm:h-10 px-6 font-bold" />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={async () => {
+                  if(confirm("Confirm settling all Tabby transactions?")) {
+                    const { settleTabbySales } = await import('@/actions/transactions')
+                    await settleTabbySales()
+                    useStore.getState().setVaultData({ tabbyBalance: 0 })
+                  }
+                }}
+                className="h-11 sm:h-10 px-4 font-bold border-purple-200 text-purple-700 hover:bg-purple-50"
+              >
+                Settle Tabby
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={async () => {
+                  if(confirm("Confirm settling all Tamara transactions?")) {
+                    const { settleTamaraSales } = await import('@/actions/transactions')
+                    await settleTamaraSales()
+                    useStore.getState().setVaultData({ tamaraBalance: 0 })
+                  }
+                }}
+                className="h-11 sm:h-10 px-4 font-bold border-pink-200 text-pink-700 hover:bg-pink-50"
+              >
+                Settle Tamara
+              </Button>
+            </div>
           )}
           {userRole === 'CASHIER' && (
             !transactions.some(tx => !tx.isSettled && !tx.settlementId) ? (
@@ -243,7 +302,7 @@ export function DashboardContent({
                       </span>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {tx.method === 'CASH' ? t('cash') : t('network')}
+                      {tx.method === 'CASH' ? t('cash') : tx.method}
                     </TableCell>
                     <TableCell className="font-semibold tabular-nums">{tx.amount.toFixed(2)}</TableCell>
                     <TableCell className="text-gray-500 text-sm max-w-[200px] truncate">{tx.description || '-'}</TableCell>
@@ -280,7 +339,7 @@ export function DashboardContent({
                       {tx.amount.toFixed(2)}
                     </p>
                     <p className="text-[10px] text-gray-500 font-medium">
-                      {tx.method === 'CASH' ? t('cash') : t('network')}
+                      {tx.method === 'CASH' ? t('cash') : tx.method}
                     </p>
                   </div>
                 </div>

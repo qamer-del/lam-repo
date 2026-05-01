@@ -126,6 +126,8 @@ model Settlement {
   totalCashHanded     Float         // System calculated cash
   actualCashCounted   Float?        // Physically counted cash
   totalNetworkVolume  Float         @default(0)
+  totalTabbyVolume    Float         @default(0)
+  totalTamaraVolume   Float         @default(0)
   reportDate          DateTime      @default(now())
   transactions        Transaction[]
   performedById       String?

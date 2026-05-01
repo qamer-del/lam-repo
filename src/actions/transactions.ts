@@ -54,6 +54,8 @@ export async function getDashboardData() {
 
   let cashInDrawer = 0
   let networkSales = 0
+  let tabbyBalance = 0
+  let tamaraBalance = 0
   let totalOutstandingCredit = 0
   let monthlySalaryPool = 0
   let salaryPayouts = 0
@@ -79,8 +81,12 @@ export async function getDashboardData() {
       if (tx.method === 'CASH') {
         if (isActiveInDrawer) cashInDrawer += tx.amount
         if (isThisMonth) monthlySalaryPool += tx.amount
-      } else if (tx.method === 'NETWORK' || tx.method === 'TABBY' || tx.method === 'TAMARA') {
+      } else if (tx.method === 'NETWORK') {
         if (isActiveInDrawer) networkSales += tx.amount
+      } else if (tx.method === 'TABBY') {
+        if (isActiveInDrawer) tabbyBalance += tx.amount
+      } else if (tx.method === 'TAMARA') {
+        if (isActiveInDrawer) tamaraBalance += tx.amount
       } else if (tx.method === 'CREDIT' && !tx.isSettled) {
         totalOutstandingCredit += tx.amount
       }
@@ -89,10 +95,14 @@ export async function getDashboardData() {
         if (isActiveInDrawer) cashInDrawer -= tx.amount
         if (isThisMonth) monthlySalaryPool -= tx.amount
       }
-      if ((tx.method === 'NETWORK' || tx.method === 'TABBY' || tx.method === 'TAMARA') && isActiveInDrawer) networkSales -= tx.amount
+      if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
+      if (tx.method === 'TABBY' && isActiveInDrawer) tabbyBalance -= tx.amount
+      if (tx.method === 'TAMARA' && isActiveInDrawer) tamaraBalance -= tx.amount
     } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'AGENT_PURCHASE'].includes(tx.type)) {
       if (tx.method === 'CASH' && isActiveInDrawer) cashInDrawer -= tx.amount
       else if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
+      else if (tx.method === 'TABBY' && isActiveInDrawer) tabbyBalance -= tx.amount
+      else if (tx.method === 'TAMARA' && isActiveInDrawer) tamaraBalance -= tx.amount
     } else if (tx.type === 'SALARY_PAYMENT') {
       // Per user request, salary settlements are from a dedicated fund and don't affect standard cash account
       if (isThisMonth) salaryPayouts += tx.amount
@@ -105,6 +115,8 @@ export async function getDashboardData() {
   return {
     cashInDrawer,
     networkSales,
+    tabbyBalance,
+    tamaraBalance,
     salaryFundRemaining,
     totalOutstandingCredit,
     transactions,
@@ -717,4 +729,25 @@ export async function getInvoiceDetails(invoiceNumber: string) {
       sellingPrice: m.sellingPrice || m.item.sellingPrice || 0,
     })),
   }
+}
+export async function settleTabbySales() {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') throw new Error("Unauthorized")
+
+  await prisma.transaction.updateMany({
+    where: { method: 'TABBY', isSettled: false },
+    data: { isSettled: true }
+  })
+  revalidatePath('/')
+}
+
+export async function settleTamaraSales() {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') throw new Error("Unauthorized")
+
+  await prisma.transaction.updateMany({
+    where: { method: 'TAMARA', isSettled: false },
+    data: { isSettled: true }
+  })
+  revalidatePath('/')
 }

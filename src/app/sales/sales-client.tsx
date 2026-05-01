@@ -87,6 +87,8 @@ export default function SalesPage({
   let totalGrossRevenue = 0
   let unsettledCash = 0
   let unsettledNetwork = 0
+  let unsettledTabby = 0
+  let unsettledTamara = 0
   let hasUnsettled = false
 
   // Net Credit represents total unpaid credit all-time, not just in this date range
@@ -109,10 +111,14 @@ export default function SalesPage({
         hasUnsettled = true
         if (sale.type === 'SALE') {
           if (sale.method === 'CASH') unsettledCash += sale.amount
-          if (isNetworkLike)          unsettledNetwork += sale.amount
+          if (sale.method === 'NETWORK') unsettledNetwork += sale.amount
+          if (sale.method === 'TABBY') unsettledTabby += sale.amount
+          if (sale.method === 'TAMARA') unsettledTamara += sale.amount
         } else if (sale.type === 'RETURN') {
           if (sale.method === 'CASH') unsettledCash -= sale.amount
-          if (isNetworkLike)          unsettledNetwork -= sale.amount
+          if (sale.method === 'NETWORK') unsettledNetwork -= sale.amount
+          if (sale.method === 'TABBY') unsettledTabby -= sale.amount
+          if (sale.method === 'TAMARA') unsettledTamara -= sale.amount
         }
       }
     } else if (sale.type === 'RETURN') {
@@ -247,6 +253,8 @@ export default function SalesPage({
                 triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm animate-in fade-in duration-500" 
                 cashTotal={unsettledCash} 
                 networkTotal={unsettledNetwork} 
+                tabbyTotal={unsettledTabby}
+                tamaraTotal={unsettledTamara}
               />
             ) : (
               <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800 animate-in zoom-in-95 duration-500 shadow-sm">

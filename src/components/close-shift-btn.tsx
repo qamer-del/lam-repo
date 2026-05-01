@@ -25,11 +25,15 @@ import { Calculator, CheckCircle2, AlertCircle, Banknote, History } from 'lucide
 export function CloseShiftBtn({ 
   triggerClassName,
   cashTotal,
-  networkTotal
+  networkTotal,
+  tabbyTotal,
+  tamaraTotal
 }: { 
   triggerClassName?: string 
   cashTotal: number
   networkTotal: number
+  tabbyTotal: number
+  tamaraTotal: number
 }) {
   const { t, locale } = useLanguage()
   const [loading, setLoading] = useState(false)
@@ -117,6 +121,14 @@ export function CloseShiftBtn({
             <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
               <p className="text-[10px] uppercase font-black text-gray-400 tracking-wider mb-1">{t('networkSales')}</p>
               <p className="text-xl font-black text-gray-900 dark:text-white">{networkTotal.toFixed(2)} <span className="text-[10px] font-normal">SAR</span></p>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <p className="text-[10px] uppercase font-black text-purple-400 tracking-wider mb-1">Tabby Sales</p>
+              <p className="text-xl font-black text-gray-900 dark:text-white">{tabbyTotal.toFixed(2)} <span className="text-[10px] font-normal">SAR</span></p>
+            </div>
+            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <p className="text-[10px] uppercase font-black text-pink-400 tracking-wider mb-1">Tamara Sales</p>
+              <p className="text-xl font-black text-gray-900 dark:text-white">{tamaraTotal.toFixed(2)} <span className="text-[10px] font-normal">SAR</span></p>
             </div>
           </div>
 

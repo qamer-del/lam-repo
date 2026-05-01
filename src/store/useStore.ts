@@ -28,6 +28,8 @@ export interface Transaction {
 interface VaultState {
   cashInDrawer: number
   networkSales: number
+  tabbyBalance: number
+  tamaraBalance: number
   salaryFundRemaining: number
   totalOutstandingCredit: number
   transactions: Transaction[]
@@ -40,6 +42,8 @@ interface VaultState {
 export const useStore = create<VaultState>((set) => ({
   cashInDrawer: 0,
   networkSales: 0,
+  tabbyBalance: 0,
+  tamaraBalance: 0,
   salaryFundRemaining: 0,
   totalOutstandingCredit: 0,
   transactions: [],
@@ -48,6 +52,8 @@ export const useStore = create<VaultState>((set) => ({
   addTransactions: (txs) => set((state) => {
     let cashChange = 0;
     let netChange = 0;
+    let tabbyChange = 0;
+    let tamaraChange = 0;
     let fuelFundChange = 0;
     let creditChange = 0;
 
@@ -58,8 +64,12 @@ export const useStore = create<VaultState>((set) => ({
         if (tx.method === 'CASH') {
           cashChange += tx.amount;
           fuelFundChange += tx.amount;
-        } else if (isNetworkLike) {
+        } else if (tx.method === 'NETWORK') {
           netChange += tx.amount;
+        } else if (tx.method === 'TABBY') {
+          tabbyChange += tx.amount;
+        } else if (tx.method === 'TAMARA') {
+          tamaraChange += tx.amount;
         } else if (tx.method === 'CREDIT') {
           creditChange += tx.amount;
         }
@@ -67,12 +77,18 @@ export const useStore = create<VaultState>((set) => ({
         if (tx.method === 'CASH') {
           cashChange -= tx.amount;
           fuelFundChange -= tx.amount;
-        } else if (isNetworkLike) {
+        } else if (tx.method === 'NETWORK') {
           netChange -= tx.amount;
+        } else if (tx.method === 'TABBY') {
+          tabbyChange -= tx.amount;
+        } else if (tx.method === 'TAMARA') {
+          tamaraChange -= tx.amount;
         }
       } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PURCHASE', 'AGENT_PAYMENT'].includes(tx.type)) {
         if (tx.method === 'CASH') cashChange -= tx.amount;
-        else if (isNetworkLike) netChange -= tx.amount;
+        else if (tx.method === 'NETWORK') netChange -= tx.amount;
+        else if (tx.method === 'TABBY') tabbyChange -= tx.amount;
+        else if (tx.method === 'TAMARA') tamaraChange -= tx.amount;
       } else if (tx.type === 'SALARY_PAYMENT') {
         fuelFundChange -= tx.amount;
       }
@@ -82,6 +98,8 @@ export const useStore = create<VaultState>((set) => ({
       transactions: [...txs, ...state.transactions],
       cashInDrawer: state.cashInDrawer + cashChange,
       networkSales: state.networkSales + netChange,
+      tabbyBalance: state.tabbyBalance + tabbyChange,
+      tamaraBalance: state.tamaraBalance + tamaraChange,
       salaryFundRemaining: state.salaryFundRemaining + fuelFundChange,
       totalOutstandingCredit: state.totalOutstandingCredit + creditChange
     }

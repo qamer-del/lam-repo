@@ -98,6 +98,8 @@ const styles = StyleSheet.create({
 export function SettlementDocument({ settlement, transactions }: { settlement: any, transactions: any[] }) {
   const cashTransactions = transactions.filter(tx => tx.method === 'CASH');
   const networkTransactions = transactions.filter(tx => tx.method === 'NETWORK');
+  const tabbyTransactions = transactions.filter(tx => tx.method === 'TABBY');
+  const tamaraTransactions = transactions.filter(tx => tx.method === 'TAMARA');
   
   const discrepancy = (settlement.actualCashCounted || 0) - settlement.totalCashHanded;
 
@@ -107,7 +109,7 @@ export function SettlementDocument({ settlement, transactions }: { settlement: a
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>CASH SETTLEMENT REPORT</Text>
+            <Text style={styles.title}>FINANCIAL SETTLEMENT REPORT</Text>
             <Text style={{ fontSize: 12, marginTop: 4 }}>ID: #{settlement.id}</Text>
           </View>
           <View style={styles.meta}>
@@ -144,7 +146,7 @@ export function SettlementDocument({ settlement, transactions }: { settlement: a
         </View>
 
         {/* Network Transactions Table */}
-        <Text style={styles.sectionTitle}>Network / Bank Transactions</Text>
+        <Text style={styles.sectionTitle}>Network Transactions</Text>
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
             <Text style={[styles.tableCol, styles.colId]}>ID</Text>
@@ -167,11 +169,67 @@ export function SettlementDocument({ settlement, transactions }: { settlement: a
           )}
         </View>
 
+        {/* Tabby Transactions Table */}
+        <Text style={styles.sectionTitle}>Tabby BNPL Transactions</Text>
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={[styles.tableCol, styles.colId]}>ID</Text>
+            <Text style={[styles.tableCol, styles.colType]}>Type</Text>
+            <Text style={[styles.tableCol, styles.colDate]}>Time</Text>
+            <Text style={[styles.tableCol, styles.colAmount]}>Amount</Text>
+          </View>
+          {tabbyTransactions.map((tx) => (
+            <View style={styles.tableRow} key={tx.id}>
+              <Text style={[styles.tableCol, styles.colId]}>#{tx.id}</Text>
+              <Text style={[styles.tableCol, styles.colType]}>{tx.type}</Text>
+              <Text style={[styles.tableCol, styles.colDate]}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+              <Text style={[styles.tableCol, styles.colAmount]}>{tx.amount.toFixed(2)}</Text>
+            </View>
+          ))}
+          {tabbyTransactions.length === 0 && (
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCol, { width: '100%', textAlign: 'center' }]}>No Tabby transactions in this period.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Tamara Transactions Table */}
+        <Text style={styles.sectionTitle}>Tamara BNPL Transactions</Text>
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={[styles.tableCol, styles.colId]}>ID</Text>
+            <Text style={[styles.tableCol, styles.colType]}>Type</Text>
+            <Text style={[styles.tableCol, styles.colDate]}>Time</Text>
+            <Text style={[styles.tableCol, styles.colAmount]}>Amount</Text>
+          </View>
+          {tamaraTransactions.map((tx) => (
+            <View style={styles.tableRow} key={tx.id}>
+              <Text style={[styles.tableCol, styles.colId]}>#{tx.id}</Text>
+              <Text style={[styles.tableCol, styles.colType]}>{tx.type}</Text>
+              <Text style={[styles.tableCol, styles.colDate]}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+              <Text style={[styles.tableCol, styles.colAmount]}>{tx.amount.toFixed(2)}</Text>
+            </View>
+          ))}
+          {tamaraTransactions.length === 0 && (
+            <View style={styles.tableRow}>
+              <Text style={[styles.tableCol, { width: '100%', textAlign: 'center' }]}>No Tamara transactions in this period.</Text>
+            </View>
+          )}
+        </View>
+
         {/* Summary Footer */}
         <View style={styles.summarySection}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Network Sales Volume:</Text>
+            <Text style={styles.summaryLabel}>Total Network Volume:</Text>
             <Text style={styles.summaryValue}>{settlement.totalNetworkVolume.toFixed(2)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total Tabby Volume:</Text>
+            <Text style={styles.summaryValue}>{settlement.totalTabbyVolume?.toFixed(2) || '0.00'}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total Tamara Volume:</Text>
+            <Text style={styles.summaryValue}>{settlement.totalTamaraVolume?.toFixed(2) || '0.00'}</Text>
           </View>
           <View style={[styles.summaryRow, { marginTop: 10, borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 10 }]}>
             <Text style={styles.summaryLabel}>System Expected Cash:</Text>
