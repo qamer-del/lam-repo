@@ -6,9 +6,10 @@ import { useLanguage } from '@/providers/language-provider'
 import { createSettlement } from '@/actions/transactions'
 import { pdf } from '@react-pdf/renderer'
 import { SettlementDocument } from './settlement-document'
-import { useStore } from '@/store/useStore'
+import { useStore, Transaction } from '@/store/useStore'
 
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 import { 
   Dialog, 
@@ -52,10 +53,24 @@ export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string 
         URL.revokeObjectURL(url)
       }
 
+      toast.success('Settlement Completed', {
+        description: 'The drawer has been successfully settled and the balance is updated.',
+      })
+      
+      // Update store for real-time dashboard sync
+      const { setVaultData } = useStore.getState()
+      setVaultData({
+        cashInDrawer: 0, // Reset cash in drawer after settlement
+        transactions: [], // Transactions are usually cleared or moved to history
+        recentSettlements: [settlement, ...useStore.getState().recentSettlements]
+      })
+
       setIsOpen(false)
-      window.location.reload()
     } catch (error) {
       console.error(error)
+      toast.error('Settlement Failed', {
+        description: 'An error occurred while settling the drawer. Please try again.',
+      })
     } finally {
       setLoading(false)
     }

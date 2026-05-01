@@ -25,6 +25,9 @@ import { createInventoryItem, updateInventoryItem } from '@/actions/inventory'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
 import { InventoryCategory } from '@prisma/client'
+import { toast } from 'sonner'
+import { useStore, Transaction } from '@/store/useStore'
+import { getDashboardData } from '@/actions/transactions'
 
 const CATEGORIES: { value: InventoryCategory; label: string }[] = [
   { value: 'POLISH', label: 'Polish' },
@@ -106,11 +109,27 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
           initialStock: parseFloat(initialStock) || 0,
         })
       }
+      toast.success(isEdit ? 'Item Updated' : 'Item Created', {
+        description: `Successfully ${isEdit ? 'updated' : 'created'} "${name}" in the inventory.`,
+      })
       handleClose(false)
+      
+      // Update store for real-time dashboard sync (metrics update)
+      const data = await getDashboardData()
+      useStore.getState().setVaultData({
+        transactions: data.transactions,
+        cashInDrawer: data.cashInDrawer,
+        networkSales: data.networkSales,
+        salaryFundRemaining: data.salaryFundRemaining,
+        totalOutstandingCredit: data.totalOutstandingCredit
+      })
+
       router.refresh()
     } catch (err) {
       console.error(err)
-      alert('An error occurred. Please try again.')
+      toast.error('Operation Failed', {
+        description: 'An error occurred while saving the inventory item.',
+      })
     } finally {
       setLoading(false)
     }

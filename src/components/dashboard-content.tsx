@@ -1,24 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useStore, TransType, PayMethod } from '@/store/useStore'
-export interface Transaction {
-  id: number
-  type: TransType
-  amount: number
-  method: PayMethod
-  description: string | null
-  isSettled: boolean
-  createdAt: Date
-  staffId: number | null
-  agentId: number | null
-  settlementId: number | null
-  salarySettlementId: number | null
-  recordedById: string | null
-  isInternal: boolean
-  staff?: { name: string } | null
-  agent?: { name: string } | null
-}
+import { useStore, TransType, PayMethod, Transaction } from '@/store/useStore'
 import { useLanguage } from '@/providers/language-provider'
 import { AddTransactionModal } from './add-transaction-modal'
 import { SettleCashBtn } from './settle-cash-btn'
@@ -44,6 +27,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Package,
+  CheckCircle2,
   AlertTriangle
 } from 'lucide-react'
 import Link from 'next/link'
@@ -214,6 +198,19 @@ export function DashboardContent({
           {isAdmin && (
             <SettleCashBtn triggerClassName="flex-1 sm:flex-none h-11 sm:h-10 px-6 font-bold" />
           )}
+          {userRole === 'CASHIER' && (
+            !transactions.some(tx => !tx.isSettled && !tx.settlementId) ? (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800 shadow-sm animate-in zoom-in-95 duration-500">
+                <CheckCircle2 size={16} className="text-emerald-500" />
+                <span className="text-xs font-black uppercase tracking-wider">{t('shiftClosed')}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full border border-amber-200 dark:border-amber-800 shadow-sm animate-pulse">
+                <AlertTriangle size={16} className="text-amber-500" />
+                <span className="text-xs font-black uppercase tracking-wider">{t('shiftActive')}</span>
+              </div>
+            )
+          )}
         </div>
       )}
 
@@ -232,6 +229,7 @@ export function DashboardContent({
                   <TableHead className="whitespace-nowrap">{t('method')}</TableHead>
                   <TableHead className="whitespace-nowrap">{t('amount')}</TableHead>
                   <TableHead className="whitespace-nowrap">{t('description')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('salesperson')}</TableHead>
                   <TableHead className="whitespace-nowrap">{t('reportDate')}</TableHead>
                   <TableHead className="whitespace-nowrap">{t('settled')}</TableHead>
                 </TableRow>
@@ -249,6 +247,7 @@ export function DashboardContent({
                     </TableCell>
                     <TableCell className="font-semibold tabular-nums">{tx.amount.toFixed(2)}</TableCell>
                     <TableCell className="text-gray-500 text-sm max-w-[200px] truncate">{tx.description || '-'}</TableCell>
+                    <TableCell className="text-sm font-medium">{tx.recordedBy?.name || '-'}</TableCell>
                     <TableCell className="text-sm text-gray-500">{format(new Date(tx.createdAt), 'PPp')}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${

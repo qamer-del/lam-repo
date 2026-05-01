@@ -207,7 +207,7 @@ export async function createPurchaseOrder(data: {
     0
   )
 
-  await prisma.$transaction(async (tx) => {
+  const txRecord = await prisma.$transaction(async (tx) => {
     // 1. Create PO
     const po = await tx.purchaseOrder.create({
       data: {
@@ -271,10 +271,17 @@ export async function createPurchaseOrder(data: {
       where: { id: po.id },
       data: { transactionId: txRecord.id },
     })
+
+    return txRecord
   })
 
   revalidatePath('/inventory')
   revalidatePath('/')
+
+  return await prisma.transaction.findUnique({
+    where: { id: txRecord.id },
+    include: { recordedBy: { select: { name: true } } }
+  })
 }
 
 // ── Stock Movements ───────────────────────────────────────────────────────────

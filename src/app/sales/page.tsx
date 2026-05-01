@@ -24,6 +24,7 @@ export default async function SalesRoute() {
   const sales = await prisma.transaction.findMany({
     where: baseWhere,
     orderBy: { createdAt: 'desc' },
+    include: { recordedBy: { select: { name: true } } }
   })
 
   // Also fetch stock movements for profit calculation

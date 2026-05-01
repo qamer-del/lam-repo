@@ -7,6 +7,8 @@ import { createCashierHandover } from '@/actions/transactions'
 import { pdf } from '@react-pdf/renderer'
 import { SettlementDocument } from './settlement-document'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { useStore } from '@/store/useStore'
 
 import { 
   Dialog, 
@@ -54,10 +56,22 @@ export function CloseShiftBtn({
         URL.revokeObjectURL(url)
       }
 
+      toast.success('Shift Closed', {
+        description: 'Your shift has been successfully closed and recorded.',
+      })
+
+      // Update store for real-time dashboard sync
+      const { setVaultData } = useStore.getState()
+      setVaultData({
+        transactions: [], // Cashier shift closure usually clears their session transactions
+      })
+
       setIsOpen(false)
-      window.location.reload()
     } catch (error) {
       console.error(error)
+      toast.error('Closure Failed', {
+        description: 'An error occurred while closing the shift. Please try again.',
+      })
     } finally {
       setLoading(false)
     }

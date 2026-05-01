@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label'
 import { settleCreditSale } from '@/actions/transactions'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
+import { useStore, Transaction } from '@/store/useStore'
 
 export function CreditSalesTable({ sales }: { sales: any[] }) {
   const router = useRouter()
@@ -44,13 +45,25 @@ export function CreditSalesTable({ sales }: { sales: any[] }) {
     if (!selectedSale) return
     setLoading(true)
     try {
-      await settleCreditSale({
+      const result = await settleCreditSale({
         transactionId: selectedSale.id,
         paymentMethod: method
       })
+      
+      if (result) {
+        // 1. Update original credit transaction to be settled in local state
+        const { transactions, setVaultData, addTransaction } = useStore.getState()
+        const updatedTxs = transactions.map(t => 
+          t.id === selectedSale.id ? { ...t, isSettled: true } : t
+        )
+        setVaultData({ transactions: updatedTxs })
+        
+        // 2. Add the new settlement transaction
+        addTransaction(result as Transaction)
+      }
+
       setSettleOpen(false)
       setSelectedSale(null)
-      router.refresh()
     } catch (err) {
       console.error(err)
       alert('Failed to settle credit sale')

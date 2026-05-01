@@ -18,6 +18,8 @@ import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { SalarySettlementDocument } from './salary-settlement-pdf'
+import { toast } from 'sonner'
+import { useStore, Transaction } from '@/store/useStore'
 
 export function SalarySettlementModal({ 
   staff, 
@@ -48,10 +50,24 @@ export function SalarySettlementModal({
         method
       })
       setSettledData(res)
-      router.refresh()
+      toast.success('Salary Settled', {
+        description: `Successfully settled salary for ${staff.name}. Net payout: ${netPaid.toFixed(2)} SAR.`,
+      })
+      
+      // Update store for real-time ledger sync
+      const { transactions, setVaultData, addTransaction } = useStore.getState()
+      const updatedTxs = transactions.map(t => 
+        (t.staffId === staff.id && !t.isSettled) ? { ...t, isSettled: true } : t
+      )
+      setVaultData({ transactions: updatedTxs })
+      if (res && res.paymentTransaction) {
+        addTransaction(res.paymentTransaction as Transaction)
+      }
     } catch (error) {
       console.error(error)
-      alert('Settlement failed')
+      toast.error('Settlement Failed', {
+        description: 'An error occurred during salary settlement.',
+      })
     } finally {
       setLoading(false)
     }

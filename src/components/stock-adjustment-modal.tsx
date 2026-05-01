@@ -15,6 +15,9 @@ import { useLanguage } from '@/providers/language-provider'
 import { adjustStock } from '@/actions/inventory'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
+import { toast } from 'sonner'
+import { useStore } from '@/store/useStore'
+import { getDashboardData } from '@/actions/transactions'
 
 interface Props {
   item: {
@@ -39,17 +42,32 @@ export function StockAdjustmentModal({ item, onClose }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (delta === 0) {
-      alert('Please enter a non-zero quantity.')
+      toast.warning('Invalid Quantity', { description: 'Please enter a non-zero quantity to adjust stock.' })
       return
     }
     setLoading(true)
     try {
       await adjustStock({ itemId: item.id, quantity: delta, note: note || undefined })
+      toast.success('Stock Adjusted', {
+        description: `Successfully ${delta > 0 ? 'added' : 'removed'} ${Math.abs(delta)} ${item.unit} for "${item.name}".`,
+      })
+      
+      // Update store for real-time dashboard sync
+      const data = await getDashboardData()
+      useStore.getState().setVaultData({
+        transactions: data.transactions,
+        cashInDrawer: data.cashInDrawer,
+        networkSales: data.networkSales,
+        salaryFundRemaining: data.salaryFundRemaining,
+        totalOutstandingCredit: data.totalOutstandingCredit
+      })
+
       onClose()
-      router.refresh()
     } catch (err) {
       console.error(err)
-      alert('An error occurred.')
+      toast.error('Adjustment Failed', {
+        description: 'An error occurred while updating the stock level.',
+      })
     } finally {
       setLoading(false)
     }

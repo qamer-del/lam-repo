@@ -43,7 +43,7 @@ export async function getDashboardData() {
       ...whereClause,
     },
     orderBy: { createdAt: 'desc' },
-    include: { staff: true, agent: true }
+    include: { staff: true, agent: true, recordedBy: { select: { name: true } } }
   })
 
   // Separate for the UI
@@ -224,7 +224,12 @@ export async function recordRefund(data: {
   revalidatePath('/')
   revalidatePath('/sales')
   revalidatePath('/inventory')
-  return tx
+  
+  // Return with relations needed for the store
+  return await prisma.transaction.findUnique({
+    where: { id: tx.id },
+    include: { recordedBy: { select: { name: true } } }
+  })
 }
 
 export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK' }) {
@@ -266,8 +271,9 @@ export async function settleSalary(data: { staffId: number, month: number, year:
   })
 
   // 3. Record final SALARY_PAYMENT if netPaid > 0
+  let paymentTransaction = null
   if (netPaid > 0) {
-    await prisma.transaction.create({
+    paymentTransaction = await prisma.transaction.create({
       data: {
         type: 'SALARY_PAYMENT',
         amount: netPaid,
@@ -277,7 +283,8 @@ export async function settleSalary(data: { staffId: number, month: number, year:
         recordedById: session.user.id,
         isSettled: true,
         salarySettlementId: salarySettlement.id
-      }
+      },
+      include: { recordedBy: { select: { name: true } } }
     })
   }
 
@@ -291,7 +298,7 @@ export async function settleSalary(data: { staffId: number, month: number, year:
 
   revalidatePath('/')
   revalidatePath('/staff')
-  return salarySettlement
+  return { ...salarySettlement, paymentTransaction }
 }
 
 export async function settleAllSalaries(data: { month: number, year: number, method: 'CASH' | 'NETWORK' }) {
@@ -596,6 +603,12 @@ export async function recordDailySales(data: {
   revalidatePath('/')
   revalidatePath('/sales')
   revalidatePath('/inventory')
+
+  // Return the created transactions with relations for real-time store update
+  return await prisma.transaction.findMany({
+    where: { invoiceNumber },
+    include: { recordedBy: { select: { name: true } } }
+  })
 }
 
 export async function settleCreditSale(data: {

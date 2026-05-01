@@ -1,7 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Package, ShoppingCart, ArrowLeftRight, AlertTriangle, TrendingUp, Box, SlidersHorizontal, Pencil, Power } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { 
+  Package, ShoppingCart, ArrowLeftRight, AlertTriangle, TrendingUp, 
+  Box, SlidersHorizontal, Pencil, Power,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -77,6 +81,76 @@ function StockBadge({ item }: { item: InventoryItem }) {
   return <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">In Stock</span>
 }
 
+function Pagination({ 
+  currentPage, 
+  totalPages, 
+  startIndex, 
+  endIndex, 
+  totalItems, 
+  onPageChange 
+}: { 
+  currentPage: number
+  totalPages: number
+  startIndex: number
+  endIndex: number
+  totalItems: number
+  onPageChange: (page: number) => void
+}) {
+  return (
+    <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        Showing <span className="font-bold text-gray-900 dark:text-white">{startIndex + 1}</span> to <span className="font-bold text-gray-900 dark:text-white">{endIndex}</span> of <span className="font-bold text-gray-900 dark:text-white">{totalItems}</span> records
+      </div>
+      
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+        >
+          <ChevronsLeft size={14} />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          <ChevronLeft size={14} />
+        </Button>
+        
+        <div className="flex items-center gap-1 px-2">
+          <span className="text-xs font-bold text-teal-600 dark:text-teal-400">{currentPage}</span>
+          <span className="text-xs text-gray-400">/</span>
+          <span className="text-xs font-medium text-gray-500">{totalPages}</span>
+        </div>
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+        >
+          <ChevronRight size={14} />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+        >
+          <ChevronsRight size={14} />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function InventoryClient({ initialItems, initialPurchases, initialMovements, userRole }: Props) {
   const { t } = useLanguage()
   const router = useRouter()
@@ -84,6 +158,13 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
   const [searchQuery, setSearchQuery] = useState('')
   const [editItem, setEditItem] = useState<InventoryItem | null>(null)
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
+
+  // Reset page when tab or search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [tab, searchQuery])
 
   const isSuperAdmin = userRole === 'SUPER_ADMIN'
   const isAdmin = userRole === 'ADMIN' || isSuperAdmin
@@ -109,6 +190,20 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
     { key: 'purchases', label: t('purchases'), icon: ShoppingCart },
     { key: 'movements', label: t('movements'), icon: ArrowLeftRight },
   ]
+
+  // Pagination Logic for Items
+  const totalItemPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE)
+  const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  
+  // Pagination Logic for Purchases
+  const totalPurchasePages = Math.ceil(initialPurchases.length / ITEMS_PER_PAGE)
+  const paginatedPurchases = initialPurchases.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+
+  // Pagination Logic for Movements
+  const totalMovementPages = Math.ceil(initialMovements.length / ITEMS_PER_PAGE)
+  const paginatedMovements = initialMovements.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+
+  const currentStartIndex = (currentPage - 1) * ITEMS_PER_PAGE
 
   return (
     <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto space-y-8 font-sans">
@@ -226,10 +321,10 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredItems.length === 0 && (
+                {paginatedItems.length === 0 && (
                   <TableRow><TableCell colSpan={9} className="text-center py-12 text-gray-400">{t('noItemsYet')}</TableCell></TableRow>
                 )}
-                {filteredItems.map(item => (
+                {paginatedItems.map(item => (
                   <TableRow key={item.id} className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition ${item.currentStock <= 0 ? 'opacity-60' : ''}`}>
                     <TableCell>
                       <div>
@@ -273,8 +368,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
 
           {/* Mobile */}
           <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-            {filteredItems.length === 0 && <div className="py-12 text-center text-gray-400 text-sm">{t('noItemsYet')}</div>}
-            {filteredItems.map(item => (
+            {paginatedItems.length === 0 && <div className="py-12 text-center text-gray-400 text-sm">{t('noItemsYet')}</div>}
+            {paginatedItems.map(item => (
               <div key={item.id} className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
@@ -320,6 +415,16 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
               </div>
             ))}
           </div>
+          {filteredItems.length > ITEMS_PER_PAGE && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalItemPages}
+              startIndex={currentStartIndex}
+              endIndex={Math.min(currentStartIndex + ITEMS_PER_PAGE, filteredItems.length)}
+              totalItems={filteredItems.length}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </Card>
       )}
 
@@ -340,10 +445,10 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {initialPurchases.length === 0 && (
+                {paginatedPurchases.length === 0 && (
                   <TableRow><TableCell colSpan={7} className="text-center py-12 text-gray-400">{t('noPurchasesYet')}</TableCell></TableRow>
                 )}
-                {initialPurchases.map(po => (
+                {paginatedPurchases.map(po => (
                   <TableRow key={po.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                     <TableCell className="font-bold text-gray-500">#{po.id}</TableCell>
                     <TableCell>
@@ -381,8 +486,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
 
           {/* Mobile Purchases */}
           <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-            {initialPurchases.length === 0 && <div className="py-12 text-center text-gray-400 text-sm">{t('noPurchasesYet')}</div>}
-            {initialPurchases.map(po => (
+            {paginatedPurchases.length === 0 && <div className="py-12 text-center text-gray-400 text-sm">{t('noPurchasesYet')}</div>}
+            {paginatedPurchases.map(po => (
               <div key={po.id} className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
@@ -406,6 +511,16 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
               </div>
             ))}
           </div>
+          {initialPurchases.length > ITEMS_PER_PAGE && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPurchasePages}
+              startIndex={currentStartIndex}
+              endIndex={Math.min(currentStartIndex + ITEMS_PER_PAGE, initialPurchases.length)}
+              totalItems={initialPurchases.length}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </Card>
       )}
 
@@ -427,10 +542,10 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {initialMovements.length === 0 && (
+                {paginatedMovements.length === 0 && (
                   <TableRow><TableCell colSpan={8} className="text-center py-12 text-gray-400">{t('noMovementsYet')}</TableCell></TableRow>
                 )}
-                {initialMovements.map(m => (
+                {paginatedMovements.map(m => (
                   <TableRow key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                     <TableCell>
                       <div className="flex flex-col gap-1">
@@ -467,8 +582,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
 
           {/* Mobile Movements */}
           <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-            {initialMovements.length === 0 && <div className="py-12 text-center text-gray-400 text-sm">{t('noMovementsYet')}</div>}
-            {initialMovements.map(m => (
+            {paginatedMovements.length === 0 && <div className="py-12 text-center text-gray-400 text-sm">{t('noMovementsYet')}</div>}
+            {paginatedMovements.map(m => (
               <div key={m.id} className="p-4 flex justify-between items-start gap-3">
                 <div className="space-y-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -494,6 +609,16 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
               </div>
             ))}
           </div>
+          {initialMovements.length > ITEMS_PER_PAGE && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalMovementPages}
+              startIndex={currentStartIndex}
+              endIndex={Math.min(currentStartIndex + ITEMS_PER_PAGE, initialMovements.length)}
+              totalItems={initialMovements.length}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </Card>
       )}
 

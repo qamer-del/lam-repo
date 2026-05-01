@@ -5,6 +5,7 @@ import { LanguageProvider } from '@/providers/language-provider';
 import { Sidebar, MobileNav, MobileTopBar } from '@/components/navigation';
 import { auth } from "@/auth"
 import { SessionProvider } from 'next-auth/react'
+import { Toaster } from 'sonner'
 
 const inter = Inter({
   variable: "--font-inter",
@@ -49,6 +50,7 @@ export default async function RootLayout({
             ) : (
               children
             )}
+            <Toaster position="top-right" richColors />
           </LanguageProvider>
         </SessionProvider>
       </body>

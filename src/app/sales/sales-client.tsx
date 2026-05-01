@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useLanguage } from '@/providers/language-provider'
@@ -8,7 +8,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
-import { Receipt, Coins, CreditCard, Download, Filter, Calculator, TrendingDown, ArrowUpRight, ArrowDownLeft, Users, CheckCircle } from 'lucide-react'
+import { 
+  Receipt, Coins, CreditCard, Download, Filter, Calculator, 
+  TrendingDown, ArrowUpRight, ArrowDownLeft, Users, CheckCircle, CheckCircle2,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+} from 'lucide-react'
 import { AddSalesModal } from '@/components/add-sales-modal'
 import { AddRefundModal } from '@/components/add-refund-modal'
 import { SettleCashBtn } from '@/components/settle-cash-btn'
@@ -21,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { useStore, Transaction } from '@/store/useStore'
 
 export default function SalesPage({
   initialSales,
@@ -35,13 +40,38 @@ export default function SalesPage({
   const { data: session } = useSession()
   const isCashier = userRole === 'CASHIER' || session?.user?.role === 'CASHIER'
 
-  const [sales] = useState<any[]>(initialSales || [])
-  const [movements] = useState<any[]>(initialMovements || [])
+  const { transactions: storeTransactions, setVaultData } = useStore()
+  
+  // Sync server data to store on initial load
+  useEffect(() => {
+    if (initialSales || initialMovements) {
+      setVaultData({
+        transactions: initialSales || [],
+        cashInDrawer: 0, // These will be overwritten by dashboard fetch anyway
+        networkSales: 0,
+        salaryFundRemaining: 0,
+        totalOutstandingCredit: 0,
+        recentSettlements: [],
+        ... (initialSales ? { transactions: initialSales } : {})
+      })
+    }
+  }, [initialSales, setVaultData])
+
   const [fromDate, setFromDate] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
   const [toDate, setToDate]     = useState<string>(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
   const [manualProfit, setManualProfit] = useState<string>('')
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
+  
+  const sales = storeTransactions
+  const movements = initialMovements || [] // Movements are currently still server-side for profit calc
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, fromDate, toDate])
 
   // ── Date-filtered sales ───────────────────────────────────────────────────
   const filteredSales = sales.filter(sale => {
@@ -55,6 +85,9 @@ export default function SalesPage({
   let totalCash    = 0
   let totalNetwork = 0
   let totalGrossRevenue = 0
+  let unsettledCash = 0
+  let unsettledNetwork = 0
+  let hasUnsettled = false
 
   // Net Credit represents total unpaid credit all-time, not just in this date range
   const totalCredit = sales.filter(s => s.method === 'CREDIT' && !s.isSettled).reduce((sum, s) => sum + s.amount, 0)
@@ -70,6 +103,18 @@ export default function SalesPage({
       if (sale.method === 'CASH') totalCash    += sale.amount
       if (isNetworkLike)          totalNetwork += sale.amount
       if (!isSettlement)          totalGrossRevenue += sale.amount
+
+      // Tracking for closing shift
+      if (!sale.isSettled && !sale.settlementId) {
+        hasUnsettled = true
+        if (sale.type === 'SALE') {
+          if (sale.method === 'CASH') unsettledCash += sale.amount
+          if (isNetworkLike)          unsettledNetwork += sale.amount
+        } else if (sale.type === 'RETURN') {
+          if (sale.method === 'CASH') unsettledCash -= sale.amount
+          if (isNetworkLike)          unsettledNetwork -= sale.amount
+        }
+      }
     } else if (sale.type === 'RETURN') {
       if (sale.method === 'CASH') totalCash    -= sale.amount
       if (isNetworkLike)          totalNetwork -= sale.amount
@@ -96,6 +141,7 @@ export default function SalesPage({
         networkAmount: 0,
         creditAmount: 0,
         methods: new Set<string>(),
+        salesperson: sale.recordedBy?.name || 'Unknown',
       })
     }
     const g = groups.get(key)!
@@ -136,6 +182,14 @@ export default function SalesPage({
         sale.id.toString().includes(q)
       )
     })
+
+  const totalPages = Math.ceil(aggregatedSales.length / ITEMS_PER_PAGE)
+  const paginatedSales = aggregatedSales.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, aggregatedSales.length)
 
   const totalSales   = aggregatedSales.filter(s => s.type === 'SALE').length
   const totalRefunds = aggregatedSales.filter(s => s.type === 'RETURN').length
@@ -188,11 +242,18 @@ export default function SalesPage({
             </>
           )}
           {isCashier && (
-            <CloseShiftBtn 
-              triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm" 
-              cashTotal={totalCash} 
-              networkTotal={totalNetwork} 
-            />
+            hasUnsettled ? (
+              <CloseShiftBtn 
+                triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm animate-in fade-in duration-500" 
+                cashTotal={unsettledCash} 
+                networkTotal={unsettledNetwork} 
+              />
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800 animate-in zoom-in-95 duration-500 shadow-sm">
+                <CheckCircle2 size={16} className="text-emerald-500" />
+                <span className="text-xs font-black uppercase tracking-wider">{t('shiftClosed')}</span>
+              </div>
+            )
           )}
 
           {!isCashier && (
@@ -422,11 +483,12 @@ export default function SalesPage({
                   <TableHead className="whitespace-nowrap text-xs">{t('method')}</TableHead>
                   <TableHead className="whitespace-nowrap text-xs">{t('amount')} (SAR)</TableHead>
                   <TableHead className="whitespace-nowrap text-xs">{t('description')}</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs">{t('salesperson')}</TableHead>
                   <TableHead className="whitespace-nowrap text-xs">{t('reportDate')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {aggregatedSales.map(sale => (
+                {paginatedSales.map(sale => (
                   <TableRow
                     key={sale.id}
                     className={cn(
@@ -477,6 +539,9 @@ export default function SalesPage({
                         )}
                       </div>
                     </TableCell>
+                    <TableCell className="text-xs font-bold text-gray-600 uppercase whitespace-nowrap">
+                      {sale.salesperson}
+                    </TableCell>
                     <TableCell className="text-xs text-gray-500 whitespace-nowrap">{format(new Date(sale.createdAt), 'PP · p')}</TableCell>
                   </TableRow>
                 ))}
@@ -486,7 +551,7 @@ export default function SalesPage({
 
           {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-            {aggregatedSales.map(sale => (
+            {paginatedSales.map(sale => (
               <div
                 key={sale.id}
                 className={cn(
@@ -559,6 +624,61 @@ export default function SalesPage({
                 <Receipt size={24} className="text-gray-300" />
               </div>
               <p className="text-gray-400 text-sm">{t('noSalesYet')}</p>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {aggregatedSales.length > ITEMS_PER_PAGE && (
+            <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Showing <span className="font-bold text-gray-900 dark:text-white">{startIndex + 1}</span> to <span className="font-bold text-gray-900 dark:text-white">{endIndex}</span> of <span className="font-bold text-gray-900 dark:text-white">{aggregatedSales.length}</span> transactions
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft size={14} />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft size={14} />
+                </Button>
+                
+                <div className="flex items-center gap-1 px-2">
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{currentPage}</span>
+                  <span className="text-xs text-gray-400">/</span>
+                  <span className="text-xs font-medium text-gray-500">{totalPages}</span>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight size={14} />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight size={14} />
+                </Button>
+              </div>
             </div>
           )}
         </Card>

@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
+import { toast } from 'sonner'
+import { useStore } from '@/store/useStore'
 
 export function SettleAllSalaries() {
   const router = useRouter()
@@ -33,10 +35,19 @@ export function SettleAllSalaries() {
         method
       })
       setDone(true)
-      router.refresh()
+      toast.success('Bulk Settlement Complete', {
+        description: 'Successfully settled salaries for all active staff members.',
+      })
+      
+      // Update store for real-time ledger sync
+      const { transactions, setVaultData } = useStore.getState()
+      const updatedTxs = transactions.map(t => ({ ...t, isSettled: true }))
+      setVaultData({ transactions: updatedTxs })
     } catch (error) {
       console.error(error)
-      alert('Bulk settlement failed')
+      toast.error('Bulk Settlement Failed', {
+        description: 'An error occurred while settling all salaries. Please check the logs.',
+      })
     } finally {
       setLoading(false)
     }

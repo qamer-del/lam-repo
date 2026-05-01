@@ -26,6 +26,8 @@ import { recordDailySales } from '@/actions/transactions'
 import { getAllInventoryItemsForSelect } from '@/actions/inventory'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
+import { toast } from 'sonner'
+import { useStore, Transaction } from '@/store/useStore'
 
 type PayMode = 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA' | 'CREDIT'
 
@@ -105,10 +107,13 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const err = validate()
-    if (err) { alert(err); return }
+    if (err) { 
+      toast.warning('Validation Error', { description: err })
+      return 
+    }
     setLoading(true)
     try {
-      await recordDailySales({
+      const results = await recordDailySales({
         paymentMode: payMode,
         totalAmount: parseFloat(total),
         cashAmount: payMode === 'SPLIT' ? (parseFloat(cashAmt) || 0) : undefined,
@@ -120,12 +125,21 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
           .filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0)
           .map(ci => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity) })),
       })
+      
+      if (results) {
+        useStore.getState().addTransactions(results as Transaction[])
+      }
+
+      toast.success('Transaction Successful', {
+        description: `Successfully recorded a ${payMode.toLowerCase()} sale of ${total} SAR.`,
+      })
       reset()
       setOpen(false)
-      router.refresh()
     } catch (err) {
       console.error(err)
-      alert('An error occurred. Please try again.')
+      toast.error('Transaction Failed', {
+        description: 'An error occurred while recording the sale. Please check your connection.',
+      })
     } finally {
       setLoading(false)
     }

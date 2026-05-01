@@ -36,6 +36,7 @@ import { getStaffList } from '@/actions/staff'
 import { useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { ModernLoader } from './ui/modern-loader'
+import { toast } from 'sonner'
 
 export function AddTransactionModal({ triggerClassName }: { triggerClassName?: string }) {
   const { t } = useLanguage()
@@ -57,7 +58,7 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (type === 'ADVANCE' && !staffId) {
-      alert('Please select a staff member')
+      toast.warning('Staff Required', { description: 'Please select a staff member for the advance payment.' })
       setLoading(false)
       return
     }
@@ -72,6 +73,9 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
       })
       
       addTxToStore(result as Transaction)
+      toast.success('Transaction Recorded', {
+        description: `Successfully recorded a ${type.toLowerCase()} of ${amount} SAR via ${method.toLowerCase()}.`,
+      })
       setOpen(false)
       // reset
       setAmount('')
@@ -81,6 +85,9 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
       setStaffId(undefined)
     } catch (error) {
       console.error(error)
+      toast.error('Transaction Failed', {
+        description: 'An error occurred while saving the transaction. Please try again.',
+      })
     } finally {
       setLoading(false)
     }

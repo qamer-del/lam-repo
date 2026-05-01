@@ -14,6 +14,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useLanguage } from '@/providers/language-provider'
 import { addStaff } from '@/actions/staff'
+import { toast } from 'sonner'
+import { useStore } from '@/store/useStore'
+import { getDashboardData } from '@/actions/transactions'
+import { getStaffList } from '@/actions/staff'
 
 export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
   const { t } = useLanguage()
@@ -34,14 +38,32 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
         idNumber,
         nationality
       })
+      toast.success('Staff Added', {
+        description: `Successfully added ${name} to the system with a base salary of ${salary} SAR.`,
+      })
       setOpen(false)
       setName('')
       setSalary('')
       setIdNumber('')
       setNationality('')
+      
+      // Update store for real-time ledger sync
+      const [staffData, txData] = await Promise.all([
+        getStaffList(),
+        getDashboardData()
+      ])
+      useStore.getState().setVaultData({
+        transactions: txData.transactions,
+        // we might need a separate staff list in store if we want full real-time staff sync
+        // for now dashboard-content and staff-page handle staff list locally or via props
+      })
+
       onAdded?.()
     } catch (err) {
       console.error(err)
+      toast.error('Operation Failed', {
+        description: 'Could not add staff member. Please try again.',
+      })
     } finally {
       setLoading(false)
     }

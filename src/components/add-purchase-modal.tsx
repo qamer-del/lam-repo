@@ -31,6 +31,8 @@ import { createPurchaseOrder, getAllInventoryItemsForSelect } from '@/actions/in
 import { getAgents } from '@/actions/agents'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
+import { toast } from 'sonner'
+import { useStore, Transaction } from '@/store/useStore'
 
 interface InventoryItem {
   id: number
@@ -99,16 +101,16 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
       (i) => i.itemId > 0 && parseFloat(i.quantity) > 0
     )
     if (validItems.length === 0) {
-      alert('Please add at least one item with a valid quantity.')
+      toast.warning('Invalid Items', { description: 'Please add at least one item with a valid quantity.' })
       return
     }
     if (method === 'CREDIT' && agentId === 'none') {
-      alert('Please select a supplier for credit purchases.')
+      toast.warning('Supplier Required', { description: 'Please select a supplier for credit purchases.' })
       return
     }
     setLoading(true)
     try {
-      await createPurchaseOrder({
+      const result = await createPurchaseOrder({
         agentId: agentId !== 'none' ? parseInt(agentId) : undefined,
         method,
         note: note || undefined,
@@ -118,14 +120,23 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
           unitCost: parseFloat(i.unitCost) || 0,
         })),
       })
+      
+      if (result) {
+        useStore.getState().addTransaction(result as Transaction)
+      }
+
       setOpen(false)
+      toast.success('Purchase Recorded', {
+        description: `Successfully recorded a ${method.toLowerCase()} purchase of ${totalCost.toFixed(2)} SAR.`,
+      })
       setLineItems([{ itemId: 0, quantity: '', unitCost: '' }])
       setAgentId('none')
       setNote('')
-      router.refresh()
     } catch (err) {
       console.error(err)
-      alert('An error occurred. Please try again.')
+      toast.error('Purchase Failed', {
+        description: 'An error occurred while recording the purchase order.',
+      })
     } finally {
       setLoading(false)
     }

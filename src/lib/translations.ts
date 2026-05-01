@@ -157,6 +157,10 @@ export const en = {
   handoverToManagerNote: 'Please verify the physical cash being handed over to the manager.',
   cashSales: 'Cash Sales',
   physicallyHandedCash: 'Physically Handed Cash',
+  salesperson: 'Salesperson',
+  shiftClosed: 'Shift Closed',
+  shiftActive: 'Shift Active',
+  noUnsettledTransactions: 'No unsettled transactions',
 }
 
 export const ar = {
@@ -318,4 +322,8 @@ export const ar = {
   handoverToManagerNote: 'يرجى التحقق من النقدية الفعلية التي يتم تسليمها للمدير.',
   cashSales: 'المبيعات النقدية',
   physicallyHandedCash: 'النقدية المسلمة فعلياً',
+  salesperson: 'موظف المبيعات',
+  shiftClosed: 'الوردية مغلقة',
+  shiftActive: 'الوردية نشطة',
+  noUnsettledTransactions: 'لا توجد معاملات غير مسواة',
 }

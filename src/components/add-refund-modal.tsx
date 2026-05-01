@@ -25,6 +25,8 @@ import { recordRefund, getInvoiceDetails } from '@/actions/transactions'
 import { getAllInventoryItemsForSelect } from '@/actions/inventory'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
+import { toast } from 'sonner'
+import { useStore, Transaction } from '@/store/useStore'
 
 type RefundMethod = 'CASH' | 'NETWORK' | 'TABBY' | 'TAMARA'
 
@@ -124,10 +126,10 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
           }))
         )
       } else {
-        setError('Invoice not found. Please check the number and try again.')
+        toast.error('Invoice Not Found', { description: 'Please check the invoice number and try again.' })
       }
     } catch {
-      setError('Error fetching invoice. Please try again.')
+      toast.error('Search Failed', { description: 'Error fetching invoice details. Please try again.' })
     } finally {
       setSearchingInvoice(false)
     }
@@ -154,13 +156,13 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
 
     const parsedAmount = parseFloat(amount)
     if (!parsedAmount || parsedAmount <= 0) {
-      setError('Refund amount must be greater than zero.')
+      toast.warning('Invalid Amount', { description: 'Refund amount must be greater than zero.' })
       return
     }
 
     setLoading(true)
     try {
-      await recordRefund({
+      const result = await recordRefund({
         amount: parsedAmount,
         method,
         reason,
@@ -174,11 +176,20 @@ export function AddRefundModal({ triggerClassName }: { triggerClassName?: string
             shouldRestock: ci.shouldRestock,
           })),
       })
+      
+      if (result) {
+        useStore.getState().addTransaction(result as Transaction)
+      }
+
+      toast.success('Refund Recorded', {
+        description: `Successfully processed a refund of ${parsedAmount.toFixed(2)} SAR via ${method.toLowerCase()}.`,
+      })
       resetForm()
       setOpen(false)
-      router.refresh()
     } catch (err: any) {
-      setError(err?.message || 'Failed to record refund. Please try again.')
+      toast.error('Refund Failed', {
+        description: err?.message || 'Failed to record refund. Please try again.',
+      })
     } finally {
       setLoading(false)
     }
