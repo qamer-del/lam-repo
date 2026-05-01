@@ -35,8 +35,17 @@ export async function getDashboardData() {
   const session = await auth()
   const role = session?.user?.role
 
-  // If cashier, they only see their own transactions. Super Admin/Admin/Owner see everything.
-  const whereClause = (role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'OWNER') ? {} : { recordedById: session?.user?.id }
+  const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'OWNER'
+  
+  // If cashier, they only see their own UNSETTLED transactions.
+  // Super Admin/Admin/Owner see everything.
+  const whereClause = isAdmin 
+    ? {} 
+    : { 
+        recordedById: session?.user?.id,
+        isSettled: false,
+        settlementId: null // Crucial: exclude transactions that are already part of a handover/report
+      }
 
   const allTxs = await prisma.transaction.findMany({
     where: { 
@@ -47,7 +56,11 @@ export async function getDashboardData() {
   })
 
   // Separate for the UI
-  const transactions = allTxs.filter(tx => !tx.isInternal)
+  // For cashiers, we only show what's currently in their active session (unsettled)
+  const transactions = isAdmin 
+    ? allTxs.filter(tx => !tx.isInternal)
+    : allTxs.filter(tx => !tx.isInternal && !tx.isSettled && !tx.settlementId)
+
   const internalTransactions = role === 'SUPER_ADMIN' ? allTxs.filter(tx => tx.isInternal) : []
 
   type TxWithRelations = (typeof allTxs)[number]
@@ -502,10 +515,10 @@ export async function createCashierHandover(actualCashCounted: number) {
   })
 
   // Mark as settled ONLY if they are not staff-related.
+  // This removes them from the cashier's active "unsettled" dashboard view.
   await prisma.transaction.updateMany({
     where: { 
       id: { in: unsettled.map((t: UnsettledTx) => t.id) },
-      method: 'CASH',
       NOT: {
         OR: [
           { type: 'ADVANCE' },

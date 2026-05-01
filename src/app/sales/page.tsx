@@ -18,6 +18,8 @@ export default async function SalesRoute() {
 
   if (role === 'CASHIER') {
     baseWhere.recordedById = session?.user?.id
+    baseWhere.isSettled = false
+    baseWhere.settlementId = null
     baseWhere.createdAt = { gte: startOfDay(new Date()) }
   }
 
