@@ -196,6 +196,7 @@ export const en = {
   allDebtsSettled: 'All customer debts are settled',
   searchByNameOrPhone: 'Search by name or phone...',
   noCustomersWithBalance: 'No customers found with outstanding balances',
+  warranty: 'Warranty',
 }
 
 export const ar = {
@@ -396,4 +397,5 @@ export const ar = {
   allDebtsSettled: 'جميع ديون العملاء مسددة',
   searchByNameOrPhone: 'البحث بالاسم أو الهاتف...',
   noCustomersWithBalance: 'لم يتم العثور على عملاء بأرصدة مستحقة',
+  warranty: 'الضمان',
 }

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { TransType, PayMethod } from '@prisma/client'
+import { createWarrantyRecordsForSale } from '@/actions/warranty'
 
 export async function addTransaction(data: {
   type: TransType
@@ -634,6 +635,24 @@ export async function recordDailySales(data: {
           recordedById: session.user.id,
         },
       })
+    }
+  }
+
+  // Auto-create warranty records for items that have warranty configured
+  const warrantyItems = data.consumedItems?.filter(ci => ci.quantity > 0) || []
+  if (warrantyItems.length > 0) {
+    try {
+      await createWarrantyRecordsForSale({
+        invoiceNumber,
+        saleDate: exactTime,
+        items: warrantyItems,
+        customerId: data.customerId,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+      })
+    } catch (err) {
+      // Non-fatal: log but don't fail the sale
+      console.error('[recordDailySales] Failed to create warranty records:', err)
     }
   }
 

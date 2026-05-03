@@ -18,6 +18,13 @@ enum TransType {
   OWNER_WITHDRAWAL
   AGENT_PURCHASE
   AGENT_PAYMENT
+  WARRANTY_REPLACEMENT
+}
+
+enum WarrantyStatus {
+  ACTIVE
+  EXPIRED
+  CLAIMED
 }
 
 enum PayMethod {
@@ -105,6 +112,7 @@ model Customer {
   updatedAt    DateTime      @updatedAt
 
   transactions Transaction[]
+  warranties   Warranty[]
 }
 
 model Transaction {
@@ -166,22 +174,28 @@ model SalarySettlement {
 // ── Inventory ──────────────────────────────────────────────
 
 model InventoryItem {
-  id           Int               @id @default(autoincrement())
-  name         String
-  sku          String?           @unique
-  category     InventoryCategory @default(OTHER)
-  unit         String            @default("pcs") // pcs, L, kg, roll, etc.
-  currentStock Float             @default(0)
-  reorderLevel Float             @default(5)
-  unitCost     Float             @default(0)
-  costIncludesVat Boolean        @default(false)
-  sellingPrice Float             @default(0)
-  isActive     Boolean           @default(true)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id               Int               @id @default(autoincrement())
+  name             String
+  sku              String?           @unique
+  category         InventoryCategory @default(OTHER)
+  unit             String            @default("pcs") // pcs, L, kg, roll, etc.
+  currentStock     Float             @default(0)
+  reorderLevel     Float             @default(5)
+  unitCost         Float             @default(0)
+  costIncludesVat  Boolean           @default(false)
+  sellingPrice     Float             @default(0)
+  isActive         Boolean           @default(true)
+  // ── Warranty config ───────────────────────────────────────
+  hasWarranty      Boolean           @default(false)
+  warrantyDuration Int?              // e.g. 12
+  warrantyUnit     String?           // "months" | "days"
+  // warrantyType is always "replacement" — fixed for this system
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
-  stockMovements    StockMovement[]
+  stockMovements     StockMovement[]
   purchaseOrderItems PurchaseOrderItem[]
+  warranties         Warranty[]
 }
 
 model StockMovement {
@@ -230,4 +244,28 @@ model PurchaseOrderItem {
   quantity        Float
   unitCost        Float
   totalCost       Float
+}
+
+// ── Warranty ────────────────────────────────────────────────
+
+model Warranty {
+  id              Int            @id @default(autoincrement())
+  invoiceNumber   String
+  itemId          Int
+  item            InventoryItem  @relation(fields: [itemId], references: [id])
+  customerId      Int?
+  customer        Customer?      @relation(fields: [customerId], references: [id])
+  customerName    String?        // freetext fallback
+  customerPhone   String?
+  saleDate        DateTime
+  warrantyEndDate DateTime
+  status          WarrantyStatus @default(ACTIVE)
+  claimedAt       DateTime?
+  claimNotes      String?
+  replacementTransactionId Int?  // link to WARRANTY_REPLACEMENT transaction
+  createdAt       DateTime       @default(now())
+
+  @@index([invoiceNumber])
+  @@index([itemId])
+  @@index([status])
 }

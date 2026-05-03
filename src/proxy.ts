@@ -6,6 +6,12 @@ export async function proxy(request: NextRequest) {
   const session = await auth()
   console.log("MIDDLEWARE URL:", request.nextUrl.pathname, "SESSION:", session)
 
+  // Public routes — no auth required (e.g. QR code warranty verification)
+  const publicPaths = ['/warranty/check']
+  if (publicPaths.some(p => request.nextUrl.pathname.startsWith(p))) {
+    return NextResponse.next()
+  }
+
   // Protect all non-public routes
   if (!session && !request.nextUrl.pathname.startsWith('/login')) {
     console.log("REDIRECTING TO LOGIN!")

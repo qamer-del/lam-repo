@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Package, Check } from 'lucide-react'
+import { Plus, Package, Check, ShieldCheck, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -50,6 +50,9 @@ interface EditItem {
   unitCost: number
   costIncludesVat?: boolean
   sellingPrice?: number
+  hasWarranty?: boolean
+  warrantyDuration?: number | null
+  warrantyUnit?: string | null
 }
 
 interface Props {
@@ -75,6 +78,10 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
   const [costIncludesVat, setCostIncludesVat] = useState(editItem?.costIncludesVat ?? false)
   const [sellingPrice, setSellingPrice] = useState(String(editItem?.sellingPrice ?? 0))
   const [initialStock, setInitialStock] = useState('0')
+  // Warranty
+  const [hasWarranty, setHasWarranty] = useState(editItem?.hasWarranty ?? false)
+  const [warrantyDuration, setWarrantyDuration] = useState(String(editItem?.warrantyDuration ?? 12))
+  const [warrantyUnit, setWarrantyUnit] = useState(editItem?.warrantyUnit ?? 'months')
 
   const handleClose = (v: boolean) => {
     setOpen(v)
@@ -87,26 +94,26 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
     try {
       if (isEdit) {
         await updateInventoryItem(editItem.id, {
-          name,
-          sku: sku || undefined,
-          category,
-          unit,
+          name, sku: sku || undefined, category, unit,
           reorderLevel: parseFloat(reorderLevel) || 5,
           unitCost: parseFloat(unitCost) || 0,
           costIncludesVat,
           sellingPrice: parseFloat(sellingPrice) || 0,
+          hasWarranty,
+          warrantyDuration: hasWarranty ? (parseInt(warrantyDuration) || null) : null,
+          warrantyUnit: hasWarranty ? warrantyUnit : null,
         })
       } else {
         await createInventoryItem({
-          name,
-          sku: sku || undefined,
-          category,
-          unit,
+          name, sku: sku || undefined, category, unit,
           reorderLevel: parseFloat(reorderLevel) || 5,
           unitCost: parseFloat(unitCost) || 0,
           costIncludesVat,
           sellingPrice: parseFloat(sellingPrice) || 0,
           initialStock: parseFloat(initialStock) || 0,
+          hasWarranty,
+          warrantyDuration: hasWarranty ? (parseInt(warrantyDuration) || undefined) : undefined,
+          warrantyUnit: hasWarranty ? warrantyUnit : undefined,
         })
       }
       toast.success(isEdit ? 'Item Updated' : 'Item Created', {
@@ -291,6 +298,75 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
                   />
                 </div>
               )}
+
+              {/* ── Warranty Section ── */}
+              <div className={`rounded-[1.5rem] border-2 transition-all duration-300 overflow-hidden ${
+                hasWarranty
+                  ? 'border-violet-300 dark:border-violet-700 bg-violet-50/50 dark:bg-violet-900/10'
+                  : 'border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-900/20'
+              }`}>
+                {/* Toggle header */}
+                <button
+                  type="button"
+                  onClick={() => setHasWarranty(p => !p)}
+                  className="w-full flex items-center justify-between p-5 text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-xl transition-colors ${
+                      hasWarranty ? 'bg-violet-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
+                    }`}>
+                      {hasWarranty ? <ShieldCheck size={18} /> : <ShieldOff size={18} />}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-black uppercase tracking-wide ${
+                        hasWarranty ? 'text-violet-700 dark:text-violet-300' : 'text-gray-500 dark:text-gray-400'
+                      }`}>Replacement Warranty</p>
+                      <p className="text-[10px] text-gray-400 font-medium mt-0.5">
+                        {hasWarranty ? 'Warranty will be issued on sale' : 'No warranty for this item'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`w-12 h-6 rounded-full transition-colors duration-300 relative ${
+                    hasWarranty ? 'bg-violet-500' : 'bg-gray-200 dark:bg-gray-700'
+                  }`}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-300 ${
+                      hasWarranty ? 'translate-x-7' : 'translate-x-1'
+                    }`} />
+                  </div>
+                </button>
+
+                {/* Expandable config */}
+                {hasWarranty && (
+                  <div className="px-5 pb-5 grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400 ml-1">Duration</Label>
+                      <Input
+                        type="number" step="1" min="1"
+                        value={warrantyDuration}
+                        onChange={e => setWarrantyDuration(e.target.value)}
+                        className="h-12 rounded-xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-violet-500 font-black text-xl tabular-nums text-center"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400 ml-1">Unit</Label>
+                      <Select value={warrantyUnit} onValueChange={(v: string | null) => { if (v) setWarrantyUnit(v) }}>
+                        <SelectTrigger className="h-12 rounded-xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-violet-500 font-black">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-none shadow-2xl p-2">
+                          <SelectItem value="months" className="rounded-lg py-3 font-bold">Months</SelectItem>
+                          <SelectItem value="days" className="rounded-lg py-3 font-bold">Days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 p-3 bg-violet-100/50 dark:bg-violet-900/20 rounded-xl">
+                      <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400">
+                        ⚡ Warranty type is <strong>Replacement Only</strong>. A warranty record will be auto-created for each unit sold.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <Button
                 type="submit"

@@ -8,9 +8,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { getInvoiceDetails } from '@/actions/transactions'
+import { checkWarrantyStatus } from '@/actions/warranty'
 import { ModernLoader } from './ui/modern-loader'
 import { format } from 'date-fns'
-import { Receipt, Package } from 'lucide-react'
+import { Receipt, Package, ShieldCheck, ShieldOff, ShieldAlert, Download } from 'lucide-react'
+import { PDFDownloadLink } from '@react-pdf/renderer'
+import { InvoiceDocument } from './invoice-document'
 
 export function ViewInvoiceModal({ 
   invoiceNumber, 
@@ -23,13 +26,18 @@ export function ViewInvoiceModal({
 }) {
   const [loading, setLoading] = useState(false)
   const [details, setDetails] = useState<any>(null)
+  const [warranties, setWarranties] = useState<any[]>([])
 
   useEffect(() => {
     if (open && invoiceNumber) {
       setLoading(true)
-      getInvoiceDetails(invoiceNumber)
-        .then(res => {
+      Promise.all([
+        getInvoiceDetails(invoiceNumber),
+        checkWarrantyStatus({ invoiceNumber }),
+      ])
+        .then(([res, warRes]) => {
           setDetails(res)
+          setWarranties(warRes)
           setLoading(false)
         })
         .catch(err => {
@@ -38,6 +46,7 @@ export function ViewInvoiceModal({
         })
     } else {
       setDetails(null)
+      setWarranties([])
     }
   }, [open, invoiceNumber])
 
@@ -58,6 +67,16 @@ export function ViewInvoiceModal({
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Digital Receipt</span>
                 </div>
               </DialogTitle>
+              {details && (
+                <PDFDownloadLink
+                  document={<InvoiceDocument details={details} warranties={warranties} />}
+                  fileName={`invoice-${details.invoiceNumber}.pdf`}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors"
+                >
+                  <Download size={16} />
+                  <span className="hidden sm:inline">Save PDF</span>
+                </PDFDownloadLink>
+              )}
             </div>
           </DialogHeader>
 
@@ -146,6 +165,50 @@ export function ViewInvoiceModal({
                   </div>
                 )}
               </div>
+
+              {/* Warranty Section */}
+              {warranties.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <ShieldCheck size={16} className="text-violet-500" />
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-500">Warranty Coverage</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {warranties.map((w: any) => {
+                      const isActive = w.status === 'ACTIVE'
+                      const isExpired = w.status === 'EXPIRED'
+                      const Icon = isActive ? ShieldCheck : isExpired ? ShieldOff : ShieldAlert
+                      return (
+                        <div key={w.id} className={`flex items-center gap-4 p-4 rounded-2xl border ${
+                          isActive ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' :
+                          isExpired ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800' :
+                          'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800'
+                        }`}>
+                          <div className={`p-2 rounded-xl ${
+                            isActive ? 'bg-emerald-100 dark:bg-emerald-900/30' :
+                            isExpired ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30'
+                          }`}>
+                            <Icon size={16} className={isActive ? 'text-emerald-600' : isExpired ? 'text-red-500' : 'text-amber-600'} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-black text-sm text-gray-900 dark:text-white truncate">{w.item?.name}</p>
+                            <p className="text-[10px] text-gray-500 font-medium">
+                              Replacement · {w.item?.warrantyDuration} {w.item?.warrantyUnit} · expires{' '}
+                              <span className="font-bold">{format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}</span>
+                            </p>
+                          </div>
+                          <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
+                            isActive ? 'bg-emerald-500 text-white' :
+                            isExpired ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
+                          }`}>
+                            {w.status}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               {details.description && (
                 <div className="p-6 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/30">

@@ -44,7 +44,11 @@ export async function getAllInventoryItemsForSelect() {
 
   return prisma.inventoryItem.findMany({
     where: { isActive: true },
-    select: { id: true, name: true, unit: true, currentStock: true, category: true, sellingPrice: true, sku: true },
+    select: {
+      id: true, name: true, unit: true, currentStock: true,
+      category: true, sellingPrice: true, sku: true,
+      hasWarranty: true, warrantyDuration: true, warrantyUnit: true,
+    },
     orderBy: { name: 'asc' },
   })
 }
@@ -59,6 +63,9 @@ export async function createInventoryItem(data: {
   costIncludesVat?: boolean
   sellingPrice?: number
   initialStock?: number
+  hasWarranty?: boolean
+  warrantyDuration?: number
+  warrantyUnit?: string
 }) {
   console.log('[createInventoryItem] Starting...', data.name)
   const session = await requireAdminOrAbove()
@@ -76,6 +83,9 @@ export async function createInventoryItem(data: {
       costIncludesVat: data.costIncludesVat ?? false,
       sellingPrice: data.sellingPrice ?? 0,
       currentStock: data.initialStock ?? 0,
+      hasWarranty: data.hasWarranty ?? false,
+      warrantyDuration: data.hasWarranty ? (data.warrantyDuration ?? null) : null,
+      warrantyUnit: data.hasWarranty ? (data.warrantyUnit ?? null) : null,
     },
   })
 
@@ -108,13 +118,23 @@ export async function updateInventoryItem(
     unitCost?: number
     costIncludesVat?: boolean
     sellingPrice?: number
+    hasWarranty?: boolean
+    warrantyDuration?: number | null
+    warrantyUnit?: string | null
   }
 ) {
   await requireAdminOrAbove()
 
+  // If warranty is being turned off, clear duration/unit
+  const updateData = {
+    ...data,
+    warrantyDuration: data.hasWarranty === false ? null : data.warrantyDuration,
+    warrantyUnit: data.hasWarranty === false ? null : data.warrantyUnit,
+  }
+
   const item = await prisma.inventoryItem.update({
     where: { id },
-    data,
+    data: updateData,
   })
 
   revalidatePath('/inventory')

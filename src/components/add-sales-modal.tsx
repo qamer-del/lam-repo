@@ -27,6 +27,7 @@ import { getAllInventoryItemsForSelect } from '@/actions/inventory'
 import { getAllCustomersForSelect, createCustomer } from '@/actions/customers'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
+import { WarrantyNotification } from './warranty-notification'
 import { toast } from 'sonner'
 import { useStore, Transaction } from '@/store/useStore'
 
@@ -34,6 +35,7 @@ type PayMode = 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA' | 'CREDIT'
 
 interface InventoryItem {
   id: number; name: string; sku: string | null; unit: string; currentStock: number; sellingPrice: number
+  hasWarranty?: boolean; warrantyDuration?: number | null; warrantyUnit?: string | null
 }
 
 interface CustomerOption {
@@ -76,6 +78,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
   const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([{ itemId: 0, quantity: '1', price: '' }])
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([])
   const [comboboxOpen, setComboboxOpen] = useState<{ [key: number]: boolean }>({})
+  const [pendingWarranties, setPendingWarranties] = useState<any[]>([])
 
   // Auto-calc network from total - cash in split mode
   useEffect(() => {
@@ -98,6 +101,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
     setDescription(''); setCustomerId(null); setCustomerName(''); setCustomerPhone('')
     setCustomerSearch(''); setQuickAddMode(false); setQuickAddPhone('')
     setConsumedItems([{ itemId: 0, quantity: '1', price: '' }])
+    // Note: don't clear pendingWarranties here — let user dismiss the notification
   }
 
   const validate = (): string | null => {
@@ -143,6 +147,21 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
       
       if (results) {
         useStore.getState().addTransactions(results as Transaction[])
+
+        // Check if any sold items have warranty — fetch created warranty records
+        const soldItemIds = consumedItems.filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0).map(ci => ci.itemId)
+        const warrantyItems = inventoryList.filter(item => soldItemIds.includes(item.id) && item.hasWarranty)
+        if (warrantyItems.length > 0 && results.length > 0) {
+          // Fetch created warranty records for the notification
+          const { checkWarrantyStatus } = await import('@/actions/warranty')
+          const invNum = results[0].invoiceNumber
+          if (invNum) {
+            const warrantyRecords = await checkWarrantyStatus({ invoiceNumber: invNum })
+            if (warrantyRecords.length > 0) {
+              setPendingWarranties(warrantyRecords)
+            }
+          }
+        }
       }
 
       toast.success('Transaction Successful', {
@@ -608,6 +627,13 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
           </div>
         </DialogContent>
       </Dialog>
+      {pendingWarranties.length > 0 && (
+        <WarrantyNotification
+          warranties={pendingWarranties}
+          customerPhone={customerPhone || undefined}
+          onDismiss={() => setPendingWarranties([])}
+        />
+      )}
     </>
   )
 }
