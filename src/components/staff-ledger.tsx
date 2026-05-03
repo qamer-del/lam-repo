@@ -159,12 +159,12 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
           >
             {t('overviewReport')}
           </button>
-          {staff.map(s => (
+          {staff?.map(s => (
             <button
-              key={s.id}
-              onClick={() => setSelected(s.id)}
+              key={s?.id || Math.random()}
+              onClick={() => setSelected(s?.id)}
               className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all shrink-0 ${
-                selected === s.id
+                selected === s?.id
                   ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
                   : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
               }`}
@@ -436,8 +436,8 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedStaff.salarySettlements.map((settlement) => (
-                      <TableRow key={settlement.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                    {selectedStaff?.salarySettlements?.map((settlement) => (
+                      <TableRow key={settlement?.id || Math.random()} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                         <TableCell className="pl-6 py-3">
                           <p className="font-bold text-sm">{format(new Date(settlement.year, settlement.month - 1), 'MMMM yyyy')}</p>
                           <p className="text-[10px] text-gray-400">{format(new Date(settlement.paidAt), 'PPP')}</p>

@@ -4,7 +4,8 @@ import { PDFDownloadLink } from '@react-pdf/renderer';
 import { Printer, Download } from 'lucide-react';
 import { Button } from './ui/button';
 import { SalarySettlementDocument } from './salary-settlement-document';
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'
+import { useLanguage } from '@/providers/language-provider';
 
 interface SalarySettlementPdfButtonProps {
   staffName: string;
@@ -14,6 +15,8 @@ interface SalarySettlementPdfButtonProps {
 }
 
 export function SalarySettlementPdfButton({ staffName, idNumber, nationality, settlement }: SalarySettlementPdfButtonProps) {
+  const { locale } = useLanguage();
+
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -24,7 +27,7 @@ export function SalarySettlementPdfButton({ staffName, idNumber, nationality, se
 
   return (
     <PDFDownloadLink
-      document={<SalarySettlementDocument staffName={staffName} idNumber={idNumber} nationality={nationality} settlement={settlement} />}
+      document={<SalarySettlementDocument locale={locale} staffName={staffName} idNumber={idNumber} nationality={nationality} settlement={settlement} />}
       fileName={`salary-settlement-${staffName}-${settlement.month}-${settlement.year}.pdf`}
     >
       {({ loading }) => (

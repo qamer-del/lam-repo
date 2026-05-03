@@ -48,7 +48,7 @@ export function CloseShiftBtn({
       const settlement = await createCashierHandover(count)
       
       if (settlement) {
-        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={settlement.transactions as any[]} />).toBlob()
+        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={settlement.transactions as any[]} locale={locale} />).toBlob()
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url

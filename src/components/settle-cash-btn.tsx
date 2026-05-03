@@ -25,7 +25,9 @@ import { Label } from '@/components/ui/label'
 import { Calculator, CheckCircle2, AlertCircle, Banknote } from 'lucide-react'
 
 export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string }) {
-  const { t, locale } = useLanguage()
+  const { locale, t } = useLanguage();
+
+  
   const [loading, setLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [actualCount, setActualCount] = useState<string>('')
@@ -42,7 +44,7 @@ export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string 
       const settlement = await createSettlement(count)
       
       if (settlement) {
-        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={settlement.transactions as any[]} />).toBlob()
+        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={settlement.transactions as any[]} locale={locale} />).toBlob()
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url

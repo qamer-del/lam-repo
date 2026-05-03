@@ -145,8 +145,7 @@ export function SalarySettlementModal({
               <div className="flex flex-col gap-3">
                 <PDFDownloadLink
                   document={
-                    <SalarySettlementDocument 
-                      staffName={staff.name}
+                    <SalarySettlementDocument staffName={staff.name}
                       month={settledData.month}
                       year={settledData.year}
                       baseSalary={settledData.baseSalary}

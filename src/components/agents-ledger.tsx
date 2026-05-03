@@ -1,4 +1,5 @@
 'use client'
+import { useLanguage } from '@/providers/language-provider';
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,9 +15,10 @@ import { useSession } from 'next-auth/react'
 import { Receipt } from 'lucide-react'
 
 export function AgentsLedger({ agents }: { agents: any[] }) {
+  const { locale } = useLanguage();
   const { data: session } = useSession()
   const isOwner = session?.user?.role === 'OWNER'
-  const isAdmin = session?.user?.role === 'ADMIN'
+  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN'
 
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null)
   
@@ -66,9 +68,9 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
   // Calculate Net Balance for selected agent
   let netBalance = 0
   if (selectedAgent) {
-    const totalPurchases = selectedAgent.transactions.filter((t: any) => t.type === 'AGENT_PURCHASE' && t.method === 'CREDIT').reduce((s: number, t: any) => s + t.amount, 0)
-    const totalPayments = selectedAgent.transactions.filter((t: any) => t.type === 'AGENT_PAYMENT').reduce((s: number, t: any) => s + t.amount, 0)
-    netBalance = selectedAgent.openingBalance + totalPurchases - totalPayments
+    const totalPurchases = (selectedAgent.transactions || []).filter((t: any) => t.type === 'AGENT_PURCHASE' && t.method === 'CREDIT').reduce((s: number, t: any) => s + t.amount, 0)
+    const totalPayments = (selectedAgent.transactions || []).filter((t: any) => t.type === 'AGENT_PAYMENT').reduce((s: number, t: any) => s + t.amount, 0)
+    netBalance = (selectedAgent.openingBalance || 0) + totalPurchases - totalPayments
   }
 
   return (
@@ -105,25 +107,25 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg">Register New Representative / Agent</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateAgent} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Representative Name</Label>
-                  <Input required value={name} onChange={e => setName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Company Name (Optional)</Label>
-                  <Input value={companyName} onChange={e => setCompanyName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Opening Balance (Debt on Store)</Label>
-                  <Input type="number" step="0.01" required value={openingBalance} onChange={e => setOpeningBalance(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700">Add Agent</Button>
-              </form>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateAgent} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Representative Name</Label>
+                    <Input required value={name} onChange={e => setName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Company Name (Optional)</Label>
+                    <Input value={companyName} onChange={e => setCompanyName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Opening Balance (Debt on Store)</Label>
+                    <Input type="number" step="0.01" required value={openingBalance} onChange={e => setOpeningBalance(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700">Add Agent</Button>
+                </form>
+              </CardContent>
+            </Card>
           ) : (
             <div className="text-gray-500 italic p-6">Registering Agents is restricted to Administrators.</div>
           )}
@@ -161,15 +163,15 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
             <div className="flex flex-wrap gap-4">
               <div className="bg-blue-50 dark:bg-blue-900/30 rounded-xl p-4 text-center min-w-[120px] flex-1 sm:flex-none">
                 <p className="text-xs sm:text-sm text-gray-500">Opening Debt</p>
-                <p className="text-lg sm:text-xl font-bold">{selectedAgent?.openingBalance.toFixed(2)}</p>
+                <p className="text-lg sm:text-xl font-bold">{selectedAgent?.openingBalance?.toFixed(2) || '0.00'}</p>
               </div>
               <div className="bg-orange-50 dark:bg-orange-900/30 rounded-xl p-4 text-center min-w-[120px] flex-1 sm:flex-none">
                 <p className="text-xs sm:text-sm text-gray-500">Net Balance (Debt)</p>
-                <p className="text-lg sm:text-xl font-bold text-orange-600">{netBalance.toFixed(2)}</p>
+                <p className="text-lg sm:text-xl font-bold text-orange-600">{netBalance?.toFixed(2) || '0.00'}</p>
               </div>
             </div>
             
-            <AgentPdfReportButton agent={selectedAgent} netBalance={netBalance} />
+            {selectedAgent && <AgentPdfReportButton agent={selectedAgent} netBalance={netBalance} locale={locale} />}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -177,44 +179,44 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
               <Card className="col-span-1 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg">Add Transaction</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCreateTx} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Transaction Type</Label>
-                    <Select value={txType} onValueChange={(val: any) => setTxType(val)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AGENT_PURCHASE">Purchase on Credit (Increases Debt)</SelectItem>
-                        <SelectItem value="AGENT_PAYMENT">Payment to Agent (Decreases Debt)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {txType === 'AGENT_PAYMENT' && (
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleCreateTx} className="space-y-4">
                     <div className="space-y-2">
-                      <Label>Payment Method</Label>
-                      <Select value={method} onValueChange={(val: any) => setMethod(val)}>
+                      <Label>Transaction Type</Label>
+                      <Select value={txType} onValueChange={(val: any) => setTxType(val)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="CASH">Cash Payment (Deducts from Drawer)</SelectItem>
-                          <SelectItem value="NETWORK">Network Payment (Deducts from Network)</SelectItem>
+                          <SelectItem value="AGENT_PURCHASE">Purchase on Credit (Increases Debt)</SelectItem>
+                          <SelectItem value="AGENT_PAYMENT">Payment to Agent (Decreases Debt)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label>Amount</Label>
-                    <Input type="number" step="0.01" required value={amount} onChange={e => setAmount(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Invoice #1234" />
-                  </div>
-                  <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700">Record Transaction</Button>
-                </form>
-              </CardContent>
-            </Card>
+
+                    {txType === 'AGENT_PAYMENT' && (
+                      <div className="space-y-2">
+                        <Label>Payment Method</Label>
+                        <Select value={method} onValueChange={(val: any) => setMethod(val)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="CASH">Cash Payment (Deducts from Drawer)</SelectItem>
+                            <SelectItem value="NETWORK">Network Payment (Deducts from Network)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label>Amount</Label>
+                      <Input type="number" step="0.01" required value={amount} onChange={e => setAmount(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Invoice #1234" />
+                    </div>
+                    <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700">Record Transaction</Button>
+                  </form>
+                </CardContent>
+              </Card>
             )}
 
             <Card className={`shadow-sm border-gray-200 dark:border-gray-800 overflow-hidden ${isOwner ? 'col-span-1 md:col-span-3' : 'col-span-1 md:col-span-2'}`}>
@@ -231,7 +233,7 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedAgent?.transactions.map((tx: any) => (
+                    {selectedAgent?.transactions?.map((tx: any) => (
                       <TableRow key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                         <TableCell className="whitespace-nowrap text-sm text-gray-500">{format(new Date(tx.createdAt), 'PPp')}</TableCell>
                         <TableCell>
@@ -254,7 +256,7 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
 
               {/* Mobile Card List View */}
               <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
-                {selectedAgent?.transactions.map((tx: any) => (
+                {selectedAgent?.transactions?.map((tx: any) => (
                   <div key={tx.id} className="p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">
@@ -279,7 +281,7 @@ export function AgentsLedger({ agents }: { agents: any[] }) {
                 ))}
               </div>
 
-              {selectedAgent?.transactions.length === 0 && (
+              {(!selectedAgent?.transactions || selectedAgent.transactions.length === 0) && (
                 <div className="text-center py-16 px-6">
                   <div className="bg-gray-50 dark:bg-gray-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Receipt className="text-gray-300" size={32} />

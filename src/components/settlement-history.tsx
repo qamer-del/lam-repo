@@ -12,7 +12,9 @@ import { pdf } from '@react-pdf/renderer'
 import { SettlementDocument } from './settlement-document'
 
 export function SettlementHistory({ initialSettlements }: { initialSettlements: any[] }) {
-  const { t } = useLanguage()
+  const { locale, t } = useLanguage();
+
+  
   const [loadingId, setLoadingId] = useState<number | null>(null)
 
   const handleDownload = async (settlementId: number) => {
@@ -21,7 +23,7 @@ export function SettlementHistory({ initialSettlements }: { initialSettlements: 
       const data = await getSettlementDetails(settlementId)
       if (!data) return
 
-      const blob = await pdf(<SettlementDocument settlement={data} transactions={data.transactions} />).toBlob()
+      const blob = await pdf(<SettlementDocument settlement={data} transactions={data.transactions} locale={locale} />).toBlob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -74,7 +76,8 @@ export function SettlementHistory({ initialSettlements }: { initialSettlements: 
                 </TableRow>
               ) : (
                 initialSettlements.map((s) => {
-                  const discrepancy = (s.actualCashCounted || 0) - s.totalCashHanded
+                  if (!s) return null;
+                  const discrepancy = (s.actualCashCounted || 0) - (s.totalCashHanded || 0)
                   return (
                     <TableRow key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition border-gray-100 dark:border-gray-800">
                       <TableCell className="font-black text-gray-400">#{s.id}</TableCell>

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { StaffReportPDF } from './staff-report-pdf'
 import { FileText, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useLanguage } from '@/providers/language-provider'
 
 const PDFDownloadLink = dynamic(
   () => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink),
@@ -12,8 +13,10 @@ const PDFDownloadLink = dynamic(
 )
 
 export function PdfReportButton({ staffSummary, totals }: { staffSummary: any, totals: any }) {
+  const { locale } = useLanguage();
+
   return (
-    <PDFDownloadLink document={<StaffReportPDF staffSummary={staffSummary} totals={totals} />} fileName="staff-report.pdf">
+    <PDFDownloadLink document={<StaffReportPDF staffSummary={staffSummary} totals={totals} locale={locale} />} fileName="staff-report.pdf">
       {({ loading }) =>
         <Button 
           variant="outline" 

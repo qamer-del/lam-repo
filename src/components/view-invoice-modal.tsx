@@ -14,6 +14,7 @@ import { format } from 'date-fns'
 import { Receipt, Package, ShieldCheck, ShieldOff, ShieldAlert, Download } from 'lucide-react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InvoiceDocument } from './invoice-document'
+import { useLanguage } from '@/providers/language-provider'
 
 export function ViewInvoiceModal({ 
   invoiceNumber, 
@@ -24,6 +25,7 @@ export function ViewInvoiceModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const { locale } = useLanguage();
   const [loading, setLoading] = useState(false)
   const [details, setDetails] = useState<any>(null)
   const [warranties, setWarranties] = useState<any[]>([])
@@ -69,7 +71,7 @@ export function ViewInvoiceModal({
               </DialogTitle>
               {details && (
                 <PDFDownloadLink
-                  document={<InvoiceDocument details={details} warranties={warranties} />}
+                  document={<InvoiceDocument details={details} warranties={warranties} locale={locale} />}
                   fileName={`invoice-${details.invoiceNumber}.pdf`}
                   className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors"
                 >

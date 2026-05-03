@@ -37,7 +37,7 @@ export default function SalesPage({
   userRole?: string
   unpaidCreditSales?: any[] | null
 }) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const { data: session } = useSession()
   const isCashier = userRole === 'CASHIER' || session?.user?.role === 'CASHIER'
 
@@ -269,14 +269,14 @@ export default function SalesPage({
             <>
               <PDFDownloadLink
                 document={
-                  <SalesDocument
-                    sales={filteredSales}
+                  <SalesDocument sales={filteredSales}
                     totalCash={totalCash}
                     totalNetwork={totalNetwork}
                     totalCredit={totalCredit}
                     vatAmount={vatAmount}
                     manualProfit={manualProfit ? parseFloat(manualProfit) : autoProfit}
                     dateStr={`${fromDate} to ${toDate}`}
+                    locale={locale}
                   />
                 }
                 fileName={`Sales_Report_Detailed_${fromDate}_to_${toDate}.pdf`}
@@ -290,8 +290,7 @@ export default function SalesPage({
               </PDFDownloadLink>
               <PDFDownloadLink
                 document={
-                  <SalesDocument
-                    sales={filteredSales}
+                  <SalesDocument sales={filteredSales}
                     totalCash={totalCash}
                     totalNetwork={totalNetwork}
                     totalCredit={totalCredit}
@@ -299,6 +298,7 @@ export default function SalesPage({
                     manualProfit={manualProfit ? parseFloat(manualProfit) : autoProfit}
                     dateStr={`${fromDate} to ${toDate}`}
                     summaryOnly={true}
+                    locale={locale}
                   />
                 }
                 fileName={`Sales_Report_Summary_${fromDate}_to_${toDate}.pdf`}
