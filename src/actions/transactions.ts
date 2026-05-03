@@ -52,7 +52,7 @@ export async function getDashboardData() {
       ...whereClause,
     },
     orderBy: { createdAt: 'desc' },
-    include: { staff: true, agent: true, recordedBy: { select: { name: true } } }
+    include: { staff: true, agent: true, recordedBy: { select: { name: true } }, settlement: { include: { performedBy: { select: { role: true } } } } }
   })
 
   // Separate for the UI
@@ -85,10 +85,15 @@ export async function getDashboardData() {
     const isThisMonth = txDate.getMonth() === curMonth && txDate.getFullYear() === curYear
 
     // For drawer metrics (cashInDrawer, networkSales), we only count transactions 
-    // that haven't been settled yet. Cash is further restricted to not being part of a handover.
-    const isActiveInDrawer = tx.method === 'NETWORK' 
-      ? !tx.isSettled 
-      : (!tx.isSettled && tx.settlementId === null)
+    // that haven't been settled yet. Cashier handovers (which set settlementId) are
+    // purely informational snapshots and do NOT affect the admin's drawer balance.
+    // Only the explicit admin "Settle Cash" action clears them from the drawer.
+    // Staff advances stay isSettled: false, but they ARE cleared from the drawer once they 
+    // are part of an Admin Settlement.
+    const isClearedByAdmin = tx.settlementId && tx.settlement?.performedBy?.role && 
+      ['SUPER_ADMIN', 'ADMIN', 'OWNER'].includes(tx.settlement.performedBy.role)
+    
+    const isActiveInDrawer = !tx.isSettled && !isClearedByAdmin
 
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') {
@@ -392,12 +397,20 @@ export async function createSettlement(actualCashCounted: number) {
   console.log('[createSettlement] Session:', session?.user?.id)
   if (!session?.user?.id) throw new Error("Unauthorized")
 
-  // Finds all unsettled transactions that haven't been part of a cash settlement report yet
+  // Finds all unsettled transactions. Transactions may already have a settlementId
+  // from a cashier handover (informational snapshot), but they remain active in the drawer
+  // until this explicit admin settlement.
   console.log('[createSettlement] Fetching unsettled transactions...')
   const unsettled = await prisma.transaction.findMany({
     where: { 
       isSettled: false,
-      settlementId: null
+      OR: [
+        { settlementId: null },
+        { settlement: { performedBy: { role: 'CASHIER' } } }
+      ]
+    },
+    include: {
+      settlement: { include: { performedBy: { select: { role: true } } } }
     }
   })
 
@@ -514,21 +527,12 @@ export async function createCashierHandover(actualCashCounted: number) {
     }
   })
 
-  // Mark as settled ONLY if they are not staff-related.
-  // This removes them from the cashier's active "unsettled" dashboard view.
-  await prisma.transaction.updateMany({
-    where: { 
-      id: { in: unsettled.map((t: UnsettledTx) => t.id) },
-      NOT: {
-        OR: [
-          { type: 'ADVANCE' },
-          { type: 'SALARY_PAYMENT' },
-          { AND: [{ type: 'EXPENSE' }, { NOT: { staffId: null } }] }
-        ]
-      }
-    },
-    data: { isSettled: true }
-  })
+  // Cashier handover is a SNAPSHOT-ONLY operation.
+  // We do NOT mark transactions as isSettled: true here.
+  // The settlementId link is enough to:
+  //   1. Remove them from the cashier's active session view (query filters settlementId: null)
+  //   2. Keep them visible in the admin dashboard as unsettled cash until explicit admin settlement
+  // Credit transactions are also untouched — they remain outstanding until explicit payment collection.
 
   revalidatePath('/')
   revalidatePath('/sales')
@@ -543,6 +547,7 @@ export async function recordDailySales(data: {
   networkAmount?: number
   description?: string
   consumedItems?: { itemId: number; quantity: number }[]
+  customerId?: number
   customerName?: string
   customerPhone?: string
 }) {
@@ -557,6 +562,7 @@ export async function recordDailySales(data: {
     recordedById: string
     createdAt: Date
     invoiceNumber: string
+    customerId?: number
     customerName?: string
     customerPhone?: string
   }
@@ -565,23 +571,30 @@ export async function recordDailySales(data: {
   const invoiceNumber = `INV-${Date.now()}` // Generate a unique serial number
   const transactions: SaleTx[] = []
 
+  // Shared customer fields for any payment method
+  const customerFields = {
+    ...(data.customerId && { customerId: data.customerId }),
+    ...(data.customerName && { customerName: data.customerName }),
+    ...(data.customerPhone && { customerPhone: data.customerPhone }),
+  }
+
   if (data.paymentMode === 'SPLIT') {
     const cashAmt = data.cashAmount ?? 0
     const netAmt = data.networkAmount ?? data.totalAmount - cashAmt
     if (cashAmt > 0) {
-      transactions.push({ type: 'SALE', method: 'CASH', amount: cashAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
+      transactions.push({ type: 'SALE', method: 'CASH', amount: cashAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber, ...customerFields })
     }
     if (netAmt > 0) {
-      transactions.push({ type: 'SALE', method: 'NETWORK', amount: netAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
+      transactions.push({ type: 'SALE', method: 'NETWORK', amount: netAmt, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber, ...customerFields })
     }
   } else if (data.paymentMode === 'TABBY') {
-    transactions.push({ type: 'SALE', method: 'TABBY', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
+    transactions.push({ type: 'SALE', method: 'TABBY', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber, ...customerFields })
   } else if (data.paymentMode === 'TAMARA') {
-    transactions.push({ type: 'SALE', method: 'TAMARA', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
+    transactions.push({ type: 'SALE', method: 'TAMARA', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber, ...customerFields })
   } else if (data.paymentMode === 'NETWORK') {
-    transactions.push({ type: 'SALE', method: 'NETWORK', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
+    transactions.push({ type: 'SALE', method: 'NETWORK', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber, ...customerFields })
   } else if (data.paymentMode === 'CREDIT') {
-    if (!data.customerName || !data.customerPhone) throw new Error('Customer name and phone are required for credit sales.')
+    if (!data.customerId && (!data.customerName || !data.customerPhone)) throw new Error('Customer is required for credit sales.')
     transactions.push({ 
       type: 'SALE', 
       method: 'CREDIT', 
@@ -590,11 +603,10 @@ export async function recordDailySales(data: {
       recordedById: session.user.id, 
       createdAt: exactTime, 
       invoiceNumber,
-      customerName: data.customerName,
-      customerPhone: data.customerPhone
+      ...customerFields,
     })
   } else {
-    transactions.push({ type: 'SALE', method: 'CASH', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber })
+    transactions.push({ type: 'SALE', method: 'CASH', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber, ...customerFields })
   }
 
   if (transactions.length > 0) {
@@ -676,6 +688,110 @@ export async function settleCreditSale(data: {
   revalidatePath('/')
   revalidatePath('/sales')
   return result
+}
+
+/**
+ * Collect a payment (full or partial) against a customer's outstanding credit invoices.
+ * Allocates payment FIFO — oldest invoices first.
+ */
+export async function collectCreditPayment(data: {
+  customerId?: number
+  customerName?: string
+  customerPhone?: string
+  amount: number
+  paymentMethod: 'CASH' | 'NETWORK'
+}) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+  if (!data.amount || data.amount <= 0) throw new Error("Amount must be greater than zero")
+
+  // Build customer filter — by ID if available, otherwise by name+phone combo
+  const customerFilter = data.customerId
+    ? { customerId: data.customerId }
+    : { customerName: data.customerName, customerPhone: data.customerPhone }
+
+  // Get all unpaid credit invoices for this customer, oldest first, with existing payments
+  const unpaidInvoices = await prisma.transaction.findMany({
+    where: {
+      type: 'SALE',
+      method: 'CREDIT',
+      isSettled: false,
+      ...customerFilter,
+      // Cashiers can only collect payment for their own invoices
+      ...(session.user.role === 'CASHIER' ? { recordedById: session.user.id } : {})
+    },
+    orderBy: { createdAt: 'asc' },
+    include: {
+      linkedBy: { select: { amount: true } }
+    }
+  })
+
+  if (unpaidInvoices.length === 0) throw new Error("No outstanding invoices found for this customer")
+
+  // Calculate remaining balance per invoice
+  const invoicesWithBalance = unpaidInvoices.map(inv => ({
+    ...inv,
+    paidSoFar: inv.linkedBy.reduce((sum, p) => sum + p.amount, 0),
+    remaining: inv.amount - inv.linkedBy.reduce((sum, p) => sum + p.amount, 0),
+  })).filter(inv => inv.remaining > 0.01) // Only invoices with actual remaining balance
+
+  const totalOutstanding = invoicesWithBalance.reduce((sum, inv) => sum + inv.remaining, 0)
+  if (data.amount > totalOutstanding + 0.01) {
+    throw new Error(`Payment amount (${data.amount}) exceeds total outstanding (${totalOutstanding.toFixed(2)})`)
+  }
+
+  // FIFO allocation
+  let remaining = data.amount
+  const allocations: { invoiceId: number; portion: number; fullyCovered: boolean; invoice: typeof invoicesWithBalance[0] }[] = []
+
+  for (const inv of invoicesWithBalance) {
+    if (remaining <= 0.01) break
+
+    const portion = Math.min(remaining, inv.remaining)
+    const fullyCovered = (inv.remaining - portion) < 0.01
+    allocations.push({ invoiceId: inv.id, portion, fullyCovered, invoice: inv })
+    remaining -= portion
+  }
+
+  // Execute all DB operations atomically
+  const results = await prisma.$transaction(async (tx) => {
+    const paymentTxs = []
+
+    for (const alloc of allocations) {
+      // Create payment transaction linked to the credit invoice
+      const paymentTx = await tx.transaction.create({
+        data: {
+          type: 'SALE',
+          amount: alloc.portion,
+          method: data.paymentMethod,
+          description: `[CREDIT_PAYMENT] Payment for Invoice ${alloc.invoice.invoiceNumber || alloc.invoiceId}. Customer: ${alloc.invoice.customerName || 'N/A'}`,
+          recordedById: session.user.id,
+          linkedTransactionId: alloc.invoiceId,
+          invoiceNumber: alloc.invoice.invoiceNumber,
+          customerName: alloc.invoice.customerName,
+          customerPhone: alloc.invoice.customerPhone,
+          customerId: alloc.invoice.customerId,
+          isSettled: false, // Unsettled until cash handover / admin settlement
+        }
+      })
+      paymentTxs.push(paymentTx)
+
+      // Mark credit invoice as settled only if fully paid
+      if (alloc.fullyCovered) {
+        await tx.transaction.update({
+          where: { id: alloc.invoiceId },
+          data: { isSettled: true }
+        })
+      }
+    }
+
+    return paymentTxs
+  })
+
+  revalidatePath('/')
+  revalidatePath('/sales')
+  revalidatePath('/customers')
+  return { paymentCount: results.length, totalCollected: data.amount }
 }
 
 export async function getRecentSalesForRefund() {

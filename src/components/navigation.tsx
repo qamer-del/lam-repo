@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Receipt, Settings, LogOut, Briefcase, Package } from 'lucide-react'
+import { LayoutDashboard, Users, Receipt, Settings, LogOut, Briefcase, Package, UserCheck } from 'lucide-react'
 import { useLanguage } from '@/providers/language-provider'
 import { signOut } from 'next-auth/react'
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, labelKey: 'dashboard' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Dashboard' },
   { href: '/sales', icon: Receipt, labelKey: 'sales' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER', 'CASHIER'], labelFallback: 'Sales' },
+  { href: '/customers', icon: UserCheck, labelKey: 'customers' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Customers' },
   { href: '/staff', icon: Users, labelKey: 'staffMembers' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Staff' },
   { href: '/agents', icon: Briefcase, labelKey: 'agents' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Agents / Representatives' },
   { href: '/inventory', icon: Package, labelKey: 'inventory' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Inventory' },

@@ -23,11 +23,32 @@ export default async function SalesRoute() {
     baseWhere.createdAt = { gte: startOfDay(new Date()) }
   }
 
-  const sales = await prisma.transaction.findMany({
-    where: baseWhere,
-    orderBy: { createdAt: 'desc' },
-    include: { recordedBy: { select: { name: true } } }
-  })
+  const [sales, unpaidCreditSales] = await Promise.all([
+    prisma.transaction.findMany({
+      where: baseWhere,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        recordedBy: { select: { name: true } },
+        linkedBy: { select: { amount: true } },
+      }
+    }),
+    // Fetch ONLY the unpaid credit sales created by this specific cashier
+    role === 'CASHIER'
+      ? prisma.transaction.findMany({
+          where: {
+            type: 'SALE',
+            method: 'CREDIT',
+            isSettled: false,
+            recordedById: session?.user?.id,
+          },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            recordedBy: { select: { name: true } },
+            linkedBy: { select: { amount: true } },
+          }
+        })
+      : Promise.resolve(null), // Admins already have credit sales in main query
+  ])
 
   // Also fetch stock movements for profit calculation
   const invoiceNumbers = [
@@ -44,5 +65,5 @@ export default async function SalesRoute() {
     },
   })
 
-  return <SalesClientPage initialSales={sales} initialMovements={movements} userRole={role} />
+  return <SalesClientPage initialSales={sales} initialMovements={movements} userRole={role} unpaidCreditSales={unpaidCreditSales} />
 }

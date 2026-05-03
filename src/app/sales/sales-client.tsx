@@ -15,10 +15,9 @@ import {
 } from 'lucide-react'
 import { AddSalesModal } from '@/components/add-sales-modal'
 import { AddRefundModal } from '@/components/add-refund-modal'
-import { SettleCashBtn } from '@/components/settle-cash-btn'
 import { CloseShiftBtn } from '@/components/close-shift-btn'
 import { ViewInvoiceModal } from '@/components/view-invoice-modal'
-import { CreditSalesTable } from '@/components/credit-sales-table'
+import { CreditCollectionPanel } from '@/components/credit-collection-panel'
 import { SalesDocument } from '@/components/sales-document'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { Button } from '@/components/ui/button'
@@ -31,10 +30,12 @@ export default function SalesPage({
   initialSales,
   initialMovements,
   userRole,
+  unpaidCreditSales,
 }: {
   initialSales?: any[]
   initialMovements?: any[]
   userRole?: string
+  unpaidCreditSales?: any[] | null
 }) {
   const { t } = useLanguage()
   const { data: session } = useSession()
@@ -63,6 +64,7 @@ export default function SalesPage({
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [activeTab, setActiveTab] = useState<'transactions' | 'credit'>('transactions')
   const ITEMS_PER_PAGE = 10
   
   const sales = storeTransactions
@@ -244,7 +246,6 @@ export default function SalesPage({
           {!isCashier && (
             <>
               <AddRefundModal triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm" />
-              <SettleCashBtn triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm bg-gray-900 text-white" />
             </>
           )}
           {isCashier && (
@@ -435,24 +436,48 @@ export default function SalesPage({
         </div>
       )}
 
-      {/* ── Main Content Grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* ── Main Content Area ── */}
+      <div className="space-y-6">
         
-        {/* Left Column: Credit Tracking (Only for Admins) */}
-        {!isCashier && (
-          <div className="lg:col-span-4 space-y-4">
-            <div className="flex items-center gap-2 px-1">
-              <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-600">
-                <Users size={18} />
-              </div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white font-cairo">{t('unpaidCredit')}</h2>
-            </div>
-            <CreditSalesTable sales={sales} />
+        {/* Modern Tab Switcher */}
+        <div className="flex justify-center sm:justify-start">
+          <div className="flex items-center gap-2 p-1.5 bg-gray-100/80 dark:bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-800/50 shadow-inner">
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className={cn(
+                'px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2',
+                activeTab === 'transactions'
+                  ? 'bg-white dark:bg-gray-800 text-emerald-600 shadow-md scale-[1.02]'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              <Receipt size={16} />
+              {t('transactions')}
+            </button>
+            <button
+              onClick={() => setActiveTab('credit')}
+              className={cn(
+                'px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2',
+                activeTab === 'credit'
+                  ? 'bg-white dark:bg-gray-800 text-amber-600 shadow-md scale-[1.02]'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              <Users size={16} />
+              {t('unpaidCredit')}
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'credit' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+            <CreditCollectionPanel sales={isCashier ? (unpaidCreditSales || []) : sales} />
           </div>
         )}
 
-        {/* Right Column: Transactions table ── */}
-        <div className={cn("space-y-4", !isCashier ? "lg:col-span-8" : "lg:col-span-12")}>
+        {activeTab === 'transactions' && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
           <div className="flex items-center gap-2">
@@ -690,15 +715,16 @@ export default function SalesPage({
             </div>
           )}
         </Card>
-      </div>
-
-        <ViewInvoiceModal
-          invoiceNumber={selectedInvoice}
-          open={!!selectedInvoice}
-          onOpenChange={(open) => !open && setSelectedInvoice(null)}
-        />
+          </div>
+        </div>
+      )}
+      
+      <ViewInvoiceModal
+        invoiceNumber={selectedInvoice}
+        open={!!selectedInvoice}
+        onOpenChange={(open) => !open && setSelectedInvoice(null)}
+      />
       </div>
     </div>
-  </div>
-)
+  )
 }

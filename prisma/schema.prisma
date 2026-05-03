@@ -94,6 +94,19 @@ model Agent {
   purchaseOrders  PurchaseOrder[]
 }
 
+model Customer {
+  id           Int           @id @default(autoincrement())
+  name         String
+  phone        String?
+  email        String?
+  notes        String?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  transactions Transaction[]
+}
+
 model Transaction {
   id                  Int               @id @default(autoincrement())
   type                TransType
@@ -116,8 +129,10 @@ model Transaction {
   linkedBy            Transaction[]     @relation("LinkedTransactions")
   isInternal          Boolean           @default(false)
   invoiceNumber       String?           // For tying split payments and stock movements
-  customerName        String?
-  customerPhone       String?
+  customerId          Int?              // Link to registered Customer
+  customer            Customer?         @relation(fields: [customerId], references: [id])
+  customerName        String?           // Freetext fallback (kept for backward-compat)
+  customerPhone       String?           // Freetext fallback
   createdAt           DateTime          @default(now())
 }
 

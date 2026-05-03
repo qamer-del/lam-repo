@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Plus, Receipt, Banknote, Wifi, SplitSquareHorizontal,
-  ShoppingBag, Trash2, ChevronDown, ChevronUp, Package, Check, ChevronsUpDown, Users
+  ShoppingBag, Trash2, Package, Check, ChevronsUpDown, Users, UserPlus, ArrowLeft
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,7 @@ import {
 import { useLanguage } from '@/providers/language-provider'
 import { recordDailySales } from '@/actions/transactions'
 import { getAllInventoryItemsForSelect } from '@/actions/inventory'
+import { getAllCustomersForSelect, createCustomer } from '@/actions/customers'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
 import { toast } from 'sonner'
@@ -33,6 +34,10 @@ type PayMode = 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA' | 'CREDIT'
 
 interface InventoryItem {
   id: number; name: string; sku: string | null; unit: string; currentStock: number; sellingPrice: number
+}
+
+interface CustomerOption {
+  id: number; name: string; phone: string | null
 }
 
 interface ConsumedItem {
@@ -59,8 +64,15 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
   const [cashAmt, setCashAmt] = useState('')
   const [netAmt, setNetAmt] = useState('')
   const [description, setDescription] = useState('')
+  const [customerId, setCustomerId] = useState<number | null>(null)
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [customerList, setCustomerList] = useState<CustomerOption[]>([])
+  const [customerComboOpen, setCustomerComboOpen] = useState(false)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [quickAddMode, setQuickAddMode] = useState(false)
+  const [quickAddPhone, setQuickAddPhone] = useState('')
+  const [quickAddSaving, setQuickAddSaving] = useState(false)
   const [consumedItems, setConsumedItems] = useState<ConsumedItem[]>([{ itemId: 0, quantity: '1', price: '' }])
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([])
   const [comboboxOpen, setComboboxOpen] = useState<{ [key: number]: boolean }>({})
@@ -73,16 +85,18 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
     if (t >= c) setNetAmt((t - c).toFixed(2))
   }, [total, cashAmt, payMode])
 
-  // Load inventory once per open
+  // Load inventory + customers once per open
   useEffect(() => {
-    if (open && inventoryList.length === 0) {
-      getAllInventoryItemsForSelect().then(setInventoryList)
+    if (open) {
+      if (inventoryList.length === 0) getAllInventoryItemsForSelect().then(setInventoryList)
+      if (customerList.length === 0) getAllCustomersForSelect().then(setCustomerList)
     }
   }, [open])
 
   const reset = () => {
     setPayMode('CASH'); setTotal(''); setCashAmt(''); setNetAmt('')
-    setDescription(''); setCustomerName(''); setCustomerPhone('')
+    setDescription(''); setCustomerId(null); setCustomerName(''); setCustomerPhone('')
+    setCustomerSearch(''); setQuickAddMode(false); setQuickAddPhone('')
     setConsumedItems([{ itemId: 0, quantity: '1', price: '' }])
   }
 
@@ -99,7 +113,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
       if (c <= 0 && n <= 0) return 'Enter at least one split amount.'
     }
     if (payMode === 'CREDIT') {
-      if (!customerName.trim() || !customerPhone.trim()) return 'Customer name and phone number are required for credit sales.'
+      if (!customerId && (!customerName.trim() || !customerPhone.trim())) return 'A registered customer or freetext name + phone is required for credit sales.'
     }
     return null
   }
@@ -119,8 +133,9 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
         cashAmount: payMode === 'SPLIT' ? (parseFloat(cashAmt) || 0) : undefined,
         networkAmount: payMode === 'SPLIT' ? (parseFloat(netAmt) || 0) : undefined,
         description: description || undefined,
-        customerName: payMode === 'CREDIT' ? customerName : undefined,
-        customerPhone: payMode === 'CREDIT' ? customerPhone : undefined,
+        customerId: customerId || undefined,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
         consumedItems: consumedItems
           .filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0)
           .map(ci => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity) })),
@@ -284,31 +299,179 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                 </div>
               </div>
 
-              {/* ── Customer Details (Only for Credit) ── */}
-              {payMode === 'CREDIT' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 bg-amber-500/5 dark:bg-amber-500/10 rounded-[2rem] border border-amber-200/50 dark:border-amber-800/30 shadow-inner animate-in fade-in slide-in-from-top-4 duration-500">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-amber-600 ml-1">Customer Name</Label>
-                    <Input
-                      required
-                      placeholder="e.g. Ahmad Al-Harbi"
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                      className="h-12 rounded-xl border-amber-100 dark:border-amber-900 bg-white dark:bg-gray-950 focus:border-amber-500 font-bold"
-                    />
+              {/* ── Customer Picker (optional for all, required for CREDIT) ── */}
+              <div className={`space-y-3 p-5 rounded-[2rem] border transition-all duration-300 ${
+                payMode === 'CREDIT'
+                  ? 'bg-amber-500/5 border-amber-200/50 dark:border-amber-800/30'
+                  : 'bg-gray-50/50 dark:bg-gray-900/30 border-gray-100 dark:border-gray-800'
+              }`}>
+                <Label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${
+                  payMode === 'CREDIT' ? 'text-amber-600' : 'text-gray-400'
+                }`}>
+                  {t('selectCustomer')} {payMode === 'CREDIT' ? '*' : `(${t('walkinCustomer')})`}
+                </Label>
+
+                <Popover open={customerComboOpen} onOpenChange={(v) => { setCustomerComboOpen(v); if (!v) { setQuickAddMode(false); setQuickAddPhone('') } }}>
+                  <PopoverTrigger render={
+                    <button className={`flex w-full items-center justify-between h-12 rounded-2xl border-none px-4 py-2 text-sm font-bold shadow-inner transition-colors ${
+                      customerId ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700' : 'bg-white dark:bg-gray-950 text-gray-400'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <Users size={16} className={customerId ? 'text-amber-500' : 'text-gray-300'} />
+                        <span>{customerId ? customerList.find(c => c.id === customerId)?.name || customerName || t('selectCustomer') : t('selectCustomer')}</span>
+                      </div>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
+                    </button>
+                  } />
+
+                  <PopoverContent className="w-[320px] p-0 rounded-2xl shadow-2xl border-none overflow-hidden">
+                    {quickAddMode ? (
+                      /* ── Quick-add mini-form ── */
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <button
+                            type="button"
+                            onClick={() => { setQuickAddMode(false); setQuickAddPhone('') }}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition"
+                          >
+                            <ArrowLeft size={14} />
+                          </button>
+                          <span className="text-xs font-black uppercase tracking-widest text-violet-600 flex items-center gap-1.5">
+                            <UserPlus size={13} /> New Customer
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('customerName')}</Label>
+                          <Input
+                            value={customerSearch}
+                            onChange={e => setCustomerSearch(e.target.value)}
+                            placeholder="Full name"
+                            className="h-10 rounded-xl font-bold"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('customerPhone')}</Label>
+                          <Input
+                            value={quickAddPhone}
+                            onChange={e => setQuickAddPhone(e.target.value)}
+                            placeholder="05xxxxxxxx"
+                            className="h-10 rounded-xl font-bold"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!customerSearch.trim() || quickAddSaving}
+                          onClick={async () => {
+                            if (!customerSearch.trim()) return
+                            setQuickAddSaving(true)
+                            try {
+                              const newCust = await createCustomer({ name: customerSearch.trim(), phone: quickAddPhone.trim() || undefined })
+                              const newOpt: CustomerOption = { id: newCust.id, name: newCust.name, phone: newCust.phone }
+                              setCustomerList(prev => [...prev, newOpt].sort((a, b) => a.name.localeCompare(b.name)))
+                              setCustomerId(newCust.id)
+                              setCustomerName(newCust.name)
+                              setCustomerPhone(newCust.phone || '')
+                              setCustomerComboOpen(false)
+                              setQuickAddMode(false)
+                              setQuickAddPhone('')
+                              toast.success(`Customer '${newCust.name}' added`)
+                            } catch {
+                              toast.error('Failed to create customer')
+                            } finally {
+                              setQuickAddSaving(false)
+                            }
+                          }}
+                          className="w-full h-10 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-black text-xs uppercase tracking-widest transition flex items-center justify-center gap-2"
+                        >
+                          {quickAddSaving ? '...' : <><UserPlus size={13} /> Save & Select</>}
+                        </button>
+                      </div>
+                    ) : (
+                      /* ── Search list ── */
+                      <Command>
+                        <CommandInput
+                          placeholder={t('searchCustomer')}
+                          className="h-12"
+                          value={customerSearch}
+                          onValueChange={setCustomerSearch}
+                        />
+                        <CommandList className="max-h-[240px]">
+                          <CommandGroup>
+                            {customerId !== null && (
+                              <CommandItem
+                                value="__clear__"
+                                onSelect={() => { setCustomerId(null); setCustomerName(''); setCustomerPhone(''); setCustomerComboOpen(false) }}
+                                className="py-2 px-4 cursor-pointer text-gray-400 italic text-xs"
+                              >
+                                <Check className="mr-2 h-4 w-4 opacity-0" />
+                                {t('walkinCustomer')}
+                              </CommandItem>
+                            )}
+                            {customerList.map(c => (
+                              <CommandItem
+                                key={c.id}
+                                value={`${c.name} ${c.phone || ''}`}
+                                onSelect={() => {
+                                  setCustomerId(c.id)
+                                  setCustomerName(c.name)
+                                  setCustomerPhone(c.phone || '')
+                                  setCustomerSearch('')
+                                  setCustomerComboOpen(false)
+                                }}
+                                className="py-3 px-4 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-950"
+                              >
+                                <Check className={cn('mr-2 h-4 w-4 text-amber-600', customerId === c.id ? 'opacity-100' : 'opacity-0')} />
+                                <div className="flex flex-col">
+                                  <span className="font-bold">{c.name}</span>
+                                  {c.phone && <span className="text-[10px] text-gray-400">{c.phone}</span>}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                          {/* ── Quick-add trigger ── */}
+                          {customerSearch.trim().length > 0 && (
+                            <CommandGroup>
+                              <CommandItem
+                                value={`__add__${customerSearch}`}
+                                onSelect={() => setQuickAddMode(true)}
+                                className="py-3 px-4 cursor-pointer hover:bg-violet-50 dark:hover:bg-violet-900/20 text-violet-600 font-bold"
+                              >
+                                <UserPlus size={14} className="mr-2 shrink-0" />
+                                Add &ldquo;{customerSearch}&rdquo; as new customer
+                              </CommandItem>
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    )}
+                  </PopoverContent>
+                </Popover>
+
+                {/* Freetext fallback — shown when CREDIT and no registered customer selected */}
+                {payMode === 'CREDIT' && !customerId && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-amber-500 ml-1">{t('customerName')}</Label>
+                      <Input
+                        placeholder="e.g. Ahmad Al-Harbi"
+                        value={customerName}
+                        onChange={e => setCustomerName(e.target.value)}
+                        className="h-11 rounded-xl border-amber-100 dark:border-amber-900 bg-white dark:bg-gray-950 focus:border-amber-500 font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-amber-500 ml-1">{t('customerPhone')}</Label>
+                      <Input
+                        placeholder="05xxxxxxxx"
+                        value={customerPhone}
+                        onChange={e => setCustomerPhone(e.target.value)}
+                        className="h-11 rounded-xl border-amber-100 dark:border-amber-900 bg-white dark:bg-gray-950 focus:border-amber-500 font-bold"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-amber-600 ml-1">Phone Number</Label>
-                    <Input
-                      required
-                      placeholder="05xxxxxxxx"
-                      value={customerPhone}
-                      onChange={e => setCustomerPhone(e.target.value)}
-                      className="h-12 rounded-xl border-amber-100 dark:border-amber-900 bg-white dark:bg-gray-950 focus:border-amber-500 font-bold"
-                    />
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* ── Items Selection ── */}
               <div className="space-y-4">
