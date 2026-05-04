@@ -46,13 +46,13 @@ interface ConsumedItem {
   itemId: number; quantity: string; price: string
 }
 
-const PAY_METHODS: { mode: PayMode; label: string; icon: any; color: string; bg: string; border: string }[] = [
-  { mode: 'CASH',    label: 'Cash',    icon: Banknote,             color: 'text-emerald-700', bg: 'bg-emerald-500',  border: 'border-emerald-500' },
-  { mode: 'NETWORK', label: 'Network', icon: Wifi,                 color: 'text-blue-700',    bg: 'bg-blue-500',     border: 'border-blue-500' },
-  { mode: 'SPLIT',   label: 'Split',   icon: SplitSquareHorizontal, color: 'text-orange-700',  bg: 'bg-orange-500',   border: 'border-orange-500' },
-  { mode: 'TABBY',   label: 'Tabby',   icon: ShoppingBag,          color: 'text-purple-700',  bg: 'bg-purple-500',   border: 'border-purple-500' },
-  { mode: 'TAMARA',  label: 'Tamara',  icon: ShoppingBag,          color: 'text-pink-700',    bg: 'bg-pink-500',     border: 'border-pink-500' },
-  { mode: 'CREDIT',  label: 'Credit',  icon: Users,                color: 'text-amber-700',   bg: 'bg-amber-500',    border: 'border-amber-500' },
+const PAY_METHODS: { mode: PayMode; labelKey: keyof typeof en; icon: any; color: string; bg: string; border: string }[] = [
+  { mode: 'CASH',    labelKey: 'cash',    icon: Banknote,             color: 'text-emerald-700', bg: 'bg-emerald-500',  border: 'border-emerald-500' },
+  { mode: 'NETWORK', labelKey: 'network', icon: Wifi,                 color: 'text-blue-700',    bg: 'bg-blue-500',     border: 'border-blue-500' },
+  { mode: 'SPLIT',   labelKey: 'splitPayment',   icon: SplitSquareHorizontal, color: 'text-orange-700',  bg: 'bg-orange-500',   border: 'border-orange-500' },
+  { mode: 'TABBY',   labelKey: 'tabby',   icon: ShoppingBag,          color: 'text-purple-700',  bg: 'bg-purple-500',   border: 'border-purple-500' },
+  { mode: 'TAMARA',  labelKey: 'tamara',  icon: ShoppingBag,          color: 'text-pink-700',    bg: 'bg-pink-500',     border: 'border-pink-500' },
+  { mode: 'CREDIT',  labelKey: 'credit',  icon: Users,                color: 'text-amber-700',   bg: 'bg-amber-500',    border: 'border-amber-500' },
 ]
 
 export function AddSalesModal({ triggerClassName }: { triggerClassName?: string }) {
@@ -106,18 +106,18 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
 
   const validate = (): string | null => {
     const validItems = consumedItems.filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0)
-    if (validItems.length === 0) return 'You must select at least one item for the sales invoice.'
+    if (validItems.length === 0) return t('selectAtLeastOneItem')
 
-    const t = parseFloat(total) || 0
-    if (t <= 0) return 'Please enter a valid total amount.'
+    const tAmt = parseFloat(total) || 0
+    if (tAmt <= 0) return t('enterValidTotal')
     if (payMode === 'SPLIT') {
       const c = parseFloat(cashAmt) || 0
       const n = parseFloat(netAmt) || 0
-      if (Math.abs(t - (c + n)) > 0.01) return 'Cash + Network must equal the total.'
-      if (c <= 0 && n <= 0) return 'Enter at least one split amount.'
+      if (Math.abs(tAmt - (c + n)) > 0.01) return t('splitAmountError')
+      if (c <= 0 && n <= 0) return t('enterOneSplitAmount')
     }
     if (payMode === 'CREDIT') {
-      if (!customerId && (!customerName.trim() || !customerPhone.trim())) return 'A registered customer or freetext name + phone is required for credit sales.'
+      if (!customerId && (!customerName.trim() || !customerPhone.trim())) return t('creditCustomerRequired')
     }
     return null
   }
@@ -126,7 +126,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
     e.preventDefault()
     const err = validate()
     if (err) { 
-      toast.warning('Validation Error', { description: err })
+      toast.warning(t('validationError'), { description: err })
       return 
     }
     setLoading(true)
@@ -232,7 +232,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
               <div className="space-y-3">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('paymentMethod')}</Label>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {PAY_METHODS.map(({ mode, label, icon: Icon, color, border }) => {
+                  {PAY_METHODS.map(({ mode, labelKey, icon: Icon, color, border }) => {
                     const active = payMode === mode
                     return (
                       <button
@@ -248,7 +248,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                       >
                         <Icon size={20} className={active ? color : 'text-gray-400 group-hover:text-gray-600 transition-colors'} />
                         <span className={cn('text-[9px] font-black uppercase tracking-tight', active ? color : 'text-gray-400 group-hover:text-gray-600')}>
-                          {label}
+                          {t(labelKey)}
                         </span>
                       </button>
                     )
@@ -262,7 +262,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                   {payMode === 'SPLIT' ? (
                     <div className="space-y-6">
                       <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-orange-500 ml-1">Total Amount</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-orange-500 ml-1">{t('totalAmount')}</Label>
                         <div className="relative">
                           <span className="absolute left-5 top-1/2 -translate-y-1/2 text-orange-400 font-black text-xl">SAR</span>
                           <Input
@@ -275,7 +275,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2 p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
                           <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-2">
-                            <Banknote size={14} /> Cash Part
+                            <Banknote size={14} /> {t('cashPortion')}
                           </Label>
                           <Input
                             type="number" step="0.01" min="0" placeholder="0.00"
@@ -285,7 +285,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                         </div>
                         <div className="space-y-2 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10">
                           <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 flex items-center gap-2">
-                            <Wifi size={14} /> Network Part
+                            <Wifi size={14} /> {t('networkPortion')}
                           </Label>
                           <Input
                             readOnly value={netAmt}
@@ -356,7 +356,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                             <ArrowLeft size={14} />
                           </button>
                           <span className="text-xs font-black uppercase tracking-widest text-violet-600 flex items-center gap-1.5">
-                            <UserPlus size={13} /> New Customer
+                            <UserPlus size={13} /> {t('newCustomer')}
                           </span>
                         </div>
                         <div className="space-y-2">
@@ -364,7 +364,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                           <Input
                             value={customerSearch}
                             onChange={e => setCustomerSearch(e.target.value)}
-                            placeholder="Full name"
+                            placeholder={t('fullName')}
                             className="h-10 rounded-xl font-bold"
                             autoFocus
                           />
@@ -374,7 +374,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                           <Input
                             value={quickAddPhone}
                             onChange={e => setQuickAddPhone(e.target.value)}
-                            placeholder="05xxxxxxxx"
+                            placeholder={t('placeholderPhone')}
                             className="h-10 rounded-xl font-bold"
                           />
                         </div>
@@ -394,9 +394,9 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                               setCustomerComboOpen(false)
                               setQuickAddMode(false)
                               setQuickAddPhone('')
-                              toast.success(`Customer '${newCust.name}' added`)
+                              toast.success(`${t('customerAdded')}: '${newCust.name}'`)
                             } catch {
-                              toast.error('Failed to create customer')
+                              toast.error(t('failedToAddCustomer'))
                             } finally {
                               setQuickAddSaving(false)
                             }
@@ -529,9 +529,9 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                           } />
                           <PopoverContent className="w-[320px] sm:w-[400px] p-0 rounded-2xl shadow-2xl border-none overflow-hidden">
                             <Command>
-                              <CommandInput placeholder="Search items..." className="h-12" />
+                              <CommandInput placeholder={t('searchItems')} className="h-12" />
                               <CommandList className="max-h-[300px]">
-                                <CommandEmpty>No item found.</CommandEmpty>
+                                <CommandEmpty>{t('noItemFound')}</CommandEmpty>
                                 <CommandGroup>
                                   {inventoryList.map((item) => (
                                     <CommandItem
@@ -548,7 +548,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                                       <div className="flex flex-col">
                                         <span className="font-bold">{item.name}</span>
                                         <span className="text-[10px] text-gray-500 font-black uppercase tracking-tight">
-                                          {item.currentStock} {item.unit} available • {item.sellingPrice} SAR
+                                          {item.currentStock} {item.unit} {t('available')} • {item.sellingPrice} SAR
                                         </span>
                                       </div>
                                     </CommandItem>
@@ -562,7 +562,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                       <div className="flex items-center gap-3 w-full sm:w-auto">
                         <div className="flex-1 sm:w-20">
                           <Input
-                            type="number" step="0.1" min="0" placeholder="Qty"
+                            type="number" step="0.1" min="0" placeholder={t('qty')}
                             value={ci.quantity}
                             onChange={e => updateConsumedItem(index, 'quantity', e.target.value)}
                             className="h-12 rounded-2xl border-none bg-gray-50 dark:bg-gray-950 shadow-inner font-black text-center"
@@ -570,7 +570,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                         </div>
                         <div className="flex-1 sm:w-28">
                           <Input
-                            type="number" step="0.01" min="0" placeholder="Price"
+                            type="number" step="0.01" min="0" placeholder={t('price')}
                             value={ci.price}
                             onChange={e => updateConsumedItem(index, 'price', e.target.value)}
                             className="h-12 rounded-2xl border-none bg-teal-500/5 dark:bg-teal-500/10 shadow-inner font-black text-center text-teal-600"
@@ -619,7 +619,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                 ) : (
                   <div className="flex items-center gap-3">
                     <Check className="w-6 h-6" />
-                    <span>Record {selectedMethod.label} Sale</span>
+                    <span>{t('recordSale')} {t(selectedMethod.labelKey)}</span>
                   </div>
                 )}
               </Button>

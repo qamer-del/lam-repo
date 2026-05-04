@@ -12,6 +12,7 @@ import { WarrantyClaimModal } from '@/components/warranty-claim-modal'
 import { checkWarrantyStatus } from '@/actions/warranty'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/providers/language-provider'
 
 interface Props {
   role?: string
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarranties }: Props) {
+  const { t } = useLanguage()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchType, setSearchType] = useState<'invoice' | 'sku'>('invoice')
   const [searching, setSearching] = useState(false)
@@ -50,10 +52,10 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
   }
 
   const statCards = stats ? [
-    { label: 'Active', value: stats.active, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/10', border: 'border-emerald-200 dark:border-emerald-800' },
-    { label: 'Expiring Soon', value: stats.expiringSoon, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-200 dark:border-amber-800' },
-    { label: 'Claimed', value: stats.claimed, icon: CheckCircle2, color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/10', border: 'border-violet-200 dark:border-violet-800' },
-    { label: 'Expired', value: stats.expired, icon: XCircle, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-200 dark:border-red-800' },
+    { label: t('active'), value: stats.active, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/10', border: 'border-emerald-200 dark:border-emerald-800' },
+    { label: t('expiringSoon'), value: stats.expiringSoon, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-200 dark:border-amber-800' },
+    { label: t('claimed'), value: stats.claimed, icon: CheckCircle2, color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/10', border: 'border-violet-200 dark:border-violet-800' },
+    { label: t('expired'), value: stats.expired, icon: XCircle, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-200 dark:border-red-800' },
   ] : []
 
   return (
@@ -66,8 +68,8 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
             <Shield size={30} className="text-white" strokeWidth={2} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-gray-900 dark:text-white">Warranty</h1>
-            <p className="text-sm font-medium text-gray-400 mt-0.5">Replacement warranty tracking & claims</p>
+            <h1 className="text-3xl font-black text-gray-900 dark:text-white">{t('warranty')}</h1>
+            <p className="text-sm font-medium text-gray-400 mt-0.5">{t('warrantySubtitle')}</p>
           </div>
         </div>
         <WarrantyClaimModal />
@@ -93,9 +95,9 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
         <div>
           <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
             <Search size={18} className="text-violet-500" />
-            Warranty Check
+            {t('warrantyCheck')}
           </h2>
-          <p className="text-xs text-gray-400 font-medium mt-0.5">Look up warranty status by invoice number or item SKU</p>
+          <p className="text-xs text-gray-400 font-medium mt-0.5">{t('warrantyCheckSubtitle')}</p>
         </div>
 
         {/* Search type toggle */}
@@ -111,7 +113,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
               )}
             >
-              {type === 'invoice' ? 'Invoice #' : 'Item SKU'}
+              {type === 'invoice' ? t('invoiceNumber') : t('itemSku')}
             </button>
           ))}
         </div>
@@ -119,7 +121,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
         <div className="flex gap-3">
           <div className="flex-1 space-y-2">
             <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-              {searchType === 'invoice' ? 'Invoice Number' : 'Item SKU / Code'}
+              {searchType === 'invoice' ? t('invoiceNumber') : t('itemSkuCode')}
             </Label>
             <Input
               placeholder={searchType === 'invoice' ? 'e.g. INV-1714819200000' : 'e.g. POL-001'}
@@ -136,7 +138,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
               className="h-14 px-6 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-40 text-white font-black transition-all flex items-center gap-2 shadow-lg shadow-violet-500/20"
             >
               {searching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-              Search
+              {t('search')}
             </button>
           </div>
         </div>
@@ -155,8 +157,8 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
             ) : (
               <div className="py-12 text-center bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
                 <Shield size={32} className="text-gray-300 mx-auto mb-3" />
-                <p className="font-black text-gray-400">No warranty records found.</p>
-                <p className="text-xs text-gray-400 mt-1">Check the {searchType === 'invoice' ? 'invoice number' : 'SKU code'} and try again.</p>
+                <p className="font-black text-gray-400">{t('noWarrantyFound')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('checkInvoiceOrSku')}</p>
               </div>
             )}
           </div>
@@ -168,7 +170,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
         <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-amber-200 dark:border-amber-800 shadow-lg overflow-hidden">
           <div className="p-5 bg-amber-50 dark:bg-amber-900/10 border-b border-amber-100 dark:border-amber-900 flex items-center gap-3">
             <AlertTriangle size={18} className="text-amber-500" />
-            <h2 className="font-black text-gray-800 dark:text-white">Expiring Within 30 Days</h2>
+            <h2 className="font-black text-gray-800 dark:text-white">{t('expiringWithin30Days')}</h2>
             <span className="ml-auto text-xs font-black bg-amber-500 text-white px-3 py-1 rounded-full">{expiringSoon.length}</span>
           </div>
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -198,7 +200,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
         <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-lg overflow-hidden">
           <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
             <ShieldCheck size={18} className="text-emerald-500" />
-            <h2 className="font-black text-gray-800 dark:text-white">All Active Warranties</h2>
+            <h2 className="font-black text-gray-800 dark:text-white">{t('allActiveWarranties')}</h2>
             <span className="ml-auto text-xs font-black bg-emerald-500 text-white px-3 py-1 rounded-full">{activeWarranties.length}</span>
           </div>
           <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-96 overflow-y-auto">
@@ -212,7 +214,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
                   <p className="text-[10px] font-mono text-gray-400">{w.invoiceNumber}</p>
                 </div>
                 <div className="text-right shrink-0 space-y-0.5">
-                  <p className="text-sm font-black text-emerald-600">Until {format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}</p>
+                  <p className="text-sm font-black text-emerald-600">{t('until')} {format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}</p>
                   {(w.customer?.name || w.customerName) && (
                     <p className="text-[10px] text-gray-400">{w.customer?.name || w.customerName}</p>
                   )}

@@ -3,6 +3,7 @@
 import { ShieldCheck, ShieldOff, ShieldAlert, Calendar, Package, User, Phone, Receipt } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/providers/language-provider'
 
 type WarrantyStatus = 'ACTIVE' | 'EXPIRED' | 'CLAIMED'
 
@@ -28,7 +29,7 @@ interface WarrantyCheckResult {
   } | null
 }
 
-const STATUS_CONFIG: Record<WarrantyStatus, {
+const STATUS_CONFIG: (t: any) => Record<WarrantyStatus, {
   label: string
   icon: any
   bg: string
@@ -36,9 +37,9 @@ const STATUS_CONFIG: Record<WarrantyStatus, {
   badge: string
   badgeText: string
   glow: string
-}> = {
+}> = (t) => ({
   ACTIVE: {
-    label: 'Active',
+    label: t('active'),
     icon: ShieldCheck,
     bg: 'bg-emerald-50 dark:bg-emerald-900/10',
     border: 'border-emerald-200 dark:border-emerald-800',
@@ -47,7 +48,7 @@ const STATUS_CONFIG: Record<WarrantyStatus, {
     glow: 'shadow-emerald-500/20',
   },
   EXPIRED: {
-    label: 'Expired',
+    label: t('expired'),
     icon: ShieldOff,
     bg: 'bg-red-50 dark:bg-red-900/10',
     border: 'border-red-200 dark:border-red-800',
@@ -56,7 +57,7 @@ const STATUS_CONFIG: Record<WarrantyStatus, {
     glow: 'shadow-red-500/10',
   },
   CLAIMED: {
-    label: 'Claimed',
+    label: t('claimed'),
     icon: ShieldAlert,
     bg: 'bg-amber-50 dark:bg-amber-900/10',
     border: 'border-amber-200 dark:border-amber-800',
@@ -64,7 +65,7 @@ const STATUS_CONFIG: Record<WarrantyStatus, {
     badgeText: 'text-white',
     glow: 'shadow-amber-500/10',
   },
-}
+})
 
 interface WarrantyCheckCardProps {
   warranty: WarrantyCheckResult
@@ -73,7 +74,8 @@ interface WarrantyCheckCardProps {
 }
 
 export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: WarrantyCheckCardProps) {
-  const cfg = STATUS_CONFIG[warranty.status]
+  const { t } = useLanguage()
+  const cfg = STATUS_CONFIG(t)[warranty.status]
   const StatusIcon = cfg.icon
   const endDate = new Date(warranty.warrantyEndDate)
   const saleDate = new Date(warranty.saleDate)
@@ -94,8 +96,8 @@ export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: Warran
               warranty.status === 'EXPIRED' ? 'text-red-500' : 'text-amber-600'
             )} strokeWidth={2} />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Warranty Status</p>
+           <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('warrantyStatus')}</p>
             <p className={cn('text-2xl font-black',
               warranty.status === 'ACTIVE' ? 'text-emerald-700 dark:text-emerald-400' :
               warranty.status === 'EXPIRED' ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'
@@ -105,7 +107,7 @@ export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: Warran
           </div>
         </div>
         <span className={cn('px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest', cfg.badge, cfg.badgeText)}>
-          Replacement
+          {t('replacement')}
         </span>
       </div>
 
@@ -121,7 +123,7 @@ export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: Warran
           )}
           {warranty.item.warrantyDuration && (
             <p className="text-xs font-bold text-gray-500 mt-0.5">
-              {warranty.item.warrantyDuration} {warranty.item.warrantyUnit} replacement warranty
+              {warranty.item.warrantyDuration} {warranty.item.warrantyUnit} {t('replacementWarranty')}
             </p>
           )}
         </div>
@@ -132,7 +134,7 @@ export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: Warran
         <div className="p-4 bg-white/70 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2 mb-1">
             <Calendar size={12} className="text-gray-400" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Purchase Date</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('purchaseDate')}</p>
           </div>
           <p className="font-black text-gray-900 dark:text-white text-sm">{format(saleDate, 'dd MMM yyyy')}</p>
         </div>
@@ -145,7 +147,7 @@ export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: Warran
             <Calendar size={12} className={warranty.status === 'ACTIVE' ? 'text-emerald-500' : 'text-gray-400'} />
             <p className={cn('text-[10px] font-black uppercase tracking-widest',
               warranty.status === 'ACTIVE' ? 'text-emerald-600' : 'text-gray-400'
-            )}>Valid Until</p>
+            )}>{t('validUntil')}</p>
           </div>
           <p className={cn('font-black text-sm',
             warranty.status === 'ACTIVE' ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-500'
@@ -159,20 +161,20 @@ export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: Warran
       <div className="space-y-2">
         <div className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-900/40 rounded-xl border border-gray-100 dark:border-gray-800">
           <Receipt size={14} className="text-gray-400 shrink-0" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Invoice</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('invoice')}</span>
           <span className="font-mono text-xs font-black text-gray-700 dark:text-gray-300 ml-auto">{warranty.invoiceNumber}</span>
         </div>
         {displayName && (
           <div className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-900/40 rounded-xl border border-gray-100 dark:border-gray-800">
             <User size={14} className="text-gray-400 shrink-0" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Customer</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('customer')}</span>
             <span className="text-xs font-black text-gray-700 dark:text-gray-300 ml-auto">{displayName}</span>
           </div>
         )}
         {displayPhone && (
           <div className="flex items-center gap-3 p-3 bg-white/60 dark:bg-gray-900/40 rounded-xl border border-gray-100 dark:border-gray-800">
             <Phone size={14} className="text-gray-400 shrink-0" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Phone</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('phone')}</span>
             <span className="text-xs font-black text-gray-700 dark:text-gray-300 ml-auto">{displayPhone}</span>
           </div>
         )}
@@ -181,7 +183,7 @@ export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: Warran
       {/* Claim info */}
       {warranty.status === 'CLAIMED' && warranty.claimedAt && (
         <div className="p-4 bg-amber-100/50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800">
-          <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">Claimed On</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">{t('claimedOn')}</p>
           <p className="text-sm font-black text-amber-700 dark:text-amber-400">{format(new Date(warranty.claimedAt), 'dd MMM yyyy, HH:mm')}</p>
           {warranty.claimNotes && (
             <p className="text-xs text-amber-600/70 mt-1 italic">"{warranty.claimNotes}"</p>
@@ -196,7 +198,7 @@ export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: Warran
           className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           <ShieldCheck size={16} />
-          Process Replacement Claim
+          {t('processReplacementClaim')}
         </button>
       )}
     </div>
