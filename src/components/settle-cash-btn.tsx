@@ -24,14 +24,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Calculator, CheckCircle2, AlertCircle, Banknote } from 'lucide-react'
 
-export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string }) {
+export function SettleCashBtn({ triggerClassName, children, open: externalOpen, onOpenChange: externalOnOpenChange, hideTrigger }: { 
+  triggerClassName?: string, 
+  children?: React.ReactNode,
+  open?: boolean,
+  onOpenChange?: (open: boolean) => void,
+  hideTrigger?: boolean
+}) {
   const { locale, t } = useLanguage();
-
   
+  const [internalOpen, setInternalOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [isOpen, setIsOpen] = useState(false)
+  
+  const { transactions, cashInDrawer, isSettleCashOpen: storeOpen, setIsSettleCashOpen: setStoreOpen } = useStore()
+  
+  const isOpen = externalOpen !== undefined ? externalOpen : storeOpen
+  const setIsOpen = externalOnOpenChange !== undefined ? externalOnOpenChange : setStoreOpen
+
   const [actualCount, setActualCount] = useState<string>('')
-  const { transactions, cashInDrawer } = useStore()
 
   const isRtl = locale === 'ar'
 
@@ -82,17 +92,19 @@ export function SettleCashBtn({ triggerClassName }: { triggerClassName?: string 
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger 
-        render={
-          <Button 
-            variant="secondary" 
-            className={cn("bg-gray-900 text-white hover:bg-black shadow-lg shadow-gray-500/20 transition-all active:scale-95", triggerClassName)} 
-            disabled={loading}
-          />
-        }
-      >
-        {t('settleCash')}
-      </DialogTrigger>
+      {triggerClassName !== 'hidden' && (
+        <DialogTrigger 
+          render={
+            <Button 
+              variant="secondary" 
+              className={cn("bg-gray-900 text-white hover:bg-black shadow-lg shadow-gray-500/20 transition-all active:scale-95", triggerClassName)} 
+              disabled={loading}
+            />
+          }
+        >
+          {children || t('settleCash')}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl rounded-[3rem] bg-white dark:bg-gray-950">
         <div className="bg-gradient-to-br from-gray-900 via-slate-900 to-black p-10 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full -mr-32 -mt-32 blur-3xl animate-pulse" />

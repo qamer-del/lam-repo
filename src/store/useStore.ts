@@ -34,7 +34,11 @@ interface VaultState {
   totalOutstandingCredit: number
   transactions: Transaction[]
   recentSettlements: any[]
+  isSettleCashOpen: boolean
+  isAddTxOpen: boolean
   setVaultData: (data: Partial<VaultState>) => void
+  setIsSettleCashOpen: (open: boolean) => void
+  setIsAddTxOpen: (open: boolean) => void
   addTransactions: (txs: Transaction[]) => void
   addTransaction: (tx: Transaction) => void
 }
@@ -48,7 +52,11 @@ export const useStore = create<VaultState>((set) => ({
   totalOutstandingCredit: 0,
   transactions: [],
   recentSettlements: [],
+  isSettleCashOpen: false,
+  isAddTxOpen: false,
   setVaultData: (data) => set((state) => ({ ...state, ...data })),
+  setIsSettleCashOpen: (open) => set({ isSettleCashOpen: open }),
+  setIsAddTxOpen: (open) => set({ isAddTxOpen: open }),
   addTransactions: (txs) => set((state) => {
     let cashChange = 0;
     let netChange = 0;

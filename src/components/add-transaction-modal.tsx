@@ -38,11 +38,26 @@ import { cn } from '@/lib/utils'
 import { ModernLoader } from './ui/modern-loader'
 import { toast } from 'sonner'
 
-export function AddTransactionModal({ triggerClassName }: { triggerClassName?: string }) {
+export function AddTransactionModal({ 
+  triggerClassName, 
+  children,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
+  hideTrigger
+}: { 
+  triggerClassName?: string, 
+  children?: React.ReactNode,
+  open?: boolean,
+  onOpenChange?: (open: boolean) => void,
+  hideTrigger?: boolean
+}) {
   const { t } = useLanguage()
-  const { addTransaction: addTxToStore } = useStore()
-  const [open, setOpen] = useState(false)
+  const { addTransaction: addTxToStore, isAddTxOpen: storeOpen, setIsAddTxOpen: setStoreOpen } = useStore()
   const [loading, setLoading] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+
+  const open = externalOpen !== undefined ? externalOpen : storeOpen
+  const setOpen = externalOnOpenChange !== undefined ? externalOnOpenChange : setStoreOpen
 
   const [type, setType] = useState<TransType>('SALE')
   const [amount, setAmount] = useState('')
@@ -104,10 +119,16 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
     <>
       {loading && <ModernLoader />}
       <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button className={cn("flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all active:scale-95 px-6 font-bold h-11", triggerClassName)} />}>
-        <Plus size={18} />
-        {t('addTransaction')}
-      </DialogTrigger>
+      {triggerClassName !== 'hidden' && (
+        <DialogTrigger render={<Button className={cn("flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all active:scale-95 px-6 font-bold h-11", triggerClassName)} />}>
+          {children || (
+            <>
+              <Plus size={18} />
+              {t('addTransaction')}
+            </>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto font-cairo">
         <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-indigo-700 sticky top-0 z-10" />
         <div className="p-5 sm:p-8 space-y-6">
@@ -137,21 +158,23 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
                         if (opt.id !== 'ADVANCE') setStaffId(undefined)
                       }}
                       className={cn(
-                        "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-300 gap-2 group",
+                        "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 gap-2 group relative overflow-hidden",
                         isSelected 
-                          ? `border-${opt.color}-500 bg-${opt.color}-50 dark:bg-${opt.color}-900/20 shadow-md scale-[1.02]` 
-                          : "border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 bg-white dark:bg-gray-900 text-gray-400"
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500/20" 
+                          : "border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 bg-white dark:bg-gray-900"
                       )}
                     >
                       <div className={cn(
-                        "p-2 rounded-xl transition-colors",
-                        isSelected ? `bg-${opt.color}-500 text-white` : "bg-gray-50 dark:bg-gray-800 text-gray-400 group-hover:bg-gray-100 dark:group-hover:bg-gray-700"
+                        "p-2.5 rounded-xl transition-all duration-300",
+                        isSelected 
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110" 
+                          : "bg-gray-50 dark:bg-gray-800 text-gray-400 group-hover:scale-105"
                       )}>
-                        <Icon size={20} />
+                        <Icon size={18} strokeWidth={2.5} />
                       </div>
                       <span className={cn(
-                        "text-[10px] font-black uppercase tracking-tighter text-center",
-                        isSelected ? `text-${opt.color}-700 dark:text-${opt.color}-400` : "text-gray-500"
+                        "text-[9px] font-black uppercase tracking-widest text-center transition-colors",
+                        isSelected ? "text-blue-700 dark:text-blue-400" : "text-gray-400"
                       )}>
                         {opt.label}
                       </span>
@@ -215,7 +238,7 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="pl-12 h-14 text-2xl font-black rounded-2xl border-2 border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 focus:border-blue-500 focus:ring-0 transition-all"
+                    className="pl-12 h-14 text-2xl font-black rounded-2xl border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all"
                   />
                 </div>
               </div>
@@ -223,31 +246,31 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
               {/* Payment Method Toggle */}
               <div className="space-y-3">
                 <Label className="text-xs font-black uppercase tracking-widest text-gray-400">{t('method')}</Label>
-                <div className="grid grid-cols-2 gap-2 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl h-14">
+                <div className="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-gray-900 p-1.5 rounded-2xl h-14 border border-gray-100 dark:border-gray-800">
                   <button
                     type="button"
                     onClick={() => setMethod('CASH')}
                     className={cn(
-                      "flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm",
+                      "flex items-center justify-center gap-2 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest",
                       method === 'CASH' 
-                        ? "bg-white dark:bg-gray-900 text-blue-600 shadow-sm" 
+                        ? "bg-white dark:bg-gray-800 text-blue-600 shadow-sm ring-1 ring-gray-100 dark:ring-gray-700" 
                         : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                     )}
                   >
-                    <DollarSign size={16} />
+                    <DollarSign size={14} strokeWidth={3} />
                     {t('cash')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setMethod('NETWORK')}
                     className={cn(
-                      "flex items-center justify-center gap-2 rounded-xl transition-all font-bold text-sm",
+                      "flex items-center justify-center gap-2 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest",
                       method === 'NETWORK' 
-                        ? "bg-white dark:bg-gray-900 text-blue-600 shadow-sm" 
+                        ? "bg-white dark:bg-gray-800 text-blue-600 shadow-sm ring-1 ring-gray-100 dark:ring-gray-700" 
                         : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                     )}
                   >
-                    <Wifi size={16} />
+                    <Wifi size={14} strokeWidth={3} />
                     {t('network')}
                   </button>
                 </div>
@@ -262,18 +285,18 @@ export function AddTransactionModal({ triggerClassName }: { triggerClassName?: s
                 placeholder={t('noDescription') || "Note details here..."}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="h-12 rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 focus:ring-blue-500 font-medium"
+                className="h-12 rounded-xl border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 font-medium transition-all"
               />
             </div>
 
             <Button 
               type="submit" 
               disabled={loading} 
-              className="w-full h-14 text-lg font-black uppercase tracking-widest text-white bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 rounded-2xl shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all mt-4"
+              className="w-full h-14 text-sm font-black uppercase tracking-[0.2em] text-white bg-blue-600 hover:bg-blue-700 rounded-2xl shadow-xl shadow-blue-500/20 active:scale-[0.98] transition-all mt-4"
             >
               {loading ? (
                 <div className="flex items-center gap-2">
-                  <div className="w-5 h-5 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   {t('processing') || 'Processing...'}
                 </div>
               ) : t('submit')}
