@@ -16,12 +16,8 @@ export default async function AgentsPage() {
   const agents = await getAgents()
 
   return (
-    <div className="p-6 md:p-12 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Representatives & Agents</h1>
-      </div>
-
-      <AgentsLedger agents={agents} />
+    <div className="p-0">
+      <AgentsLedger agents={agents} userRole={role} />
     </div>
   )
 }
