@@ -128,12 +128,12 @@ export function SettlementDocument({ settlement, transactions = [], locale = 'en
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>{t('financialSettlementReport')}</Text>
-            <Text style={{ fontSize: 12, marginTop: 4, textAlign: isRtl ? 'right' : 'left' }}>{t('idHash')}{settlement.id}</Text>
+            <Text style={styles.title}>{String(t('financialSettlementReport'))}</Text>
+            <Text style={{ fontSize: 12, marginTop: 4, textAlign: isRtl ? 'right' : 'left' }}>{t('idHash')}{settlement.id || ''}</Text>
           </View>
           <View style={styles.meta}>
-            <Text>{t('reportDate')}: {new Date(settlement.reportDate).toLocaleString()}</Text>
-            <Text>Performed By: {settlement.performedBy?.name || 'System'}</Text>
+            <Text>{t('reportDate')}: {settlement.reportDate ? new Date(settlement.reportDate).toLocaleString() : ''}</Text>
+            <Text>Performed By: {String(settlement.performedBy?.name || 'System')}</Text>
           </View>
         </View>
 
@@ -152,7 +152,7 @@ export function SettlementDocument({ settlement, transactions = [], locale = 'en
               <Text style={[styles.tableCol, styles.colDate]}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
               <Text style={[styles.tableCol, styles.colAmount]}>
                 {['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT', 'RETURN'].includes(tx.type) ? '-' : ''}
-                {tx.amount.toFixed(2)}
+                {(tx.amount || 0).toFixed(2)}
               </Text>
             </View>
           ))}

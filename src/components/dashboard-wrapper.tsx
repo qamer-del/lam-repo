@@ -9,5 +9,11 @@ export async function DashboardWrapper() {
     getInventorySummary(),
   ])
   const session = await auth()
-  return <DashboardContent initialData={data as any} userRole={session?.user?.role} inventorySummary={inventorySummary} />
+  return (
+    <DashboardContent 
+      initialData={data as any} 
+      userRole={session?.user?.role} 
+      inventorySummary={inventorySummary} 
+    />
+  )
 }

@@ -899,3 +899,60 @@ export async function settleTamaraSales() {
   })
   revalidatePath('/')
 }
+
+export async function getCashierPerformance() {
+  const session = await auth()
+  const role = session?.user?.role
+  if (role !== 'SUPER_ADMIN' && role !== 'ADMIN' && role !== 'OWNER') {
+    return []
+  }
+
+  const now = new Date()
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  // Fetch all active users who have recorded any transaction in the current month
+  const users = await prisma.user.findMany({
+    where: { 
+      isActive: true,
+      OR: [
+        { role: 'CASHIER' },
+        { records: { some: { type: 'SALE', createdAt: { gte: startOfMonth } } } }
+      ]
+    },
+    select: {
+      id: true,
+      name: true,
+      records: {
+        where: {
+          type: { in: ['SALE', 'RETURN'] },
+          createdAt: { gte: startOfMonth }
+        },
+        select: {
+          type: true,
+          amount: true,
+          createdAt: true
+        }
+      }
+    }
+  })
+
+  return users.map(user => {
+    const todayTxs = user.records.filter(r => r.createdAt >= startOfDay)
+    
+    const dailySales = todayTxs.reduce((sum, r) => {
+      return r.type === 'SALE' ? sum + r.amount : sum - r.amount
+    }, 0)
+    
+    const monthlySales = user.records.reduce((sum, r) => {
+      return r.type === 'SALE' ? sum + r.amount : sum - r.amount
+    }, 0)
+
+    return {
+      id: user.id,
+      name: user.name,
+      dailySales,
+      monthlySales
+    }
+  }).filter(u => u.dailySales > 0 || u.monthlySales > 0)
+}

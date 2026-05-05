@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { getCashierPerformance } from '@/actions/transactions'
 import SalesClientPage from './sales-client'
 import { auth } from '@/auth'
 import { startOfDay } from 'date-fns'
@@ -9,21 +10,19 @@ export default async function SalesRoute() {
   const session = await auth()
   const role = session?.user?.role
 
-  // Fetch both SALE and RETURN types so refunds appear in the table
-  const typeFilter = role === 'CASHIER'
-    ? { in: ['SALE', 'RETURN'] as const }
-    : { in: ['SALE', 'RETURN'] as const }
-
+  const typeFilter = { in: ['SALE', 'RETURN'] }
   const baseWhere: any = { type: typeFilter }
 
   if (role === 'CASHIER') {
-    baseWhere.recordedById = session?.user?.id
+    if (session?.user?.id) {
+      baseWhere.recordedById = session.user.id
+    }
     baseWhere.isSettled = false
     baseWhere.settlementId = null
     baseWhere.createdAt = { gte: startOfDay(new Date()) }
   }
 
-  const [sales, unpaidCreditSales] = await Promise.all([
+  const [sales, unpaidCreditSales, cashierPerformance] = await Promise.all([
     prisma.transaction.findMany({
       where: baseWhere,
       orderBy: { createdAt: 'desc' },
@@ -48,6 +47,7 @@ export default async function SalesRoute() {
           }
         })
       : Promise.resolve(null), // Admins already have credit sales in main query
+    getCashierPerformance()
   ])
 
   // Also fetch stock movements for profit calculation
@@ -65,5 +65,13 @@ export default async function SalesRoute() {
     },
   })
 
-  return <SalesClientPage initialSales={sales} initialMovements={movements} userRole={role} unpaidCreditSales={unpaidCreditSales} />
+  return (
+    <SalesClientPage 
+      initialSales={sales} 
+      initialMovements={movements} 
+      userRole={role} 
+      unpaidCreditSales={unpaidCreditSales} 
+      cashierPerformance={cashierPerformance}
+    />
+  )
 }

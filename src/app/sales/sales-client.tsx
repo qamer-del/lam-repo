@@ -31,15 +31,20 @@ export default function SalesPage({
   initialMovements,
   userRole,
   unpaidCreditSales,
+  cashierPerformance,
 }: {
   initialSales?: any[]
   initialMovements?: any[]
   userRole?: string
   unpaidCreditSales?: any[] | null
+  cashierPerformance?: { id: string, name: string, dailySales: number, monthlySales: number }[]
 }) {
   const { t, locale } = useLanguage()
   const { data: session } = useSession()
   const isCashier = userRole === 'CASHIER' || session?.user?.role === 'CASHIER'
+  const isOwner = userRole === 'OWNER' || session?.user?.role === 'OWNER'
+  const isAdmin = userRole === 'ADMIN' || session?.user?.role === 'ADMIN' || userRole === 'SUPER_ADMIN' || session?.user?.role === 'SUPER_ADMIN'
+  const canViewStats = isAdmin || isOwner
 
   const { transactions: storeTransactions, setVaultData } = useStore()
   
@@ -64,7 +69,7 @@ export default function SalesPage({
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [activeTab, setActiveTab] = useState<'transactions' | 'credit'>('transactions')
+  const [activeTab, setActiveTab] = useState<'transactions' | 'credit' | 'performance'>('transactions')
   const ITEMS_PER_PAGE = 10
   
   const sales = storeTransactions
@@ -237,8 +242,11 @@ export default function SalesPage({
       {/* ── Page header ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white font-cairo">{t('salesReport')}</h1>
-          <p className="text-gray-500 mt-0.5 text-sm font-cairo">{t('salesSubtitle')}</p>
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white font-cairo tracking-tight">{t('salesReport')}</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="text-gray-500 text-sm font-medium font-cairo">{t('salesSubtitle')}</p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -358,81 +366,47 @@ export default function SalesPage({
 
       {/* ── Summary metric cards (admin only) ── */}
       {!isCashier && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {/* Total Sales */}
-          <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
-            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
-              <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Receipt size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('totalSales')}</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
-              <p className="text-xl font-black text-emerald-600 tabular-nums">{totalGrossRevenue.toFixed(2)}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">SAR</p>
-            </CardContent>
-          </Card>
-
-          {/* Net Cash */}
-          <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
-            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
-              <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><Coins size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('netCash')}</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
-              <p className={cn('text-xl font-black tabular-nums', totalCash < 0 ? 'text-red-500' : 'text-blue-600')}>{totalCash.toFixed(2)}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">SAR</p>
-            </CardContent>
-          </Card>
-
-          {/* Net Network */}
-          <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
-            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
-              <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><CreditCard size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('netNetwork')}</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
-              <p className={cn('text-xl font-black tabular-nums', totalNetwork < 0 ? 'text-red-500' : 'text-purple-600')}>{totalNetwork.toFixed(2)}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">SAR</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
-            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
-              <div className="p-1.5 bg-amber-100 text-amber-600 rounded-lg"><Users size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('netCredit')}</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
-              <p className={cn('text-xl font-black tabular-nums', totalCredit < 0 ? 'text-red-500' : 'text-amber-600')}>{totalCredit.toFixed(2)}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">SAR</p>
-            </CardContent>
-          </Card>
-
-          {/* VAT */}
-          <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
-            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
-              <div className="p-1.5 bg-orange-100 text-orange-600 rounded-lg"><TrendingDown size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('vat15')}</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
-              <p className="text-xl font-black text-orange-600 tabular-nums">{vatAmount.toFixed(2)}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">SAR</p>
-            </CardContent>
-          </Card>
-
-          {/* Net Profit */}
-          <Card className="border border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900">
-            <CardHeader className="flex flex-row items-center gap-2 pb-1 pt-3 px-4">
-              <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><Calculator size={14} /></div>
-              <CardTitle className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">{t('netProfit')}</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
-              <p className={cn('text-xl font-black tabular-nums', (manualProfit ? parseFloat(manualProfit) : autoProfit) < 0 ? 'text-red-500' : 'text-emerald-600')}>
-                {(manualProfit ? parseFloat(manualProfit) : autoProfit).toFixed(2)}
-              </p>
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                {manualProfit ? t('manualOverride') : `${t('cost')}: ${totalCostOfSales.toFixed(2)} SAR`}
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[
+            { label: t('totalSales'), value: totalGrossRevenue, icon: <Receipt size={18} />, color: 'emerald', bg: 'from-emerald-50 to-emerald-100/50', text: 'text-emerald-600' },
+            { label: t('netCash'), value: totalCash, icon: <Coins size={18} />, color: 'blue', bg: 'from-blue-50 to-blue-100/50', text: totalCash < 0 ? 'text-red-500' : 'text-blue-600' },
+            { label: t('netNetwork'), value: totalNetwork, icon: <CreditCard size={18} />, color: 'purple', bg: 'from-purple-50 to-purple-100/50', text: totalNetwork < 0 ? 'text-red-500' : 'text-purple-600' },
+            { label: t('netCredit'), value: totalCredit, icon: <Users size={18} />, color: 'amber', bg: 'from-amber-50 to-amber-100/50', text: totalCredit < 0 ? 'text-red-500' : 'text-amber-600' },
+            { label: t('vat15'), value: vatAmount, icon: <TrendingDown size={18} />, color: 'orange', bg: 'from-orange-50 to-orange-100/50', text: 'text-orange-600' },
+            { 
+              label: t('netProfit'), 
+              value: manualProfit ? parseFloat(manualProfit) : autoProfit, 
+              icon: <Calculator size={18} />, 
+              color: 'rose', 
+              bg: 'from-rose-50 to-rose-100/50', 
+              text: (manualProfit ? parseFloat(manualProfit) : autoProfit) < 0 ? 'text-red-500' : 'text-emerald-600',
+              sub: manualProfit ? t('manualOverride') : `${t('cost')}: ${totalCostOfSales.toFixed(2)}`
+            },
+          ].map((card, i) => (
+            <Card key={i} className={cn(
+              "relative overflow-hidden border-none shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 group bg-gradient-to-br",
+              card.bg,
+              "dark:from-gray-900 dark:to-gray-800/50 dark:border dark:border-gray-800"
+            )}>
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                {card.icon}
+              </div>
+              <CardHeader className="pb-1 pt-4 px-4 space-y-0">
+                <CardTitle className="text-[10px] font-black uppercase text-gray-500 tracking-widest opacity-70">{card.label}</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="flex items-baseline gap-1">
+                  <p className={cn("text-2xl font-black tabular-nums tracking-tighter", card.text)}>
+                    {card.value.toFixed(2)}
+                  </p>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase">SAR</span>
+                </div>
+                {card.sub && (
+                  <p className="text-[9px] text-gray-400 font-medium mt-1 truncate">{card.sub}</p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
@@ -441,14 +415,14 @@ export default function SalesPage({
         
         {/* Modern Tab Switcher */}
         <div className="flex justify-center sm:justify-start">
-          <div className="flex items-center gap-2 p-1.5 bg-gray-100/80 dark:bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-800/50 shadow-inner">
+          <div className="flex items-center gap-1 p-1 bg-gray-100/80 dark:bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-800/50 shadow-inner">
             <button
               onClick={() => setActiveTab('transactions')}
               className={cn(
                 'px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2',
                 activeTab === 'transactions'
                   ? 'bg-white dark:bg-gray-800 text-emerald-600 shadow-md scale-[1.02]'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
               )}
             >
               <Receipt size={16} />
@@ -460,12 +434,26 @@ export default function SalesPage({
                 'px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2',
                 activeTab === 'credit'
                   ? 'bg-white dark:bg-gray-800 text-amber-600 shadow-md scale-[1.02]'
-                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
               )}
             >
               <Users size={16} />
               {t('unpaidCredit')}
             </button>
+            {canViewStats && (
+              <button
+                onClick={() => setActiveTab('performance')}
+                className={cn(
+                  'px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2',
+                  activeTab === 'performance'
+                    ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
+                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
+                )}
+              >
+                <TrendingDown size={16} className="rotate-180" />
+                {t('performance') || 'Performance'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -473,6 +461,85 @@ export default function SalesPage({
         {activeTab === 'credit' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
             <CreditCollectionPanel sales={isCashier ? (unpaidCreditSales || []) : sales} />
+          </div>
+        )}
+
+        {activeTab === 'performance' && canViewStats && cashierPerformance && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {cashierPerformance.slice(0, 3).map((cashier, idx) => (
+                <Card key={cashier.id} className="relative overflow-hidden border-none shadow-lg bg-white dark:bg-gray-900">
+                  <div className={cn(
+                    "absolute top-0 left-0 w-1 h-full",
+                    idx === 0 ? "bg-emerald-500" : idx === 1 ? "bg-blue-500" : "bg-purple-500"
+                  )} />
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{idx === 0 ? 'Top Performer' : 'Sales Member'}</p>
+                        <h3 className="text-lg font-black text-gray-900 dark:text-white">{cashier.name}</h3>
+                      </div>
+                      <div className={cn(
+                        "p-2 rounded-xl",
+                        idx === 0 ? "bg-emerald-50 text-emerald-600" : idx === 1 ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"
+                      )}>
+                        <Users size={20} />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
+                        <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{cashier.dailySales.toFixed(2)} <span className="text-xs font-normal opacity-50">SAR</span></p>
+                      </div>
+                      <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
+                        <p className="text-xl font-black text-blue-600 dark:text-blue-400 tabular-nums">{cashier.monthlySales.toFixed(2)} <span className="text-xs font-normal opacity-50">SAR</span></p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden bg-white dark:bg-gray-900">
+              <CardHeader className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+                <CardTitle className="text-sm font-black uppercase tracking-widest text-gray-500">{t('allStaffPerformance') || 'All Staff Performance'}</CardTitle>
+              </CardHeader>
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('salesperson')}</TableHead>
+                    <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">{t('today')}</TableHead>
+                    <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">{t('thisMonth')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cashierPerformance.map((cashier) => (
+                    <TableRow key={cashier.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <TableCell className="font-bold py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-black text-gray-500">
+                            {cashier.name.charAt(0)}
+                          </div>
+                          {cashier.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 font-black text-sm">
+                          {cashier.dailySales.toFixed(2)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <span className="font-black text-blue-700 dark:text-blue-300">
+                          {cashier.monthlySales.toFixed(2)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
           </div>
         )}
 

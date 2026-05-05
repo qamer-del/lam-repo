@@ -110,7 +110,7 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en' }: Inv
               <Text style={styles.colNo}>{i + 1}</Text>
               <Text style={styles.colItem}>{item.name}</Text>
               <Text style={styles.colQty}>{item.quantitySold} {item.unit}</Text>
-              <Text style={styles.colTotal}>{t((details.transactions[0]?.method as string)?.toLowerCase() as any) || t('mixed')}</Text>
+              <Text style={styles.colTotal}>{t((details.transactions?.[0]?.method as string)?.toLowerCase() as any) || t('mixed') || ''}</Text>
             </View>
           ))}
         </View>

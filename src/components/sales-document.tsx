@@ -122,12 +122,12 @@ export function SalesDocument({ sales = [], totalCash = 0, totalNetwork = 0, tot
               const saleMethodText = sale.type === 'RETURN' ? t('refund') : t((sale.method as string).toLowerCase() as any) || sale.method;
               return (
               <View key={sale.id} style={[styles.tableRow, sale.type === 'RETURN' ? { backgroundColor: '#fef2f2' } : {}]}>
-                <Text style={styles.colMethod}>{saleMethodText}</Text>
+                <Text style={styles.colMethod}>{saleMethodText || ''}</Text>
                 <Text style={[styles.colAmount, sale.type === 'RETURN' ? { color: '#b91c1c', fontWeight: 'bold' } : {}]}>
-                  {sale.type === 'RETURN' ? '-' : ''}{sale.amount.toFixed(2)}
+                  {sale.type === 'RETURN' ? '-' : ''}{(sale.amount || 0).toFixed(2)}
                 </Text>
-                <Text style={styles.colDesc}>{sale.description || '-'}</Text>
-                <Text style={styles.colDate}>{format(new Date(sale.createdAt), 'MM/dd/yy HH:mm')}</Text>
+                <Text style={styles.colDesc}>{String(sale.description || '-')}</Text>
+                <Text style={styles.colDate}>{sale.createdAt ? format(new Date(sale.createdAt), 'MM/dd/yy HH:mm') : ''}</Text>
               </View>
             )})}
           </View>
