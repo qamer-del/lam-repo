@@ -359,6 +359,8 @@ export const en = {
   more: 'More',
   selectPage: 'Navigate to other system modules',
   noResults: 'No pages found',
+  confirmTransaction: 'Confirm Transaction',
+  confirmSettlement: 'Confirm Settlement',
 }
 
 export const ar = {
@@ -722,4 +724,6 @@ export const ar = {
   more: 'المزيد',
   selectPage: 'انتقل إلى أقسام النظام الأخرى',
   noResults: 'لم يتم العثور على نتائج',
+  confirmTransaction: 'تأكيد المعاملة',
+  confirmSettlement: 'تأكيد التسوية',
 }
