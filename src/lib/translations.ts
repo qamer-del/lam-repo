@@ -356,6 +356,9 @@ export const en = {
   purchase: 'Purchase',
   payment: 'Payment',
   overview: 'Overview',
+  more: 'More',
+  selectPage: 'Navigate to other system modules',
+  noResults: 'No pages found',
 }
 
 export const ar = {
@@ -716,4 +719,7 @@ export const ar = {
   purchase: 'شراء (آجل)',
   payment: 'دفعة مسددة',
   overview: 'نظرة عامة',
+  more: 'المزيد',
+  selectPage: 'انتقل إلى أقسام النظام الأخرى',
+  noResults: 'لم يتم العثور على نتائج',
 }
