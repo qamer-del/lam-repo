@@ -409,44 +409,44 @@ export default function SalesPage({
       <div className="space-y-6">
         
         {/* Modern Tab Switcher */}
-        <div className="flex w-full overflow-x-auto hide-scrollbar pb-1 -mb-1">
-          <div className="flex items-center w-full sm:w-auto gap-1 p-1 bg-gray-100/80 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800 min-w-max">
+        <div className="flex w-full">
+          <div className="flex w-full items-center gap-1 p-1 bg-gray-100/80 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800">
             <button
               onClick={() => setActiveTab('transactions')}
               className={cn(
-                'px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap',
+                'flex-1 py-2 sm:px-6 sm:py-2.5 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2',
                 activeTab === 'transactions'
                   ? 'bg-white dark:bg-gray-800 text-emerald-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
               )}
             >
-              <Receipt size={16} className="shrink-0" />
-              <span>{t('transactions')}</span>
+              <Receipt size={16} className="shrink-0 mb-0.5 sm:mb-0" />
+              <span className="text-center leading-tight">{t('transactions')}</span>
             </button>
             <button
               onClick={() => setActiveTab('credit')}
               className={cn(
-                'px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap',
+                'flex-1 py-2 sm:px-6 sm:py-2.5 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2',
                 activeTab === 'credit'
                   ? 'bg-white dark:bg-gray-800 text-amber-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
               )}
             >
-              <Users size={16} className="shrink-0" />
-              <span>{t('unpaidCredit')}</span>
+              <Users size={16} className="shrink-0 mb-0.5 sm:mb-0" />
+              <span className="text-center leading-tight">{t('unpaidCredit')}</span>
             </button>
             {canViewStats && (
               <button
                 onClick={() => setActiveTab('performance')}
                 className={cn(
-                  'px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap',
+                  'flex-1 py-2 sm:px-6 sm:py-2.5 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2',
                   activeTab === 'performance'
                     ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm'
                     : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
                 )}
               >
-                <TrendingDown size={16} className="rotate-180 shrink-0" />
-                <span>{t('performance') || 'Performance'}</span>
+                <TrendingDown size={16} className="rotate-180 shrink-0 mb-0.5 sm:mb-0" />
+                <span className="text-center leading-tight">{t('performance') || 'Performance'}</span>
               </button>
             )}
           </div>
