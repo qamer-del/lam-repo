@@ -54,7 +54,22 @@ export function SettleCashBtn({ triggerClassName, children, open: externalOpen, 
       const settlement = await createSettlement(count)
       
       if (settlement) {
-        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={settlement.transactions as any[]} locale={locale} />).toBlob()
+        // Sanitize transactions into plain POJOs before passing to the PDF renderer.
+        // @react-pdf/renderer internally introspects all props on the React element, and
+        // Prisma objects can contain nested relations (e.g. the `settlement` sub-object from
+        // the findMany include), which causes "Cannot read properties of undefined (reading 'id')"
+        // deep inside the PDF layout engine. Stripping to only what the PDF needs fixes this.
+        const sanitizedTransactions = (settlement.transactions || []).map((tx: any) => ({
+          id: tx?.id ?? null,
+          type: tx?.type ?? null,
+          method: tx?.method ?? null,
+          amount: tx?.amount ?? 0,
+          description: tx?.description ?? null,
+          createdAt: tx?.createdAt ? new Date(tx.createdAt).toISOString() : null,
+          isInternal: tx?.isInternal ?? false,
+          isSettled: tx?.isSettled ?? false,
+        }));
+        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={sanitizedTransactions} locale={locale} />).toBlob()
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url

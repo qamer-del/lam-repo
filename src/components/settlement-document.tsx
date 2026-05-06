@@ -11,10 +11,11 @@ Font.register({
 
 export function SettlementDocument({ settlement, transactions = [], locale = 'en' }: { settlement: any, transactions?: any[], locale?: 'en' | 'ar' | string }) {
   if (!settlement) return null;
-  const cashTransactions = transactions.filter(tx => tx?.method === 'CASH');
-  const networkTransactions = transactions.filter(tx => tx?.method === 'NETWORK');
-  const tabbyTransactions = transactions.filter(tx => tx?.method === 'TABBY');
-  const tamaraTransactions = transactions.filter(tx => tx?.method === 'TAMARA');
+  const visibleTransactions = (transactions || []).filter(tx => tx && !tx.isInternal && !(tx.description || '').includes('[DRAWER_NEUTRAL]'));
+  const cashTransactions = visibleTransactions.filter(tx => tx && tx.method === 'CASH');
+  const networkTransactions = visibleTransactions.filter(tx => tx && tx.method === 'NETWORK');
+  const tabbyTransactions = visibleTransactions.filter(tx => tx && tx.method === 'TABBY');
+  const tamaraTransactions = visibleTransactions.filter(tx => tx && tx.method === 'TAMARA');
   
   const discrepancy = (settlement.actualCashCounted || 0) - (settlement.totalCashHanded || 0);
 
@@ -145,14 +146,14 @@ export function SettlementDocument({ settlement, transactions = [], locale = 'en
             <Text style={[styles.tableCol, styles.colDate]}>{t('time')}</Text>
             <Text style={[styles.tableCol, styles.colAmount]}>{t('amount')}</Text>
           </View>
-          {cashTransactions.map((tx) => (
-            <View style={styles.tableRow} key={tx.id}>
-              <Text style={[styles.tableCol, styles.colId]}>#{tx.id}</Text>
-              <Text style={[styles.tableCol, styles.colType]}>{t(tx.type.toLowerCase() as any) || tx.type}</Text>
-              <Text style={[styles.tableCol, styles.colDate]}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+          {cashTransactions.map((tx, idx) => (
+            <View style={styles.tableRow} key={`cash-${idx}-${tx?.id || 'tx'}`}>
+              <Text style={[styles.tableCol, styles.colId]}>#{tx?.id || 'N/A'}</Text>
+              <Text style={[styles.tableCol, styles.colType]}>{tx?.type ? t(tx.type.toLowerCase() as any) || tx.type : 'N/A'}</Text>
+              <Text style={[styles.tableCol, styles.colDate]}>{tx?.createdAt ? new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</Text>
               <Text style={[styles.tableCol, styles.colAmount]}>
-                {['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT', 'RETURN'].includes(tx.type) ? '-' : ''}
-                {(tx.amount || 0).toFixed(2)}
+                {tx?.type && ['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT', 'RETURN'].includes(tx.type) ? '-' : ''}
+                {(tx?.amount || 0).toFixed(2)}
               </Text>
             </View>
           ))}
@@ -171,12 +172,12 @@ export function SettlementDocument({ settlement, transactions = [], locale = 'en
             <Text style={[styles.tableCol, styles.colDate]}>{t('time')}</Text>
             <Text style={[styles.tableCol, styles.colAmount]}>{t('amount')}</Text>
           </View>
-          {networkTransactions.map((tx) => (
-            <View style={styles.tableRow} key={tx.id}>
-              <Text style={[styles.tableCol, styles.colId]}>#{tx.id}</Text>
-              <Text style={[styles.tableCol, styles.colType]}>{t(tx.type.toLowerCase() as any) || tx.type}</Text>
-              <Text style={[styles.tableCol, styles.colDate]}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-              <Text style={[styles.tableCol, styles.colAmount]}>{tx.amount.toFixed(2)}</Text>
+          {networkTransactions.map((tx, idx) => (
+            <View style={styles.tableRow} key={`net-${idx}-${tx?.id || 'tx'}`}>
+              <Text style={[styles.tableCol, styles.colId]}>#{tx?.id || 'N/A'}</Text>
+              <Text style={[styles.tableCol, styles.colType]}>{tx?.type ? t(tx.type.toLowerCase() as any) || tx.type : 'N/A'}</Text>
+              <Text style={[styles.tableCol, styles.colDate]}>{tx?.createdAt ? new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</Text>
+              <Text style={[styles.tableCol, styles.colAmount]}>{(tx?.amount || 0).toFixed(2)}</Text>
             </View>
           ))}
           {networkTransactions.length === 0 && (
@@ -194,12 +195,12 @@ export function SettlementDocument({ settlement, transactions = [], locale = 'en
             <Text style={[styles.tableCol, styles.colDate]}>{t('time')}</Text>
             <Text style={[styles.tableCol, styles.colAmount]}>{t('amount')}</Text>
           </View>
-          {tabbyTransactions.map((tx) => (
-            <View style={styles.tableRow} key={tx.id}>
-              <Text style={[styles.tableCol, styles.colId]}>#{tx.id}</Text>
-              <Text style={[styles.tableCol, styles.colType]}>{t(tx.type.toLowerCase() as any) || tx.type}</Text>
-              <Text style={[styles.tableCol, styles.colDate]}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-              <Text style={[styles.tableCol, styles.colAmount]}>{tx.amount.toFixed(2)}</Text>
+          {tabbyTransactions.map((tx, idx) => (
+            <View style={styles.tableRow} key={`tabby-${idx}-${tx?.id || 'tx'}`}>
+              <Text style={[styles.tableCol, styles.colId]}>#{tx?.id || 'N/A'}</Text>
+              <Text style={[styles.tableCol, styles.colType]}>{tx?.type ? t(tx.type.toLowerCase() as any) || tx.type : 'N/A'}</Text>
+              <Text style={[styles.tableCol, styles.colDate]}>{tx?.createdAt ? new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</Text>
+              <Text style={[styles.tableCol, styles.colAmount]}>{(tx?.amount || 0).toFixed(2)}</Text>
             </View>
           ))}
           {tabbyTransactions.length === 0 && (
@@ -217,12 +218,12 @@ export function SettlementDocument({ settlement, transactions = [], locale = 'en
             <Text style={[styles.tableCol, styles.colDate]}>{t('time')}</Text>
             <Text style={[styles.tableCol, styles.colAmount]}>{t('amount')}</Text>
           </View>
-          {tamaraTransactions.map((tx) => (
-            <View style={styles.tableRow} key={tx.id}>
-              <Text style={[styles.tableCol, styles.colId]}>#{tx.id}</Text>
-              <Text style={[styles.tableCol, styles.colType]}>{t(tx.type.toLowerCase() as any) || tx.type}</Text>
-              <Text style={[styles.tableCol, styles.colDate]}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-              <Text style={[styles.tableCol, styles.colAmount]}>{tx.amount.toFixed(2)}</Text>
+          {tamaraTransactions.map((tx, idx) => (
+            <View style={styles.tableRow} key={`tamara-${idx}-${tx?.id || 'tx'}`}>
+              <Text style={[styles.tableCol, styles.colId]}>#{tx?.id || 'N/A'}</Text>
+              <Text style={[styles.tableCol, styles.colType]}>{tx?.type ? t(tx.type.toLowerCase() as any) || tx.type : 'N/A'}</Text>
+              <Text style={[styles.tableCol, styles.colDate]}>{tx?.createdAt ? new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</Text>
+              <Text style={[styles.tableCol, styles.colAmount]}>{(tx?.amount || 0).toFixed(2)}</Text>
             </View>
           ))}
           {tamaraTransactions.length === 0 && (

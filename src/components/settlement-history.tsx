@@ -21,7 +21,20 @@ export function SettlementHistory({ initialSettlements }: { initialSettlements: 
       const data = await getSettlementDetails(settlementId)
       if (!data) return
 
-      const blob = await pdf(<SettlementDocument settlement={data} transactions={data.transactions} locale={locale} />).toBlob()
+      // Sanitize transactions into plain POJOs — same reason as settle-cash-btn.tsx:
+      // @react-pdf/renderer crashes on nested Prisma relation objects in props.
+      const sanitizedTransactions = (data.transactions || []).map((tx: any) => ({
+        id: tx?.id ?? null,
+        type: tx?.type ?? null,
+        method: tx?.method ?? null,
+        amount: tx?.amount ?? 0,
+        description: tx?.description ?? null,
+        createdAt: tx?.createdAt ? new Date(tx.createdAt).toISOString() : null,
+        isInternal: tx?.isInternal ?? false,
+        isSettled: tx?.isSettled ?? false,
+      }));
+
+      const blob = await pdf(<SettlementDocument settlement={data} transactions={sanitizedTransactions} locale={locale} />).toBlob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
