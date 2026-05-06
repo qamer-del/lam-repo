@@ -409,44 +409,44 @@ export default function SalesPage({
       <div className="space-y-6">
         
         {/* Modern Tab Switcher */}
-        <div className="flex justify-center sm:justify-start">
-          <div className="flex items-center gap-1 p-1 bg-gray-100/80 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800">
+        <div className="flex w-full overflow-x-auto hide-scrollbar pb-1 -mb-1">
+          <div className="flex items-center w-full sm:w-auto gap-1 p-1 bg-gray-100/80 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800 min-w-max">
             <button
               onClick={() => setActiveTab('transactions')}
               className={cn(
-                'px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2',
+                'px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap',
                 activeTab === 'transactions'
                   ? 'bg-white dark:bg-gray-800 text-emerald-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
               )}
             >
-              <Receipt size={16} />
-              {t('transactions')}
+              <Receipt size={16} className="shrink-0" />
+              <span>{t('transactions')}</span>
             </button>
             <button
               onClick={() => setActiveTab('credit')}
               className={cn(
-                'px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2',
+                'px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap',
                 activeTab === 'credit'
                   ? 'bg-white dark:bg-gray-800 text-amber-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
               )}
             >
-              <Users size={16} />
-              {t('unpaidCredit')}
+              <Users size={16} className="shrink-0" />
+              <span>{t('unpaidCredit')}</span>
             </button>
             {canViewStats && (
               <button
                 onClick={() => setActiveTab('performance')}
                 className={cn(
-                  'px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2',
+                  'px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap',
                   activeTab === 'performance'
                     ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm'
                     : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
                 )}
               >
-                <TrendingDown size={16} className="rotate-180" />
-                {t('performance') || 'Performance'}
+                <TrendingDown size={16} className="rotate-180 shrink-0" />
+                <span>{t('performance') || 'Performance'}</span>
               </button>
             )}
           </div>
