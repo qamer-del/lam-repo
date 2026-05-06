@@ -21,6 +21,9 @@ export async function getStaffList() {
 export async function addStaff(data: { 
   name: string; 
   baseSalary: number;
+  housingAllowance?: number;
+  transportAllowance?: number;
+  otherAllowance?: number;
   idNumber?: string;
   nationality?: string;
 }) {
@@ -33,6 +36,9 @@ export async function addStaff(data: {
     data: {
       name: data.name,
       baseSalary: data.baseSalary,
+      housingAllowance: data.housingAllowance || 0,
+      transportAllowance: data.transportAllowance || 0,
+      otherAllowance: data.otherAllowance || 0,
       idNumber: data.idNumber,
       nationality: data.nationality,
     }

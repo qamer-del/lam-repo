@@ -56,15 +56,15 @@ export default function StaffPage() {
   }, [status])
 
   return (
-    <div className="p-6 md:p-12 max-w-7xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div className="p-4 sm:p-6 md:p-12 max-w-7xl mx-auto space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
         <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-gray-900 to-gray-400 dark:from-white dark:to-gray-500">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-gray-900 to-gray-400 dark:from-white dark:to-gray-500">
             {t('staffLedger')}
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 font-medium">Manage employee records, advances, and monthly settlements</p>
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 font-medium">Manage employee records, advances, and monthly settlements</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           {session?.user?.role !== 'OWNER' && <AddStaffModal onAdded={loadData} />}
         </div>
       </div>

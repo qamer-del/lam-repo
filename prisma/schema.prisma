@@ -86,6 +86,9 @@ model Staff {
   idNumber          String?            // ID or Iqama Number
   nationality       String?
   baseSalary        Float
+  housingAllowance  Float              @default(0)
+  transportAllowance Float             @default(0)
+  otherAllowance    Float              @default(0)
   isActive          Boolean            @default(true)
   transactions      Transaction[]
   salarySettlements SalarySettlement[]

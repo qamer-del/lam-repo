@@ -37,6 +37,9 @@ type Staff = {
   id: number
   name: string
   baseSalary: number
+  housingAllowance?: number
+  transportAllowance?: number
+  otherAllowance?: number
   isActive: boolean
   idNumber?: string
   nationality?: string
@@ -120,7 +123,8 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const totalStaffTotalDebt = selectedAdvances + selectedDeductions
 
   const selectedStaff = staff.find(s => Number(s.id) === Number(selected))
-  const netSalary = selectedStaff ? selectedStaff.baseSalary - totalStaffTotalDebt : 0
+  const selectedTotalSalary = selectedStaff ? (selectedStaff.baseSalary + (selectedStaff.housingAllowance || 0) + (selectedStaff.transportAllowance || 0) + (selectedStaff.otherAllowance || 0)) : 0
+  const netSalary = selectedStaff ? selectedTotalSalary - totalStaffTotalDebt : 0
 
   const staffSummary = staff.map(s => {
     const sTxs = transactions.filter(tx => {
@@ -129,17 +133,20 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
     
     const advances = sTxs.filter(tx => tx.type === 'ADVANCE').reduce((sum, tx) => sum + tx.amount, 0)
     const deductions = sTxs.filter(tx => tx.type === 'EXPENSE').reduce((sum, tx) => sum + tx.amount, 0)
-    const netSalary = s.baseSalary - advances - deductions
+    
+    const totalSal = s.baseSalary + (s.housingAllowance || 0) + (s.transportAllowance || 0) + (s.otherAllowance || 0)
+    const netSalary = totalSal - advances - deductions
 
     return {
       ...s,
+      totalSalary: totalSal,
       advances,
       deductions,
       netSalary
     }
   })
 
-  const totalBase = staffSummary.reduce((sum, s) => sum + s.baseSalary, 0)
+  const totalBase = staffSummary.reduce((sum, s) => sum + s.totalSalary, 0)
   const totalAllAdvances = staffSummary.reduce((sum, s) => sum + s.advances, 0)
   const totalDeductions = staffSummary.reduce((sum, s) => sum + s.deductions, 0)
   const allNetSalary = staffSummary.reduce((sum, s) => sum + s.netSalary, 0)
@@ -148,34 +155,36 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-        <div className="flex-1 flex items-center gap-2 p-1.5 bg-gray-100/80 dark:bg-gray-900/50 backdrop-blur-xl rounded-2xl overflow-x-auto no-scrollbar border border-gray-200/50 dark:border-gray-800/50 shadow-inner">
-          <button
-            onClick={() => setSelected(null)}
-            className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all shrink-0 ${
-              selected === null
-                ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
-                : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            {t('overviewReport')}
-          </button>
-          {staff?.map(s => (
+        <div className="w-full lg:flex-1 overflow-x-auto hide-scrollbar pb-1 -mb-1">
+          <div className="flex items-center gap-1.5 p-1 bg-gray-100/80 dark:bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-800/50 shadow-inner w-max min-w-full">
             <button
-              key={s?.id || Math.random()}
-              onClick={() => setSelected(s?.id)}
-              className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all shrink-0 ${
-                selected === s?.id
+              onClick={() => setSelected(null)}
+              className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all shrink-0 ${
+                selected === null
                   ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
                   : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              {s.name.split(' ')[0]}
+              {t('overviewReport')}
             </button>
-          ))}
+            {staff?.map(s => (
+              <button
+                key={s?.id || Math.random()}
+                onClick={() => setSelected(s?.id)}
+                className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all shrink-0 ${
+                  selected === s?.id
+                    ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
+                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                {s.name.split(' ')[0]}
+              </button>
+            ))}
+          </div>
         </div>
 
         {!selected && (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
             {isAdmin && <SettleAllSalaries />}
             <PdfReportButton 
               staffSummary={staffSummary} 
@@ -187,7 +196,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
 
       {selected && selectedStaff && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
               <div className="relative flex flex-col items-center text-center space-y-2">
@@ -209,10 +218,34 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                 <div className="w-12 h-12 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 mb-2">
                   <Wallet size={24} />
                 </div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Base Salary</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Salary</p>
                 <p className="text-3xl font-black text-gray-900 dark:text-white tabular-nums">
-                  {selectedStaff.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {selectedTotalSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </p>
+                <div className="mt-2 flex flex-col gap-1 w-full max-w-[180px]">
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Base:</span>
+                    <span className="text-[10px] font-bold text-gray-900 dark:text-gray-200">{selectedStaff.baseSalary}</span>
+                  </div>
+                  {(selectedStaff.housingAllowance || 0) > 0 && (
+                    <div className="flex justify-between items-center w-full">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Housing:</span>
+                      <span className="text-[10px] font-bold text-gray-900 dark:text-gray-200">{selectedStaff.housingAllowance}</span>
+                    </div>
+                  )}
+                  {(selectedStaff.transportAllowance || 0) > 0 && (
+                    <div className="flex justify-between items-center w-full">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Transport:</span>
+                      <span className="text-[10px] font-bold text-gray-900 dark:text-gray-200">{selectedStaff.transportAllowance}</span>
+                    </div>
+                  )}
+                  {(selectedStaff.otherAllowance || 0) > 0 && (
+                    <div className="flex justify-between items-center w-full">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Other:</span>
+                      <span className="text-[10px] font-bold text-gray-900 dark:text-gray-200">{selectedStaff.otherAllowance}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
