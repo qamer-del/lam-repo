@@ -11,7 +11,7 @@ import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
 import { 
   Receipt, Coins, CreditCard, Download, Filter, Calculator, 
   TrendingDown, ArrowUpRight, ArrowDownLeft, Users, CheckCircle, CheckCircle2,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Crown, Percent
 } from 'lucide-react'
 import { AddSalesModal } from '@/components/add-sales-modal'
 import { AddRefundModal } from '@/components/add-refund-modal'
@@ -66,6 +66,7 @@ export default function SalesPage({
   const [fromDate, setFromDate] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
   const [toDate, setToDate]     = useState<string>(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
   const [manualProfit, setManualProfit] = useState<string>('')
+  const [commissionRate, setCommissionRate] = useState<string>('0')
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -237,38 +238,37 @@ export default function SalesPage({
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 font-sans">
+    <div className="px-4 py-8 max-w-6xl mx-auto space-y-10 font-sans text-gray-900 dark:text-gray-100">
 
       {/* ── Page header ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white font-cairo tracking-tight">{t('salesReport')}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="text-gray-500 text-sm font-medium font-cairo">{t('salesSubtitle')}</p>
-          </div>
+        <div className="space-y-1">
+          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{format(new Date(), 'EEEE, MMM d')}</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            {t('salesReport')}
+          </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <AddSalesModal triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm" />
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
+          <AddSalesModal triggerClassName="w-full sm:w-auto h-10 sm:h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center" />
           {!isCashier && (
             <>
-              <AddRefundModal triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm" />
+              <AddRefundModal triggerClassName="w-full sm:w-auto h-10 sm:h-9 px-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold text-sm shadow-sm transition-all flex items-center justify-center" />
             </>
           )}
           {isCashier && (
             hasUnsettled ? (
               <CloseShiftBtn 
-                triggerClassName="flex-1 sm:flex-none h-9 px-4 text-sm animate-in fade-in duration-500" 
+                triggerClassName="w-full sm:w-auto h-10 sm:h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition-all animate-in fade-in duration-500 flex items-center justify-center" 
                 cashTotal={unsettledCash} 
                 networkTotal={unsettledNetwork} 
                 tabbyTotal={unsettledTabby}
                 tamaraTotal={unsettledTamara}
               />
             ) : (
-              <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800 animate-in zoom-in-95 duration-500 shadow-sm">
-                <CheckCircle2 size={16} className="text-emerald-500" />
-                <span className="text-xs font-black uppercase tracking-wider">{t('shiftClosed')}</span>
+              <div className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 h-10 sm:h-9 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-100 dark:border-emerald-800/30 animate-in zoom-in-95 duration-500 shadow-sm">
+                <CheckCircle2 size={16} />
+                <span className="text-xs font-bold uppercase tracking-wider">{t('shiftClosed')}</span>
               </div>
             )
           )}
@@ -290,9 +290,9 @@ export default function SalesPage({
                 fileName={`Sales_Report_Detailed_${fromDate}_to_${toDate}.pdf`}
               >
                 {({ loading }) => (
-                  <Button variant="outline" disabled={loading} className="flex-1 sm:flex-none h-9 px-4 text-sm gap-2 border-gray-300 hover:bg-gray-50">
-                    <Download size={14} />
-                    {loading ? '…' : t('detailedPdf')}
+                  <Button variant="outline" disabled={loading} className="w-full sm:w-auto h-10 sm:h-9 px-3 rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-all">
+                    <Download size={14} className="shrink-0" />
+                    <span className="truncate">{loading ? '…' : t('detailedPdf')}</span>
                   </Button>
                 )}
               </PDFDownloadLink>
@@ -312,9 +312,9 @@ export default function SalesPage({
                 fileName={`Sales_Report_Summary_${fromDate}_to_${toDate}.pdf`}
               >
                 {({ loading }) => (
-                  <Button variant="outline" disabled={loading} className="flex-1 sm:flex-none h-9 px-4 text-sm gap-2 border-gray-300 hover:bg-gray-50">
-                    <Download size={14} />
-                    {loading ? '…' : t('summaryPdf')}
+                  <Button variant="outline" disabled={loading} className="w-full sm:w-auto h-10 sm:h-9 px-3 rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-all">
+                    <Download size={14} className="shrink-0" />
+                    <span className="truncate">{loading ? '…' : t('summaryPdf')}</span>
                   </Button>
                 )}
               </PDFDownloadLink>
@@ -325,38 +325,38 @@ export default function SalesPage({
 
       {/* ── Date filter + profit override (admin only) ── */}
       {!isCashier && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <Label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <Label className="flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               <Filter size={12} /> {t('from')}
             </Label>
             <Input
               type="date"
-              className="h-9 rounded-lg border-gray-200 dark:border-gray-700 text-sm"
+              className="h-10 rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm shadow-sm"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <Label className="flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               <Filter size={12} /> {t('toDate')}
             </Label>
             <Input
               type="date"
-              className="h-9 rounded-lg border-gray-200 dark:border-gray-700 text-sm"
+              className="h-10 rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm shadow-sm"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <Label className="flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               <Calculator size={12} /> {t('manualNetProfitOverride')}
             </Label>
             <Input
               type="number"
               step="0.01"
               placeholder="Leave blank for auto"
-              className="h-9 rounded-lg border-gray-200 dark:border-gray-700 text-sm tabular-nums"
+              className="h-10 rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm shadow-sm tabular-nums"
               value={manualProfit}
               onChange={(e) => setManualProfit(e.target.value)}
             />
@@ -366,44 +366,39 @@ export default function SalesPage({
 
       {/* ── Summary metric cards (admin only) ── */}
       {!isCashier && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
-            { label: t('totalSales'), value: totalGrossRevenue, icon: <Receipt size={18} />, color: 'emerald', bg: 'from-emerald-50 to-emerald-100/50', text: 'text-emerald-600' },
-            { label: t('netCash'), value: totalCash, icon: <Coins size={18} />, color: 'blue', bg: 'from-blue-50 to-blue-100/50', text: totalCash < 0 ? 'text-red-500' : 'text-blue-600' },
-            { label: t('netNetwork'), value: totalNetwork, icon: <CreditCard size={18} />, color: 'purple', bg: 'from-purple-50 to-purple-100/50', text: totalNetwork < 0 ? 'text-red-500' : 'text-purple-600' },
-            { label: t('netCredit'), value: totalCredit, icon: <Users size={18} />, color: 'amber', bg: 'from-amber-50 to-amber-100/50', text: totalCredit < 0 ? 'text-red-500' : 'text-amber-600' },
-            { label: t('vat15'), value: vatAmount, icon: <TrendingDown size={18} />, color: 'orange', bg: 'from-orange-50 to-orange-100/50', text: 'text-orange-600' },
+            { label: t('totalSales'), value: totalGrossRevenue, icon: <Receipt size={18} />, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-500/20' },
+            { label: t('netCash'), value: totalCash, icon: <Coins size={18} />, color: 'text-blue-600 bg-blue-100 dark:bg-blue-500/20', isNegative: totalCash < 0 },
+            { label: t('netNetwork'), value: totalNetwork, icon: <CreditCard size={18} />, color: 'text-purple-600 bg-purple-100 dark:bg-purple-500/20', isNegative: totalNetwork < 0 },
+            { label: t('netCredit'), value: totalCredit, icon: <Users size={18} />, color: 'text-amber-600 bg-amber-100 dark:bg-amber-500/20', isNegative: totalCredit < 0 },
+            { label: t('vat15'), value: vatAmount, icon: <TrendingDown size={18} />, color: 'text-orange-600 bg-orange-100 dark:bg-orange-500/20' },
             { 
               label: t('netProfit'), 
               value: manualProfit ? parseFloat(manualProfit) : autoProfit, 
               icon: <Calculator size={18} />, 
-              color: 'rose', 
-              bg: 'from-rose-50 to-rose-100/50', 
-              text: (manualProfit ? parseFloat(manualProfit) : autoProfit) < 0 ? 'text-red-500' : 'text-emerald-600',
+              color: 'text-rose-600 bg-rose-100 dark:bg-rose-500/20',
+              isNegative: (manualProfit ? parseFloat(manualProfit) : autoProfit) < 0,
               sub: manualProfit ? t('manualOverride') : `${t('cost')}: ${totalCostOfSales.toFixed(2)}`
             },
           ].map((card, i) => (
-            <Card key={i} className={cn(
-              "relative overflow-hidden border-none shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 group bg-gradient-to-br",
-              card.bg,
-              "dark:from-gray-900 dark:to-gray-800/50 dark:border dark:border-gray-800"
-            )}>
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                {card.icon}
-              </div>
-              <CardHeader className="pb-1 pt-4 px-4 space-y-0">
-                <CardTitle className="text-[10px] font-black uppercase text-gray-500 tracking-widest opacity-70">{card.label}</CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="flex items-baseline gap-1">
-                  <p className={cn("text-2xl font-black tabular-nums tracking-tighter", card.text)}>
-                    {card.value.toFixed(2)}
-                  </p>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase">SAR</span>
+            <Card key={i} className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
+              <CardContent className="p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider truncate">{card.label}</p>
+                  <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", card.color)}>
+                    {card.icon}
+                  </div>
                 </div>
-                {card.sub && (
-                  <p className="text-[9px] text-gray-400 font-medium mt-1 truncate">{card.sub}</p>
-                )}
+                <div>
+                  <p className={cn("text-2xl font-black tabular-nums tracking-tight", card.isNegative ? 'text-red-500' : 'text-gray-900 dark:text-white')}>
+                    {card.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    <span className="text-[10px] ml-1 font-bold text-gray-400 uppercase">sar</span>
+                  </p>
+                  {card.sub && (
+                    <p className="text-[10px] text-gray-400 font-medium mt-1 truncate">{card.sub}</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -415,13 +410,13 @@ export default function SalesPage({
         
         {/* Modern Tab Switcher */}
         <div className="flex justify-center sm:justify-start">
-          <div className="flex items-center gap-1 p-1 bg-gray-100/80 dark:bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-800/50 shadow-inner">
+          <div className="flex items-center gap-1 p-1 bg-gray-100/80 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800">
             <button
               onClick={() => setActiveTab('transactions')}
               className={cn(
-                'px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2',
+                'px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2',
                 activeTab === 'transactions'
-                  ? 'bg-white dark:bg-gray-800 text-emerald-600 shadow-md scale-[1.02]'
+                  ? 'bg-white dark:bg-gray-800 text-emerald-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
               )}
             >
@@ -431,9 +426,9 @@ export default function SalesPage({
             <button
               onClick={() => setActiveTab('credit')}
               className={cn(
-                'px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2',
+                'px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2',
                 activeTab === 'credit'
-                  ? 'bg-white dark:bg-gray-800 text-amber-600 shadow-md scale-[1.02]'
+                  ? 'bg-white dark:bg-gray-800 text-amber-600 shadow-sm'
                   : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
               )}
             >
@@ -444,9 +439,9 @@ export default function SalesPage({
               <button
                 onClick={() => setActiveTab('performance')}
                 className={cn(
-                  'px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2',
+                  'px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2',
                   activeTab === 'performance'
-                    ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-md scale-[1.02]'
+                    ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm'
                     : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-gray-800/50'
                 )}
               >
@@ -466,79 +461,104 @@ export default function SalesPage({
 
         {activeTab === 'performance' && canViewStats && cashierPerformance && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {cashierPerformance.slice(0, 3).map((cashier, idx) => (
-                <Card key={cashier.id} className="relative overflow-hidden border-none shadow-lg bg-white dark:bg-gray-900">
-                  <div className={cn(
-                    "absolute top-0 left-0 w-1 h-full",
-                    idx === 0 ? "bg-emerald-500" : idx === 1 ? "bg-blue-500" : "bg-purple-500"
-                  )} />
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{idx === 0 ? 'Top Performer' : 'Sales Member'}</p>
-                        <h3 className="text-lg font-black text-gray-900 dark:text-white">{cashier.name}</h3>
-                      </div>
-                      <div className={cn(
-                        "p-2 rounded-xl",
-                        idx === 0 ? "bg-emerald-50 text-emerald-600" : idx === 1 ? "bg-blue-50 text-blue-600" : "bg-purple-50 text-purple-600"
-                      )}>
-                        <Users size={20} />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('today')}</p>
-                        <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{cashier.dailySales.toFixed(2)} <span className="text-xs font-normal opacity-50">SAR</span></p>
-                      </div>
-                      <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('thisMonth')}</p>
-                        <p className="text-xl font-black text-blue-600 dark:text-blue-400 tabular-nums">{cashier.monthlySales.toFixed(2)} <span className="text-xs font-normal opacity-50">SAR</span></p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <Card className="border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden bg-white dark:bg-gray-900 rounded-2xl">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-100 dark:border-gray-800 p-4 gap-4 bg-gray-50/50 dark:bg-gray-800/30">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-gray-900 dark:text-white">{t('staffPerformanceAndCommissions')}</h3>
+                  <p className="text-xs text-gray-500">{t('trackMonthlySalesAndPayouts')}</p>
+                </div>
+                <div className="flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-1 rounded-xl shadow-sm">
+                  <div className="ltr:pl-3 ltr:pr-2 rtl:pr-3 rtl:pl-2 flex items-center text-gray-400">
+                    <Percent size={14} />
+                  </div>
+                  <Input 
+                    type="number" 
+                    step="0.5"
+                    className="w-20 h-8 border-none bg-transparent tabular-nums text-sm font-bold focus-visible:ring-0 px-0"
+                    placeholder={t('rate')}
+                    value={commissionRate}
+                    onChange={(e) => setCommissionRate(e.target.value)}
+                  />
+                  <div className="ltr:pr-3 rtl:pl-3 text-xs font-bold text-gray-400 uppercase tracking-widest">{t('rate')}</div>
+                </div>
+              </div>
 
-            <Card className="border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden bg-white dark:bg-gray-900">
-              <CardHeader className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-                <CardTitle className="text-sm font-black uppercase tracking-widest text-gray-500">{t('allStaffPerformance') || 'All Staff Performance'}</CardTitle>
-              </CardHeader>
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('salesperson')}</TableHead>
-                    <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">{t('today')}</TableHead>
-                    <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">{t('thisMonth')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cashierPerformance.map((cashier) => (
-                    <TableRow key={cashier.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <TableCell className="font-bold py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-black text-gray-500">
-                            {cashier.name.charAt(0)}
-                          </div>
-                          {cashier.name}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 font-black text-sm">
-                          {cashier.dailySales.toFixed(2)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        <span className="font-black text-blue-700 dark:text-blue-300">
-                          {cashier.monthlySales.toFixed(2)}
-                        </span>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-b border-gray-100 dark:border-gray-800">
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('salesperson')}</TableHead>
+                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">{t('today')}</TableHead>
+                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">{t('thisMonth')}</TableHead>
+                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-emerald-500">{t('estCommission')}</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {cashierPerformance.map((cashier, idx) => {
+                      const commPercent = parseFloat(commissionRate) || 0;
+                      const estCommission = (cashier.monthlySales * commPercent) / 100;
+                      const isTopPerformer = idx === 0 && cashier.monthlySales > 0;
+                      
+                      // Calculate progress bar width based on the top performer's sales
+                      const maxSales = Math.max(...cashierPerformance.map(c => c.monthlySales), 1);
+                      const widthPercent = Math.min((cashier.monthlySales / maxSales) * 100, 100);
+
+                      return (
+                        <TableRow key={cashier.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800 group">
+                          <TableCell className="font-bold py-4">
+                            <div className="flex items-center gap-3">
+                              <div className={cn(
+                                "w-10 h-10 rounded-full flex items-center justify-center text-sm font-black shadow-inner shrink-0 relative",
+                                isTopPerformer ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                              )}>
+                                {cashier.name.charAt(0)}
+                                {isTopPerformer && (
+                                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-full flex items-center justify-center text-white shadow-sm ring-2 ring-white dark:ring-gray-900">
+                                    <Crown size={10} strokeWidth={3} />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className={cn("text-sm", isTopPerformer ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300")}>{cashier.name}</span>
+                                {isTopPerformer && <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">{t('topEarner')}</span>}
+                              </div>
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell className="text-right tabular-nums">
+                            <span className="font-semibold text-gray-600 dark:text-gray-400">
+                              {cashier.dailySales.toFixed(2)}
+                            </span>
+                          </TableCell>
+                          
+                          <TableCell className="text-right">
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="font-black text-blue-600 dark:text-blue-400 tabular-nums">
+                                {cashier.monthlySales.toFixed(2)}
+                              </span>
+                              <div className="w-24 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <div 
+                                  className={cn("h-full rounded-full transition-all duration-1000", isTopPerformer ? "bg-amber-400" : "bg-blue-500")}
+                                  style={{ width: `${widthPercent}%` }}
+                                />
+                              </div>
+                            </div>
+                          </TableCell>
+                          
+                          <TableCell className="text-right">
+                            <div className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-100 dark:border-emerald-800/30 group-hover:scale-105 transition-transform">
+                              <span className="font-black tabular-nums text-emerald-700 dark:text-emerald-400">
+                                {estCommission.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                              <span className="text-[9px] font-bold text-emerald-600/50 uppercase">SAR</span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </Card>
           </div>
         )}
@@ -546,14 +566,14 @@ export default function SalesPage({
         {activeTab === 'transactions' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 mt-2">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-gray-800 dark:text-gray-200 font-cairo">{t('transactions')}</h2>
-            <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-semibold px-2 py-0.5 rounded-full">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">{t('transactions')}</h2>
+            <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
               {totalSales} sales
             </span>
             {totalRefunds > 0 && (
-              <span className="bg-red-100 text-red-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+              <span className="bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
                 {totalRefunds} refunds
               </span>
             )}
@@ -565,26 +585,26 @@ export default function SalesPage({
             <input
               type="text"
               placeholder={t('searchInvoiceOrDesc')}
-              className="block w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition"
+              className="block w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-gray-800 rounded-xl bg-white dark:bg-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm transition"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
-        <Card className="border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+        <Card className="border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden rounded-2xl bg-white dark:bg-gray-900">
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader className="bg-gray-50 dark:bg-gray-900/50">
-                <TableRow>
-                  <TableHead className="whitespace-nowrap text-xs">{t('type')}</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">{t('invoiceNo')}</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">{t('method')}</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">{t('amount')} (SAR)</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">{t('description')}</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">{t('salesperson')}</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">{t('reportDate')}</TableHead>
+                <TableRow className="border-b border-gray-100 dark:border-gray-800">
+                  <TableHead className="whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-gray-400">{t('type')}</TableHead>
+                  <TableHead className="whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-gray-400">{t('invoiceNo')}</TableHead>
+                  <TableHead className="whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-gray-400">{t('method')}</TableHead>
+                  <TableHead className="whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-gray-400">{t('amount')} (SAR)</TableHead>
+                  <TableHead className="whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-gray-400">{t('description')}</TableHead>
+                  <TableHead className="whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-gray-400">{t('salesperson')}</TableHead>
+                  <TableHead className="whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-gray-400">{t('reportDate')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -592,34 +612,29 @@ export default function SalesPage({
                   <TableRow
                     key={sale.id}
                     className={cn(
-                      'hover:bg-gray-50 dark:hover:bg-gray-800/40 transition',
+                      'hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800',
                       sale.invoiceNumber && 'cursor-pointer',
-                      sale.type === 'RETURN' && 'bg-red-50/30 dark:bg-red-900/5'
+                      sale.type === 'RETURN' && 'bg-rose-50/20 dark:bg-rose-500/5'
                     )}
                     onClick={() => sale.invoiceNumber && setSelectedInvoice(sale.invoiceNumber)}
                   >
                     <TableCell>
-                      {sale.isSettlement ? (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-blue-700 uppercase">
-                          <CheckCircle size={12} className="text-blue-500" /> Payment
-                        </span>
-                      ) : sale.type === 'SALE' ? (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 uppercase">
-                          <ArrowUpRight size={12} className="text-emerald-500" /> {t('sale')}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-red-700 uppercase">
-                          <ArrowDownLeft size={12} className="text-red-500" /> {t('refund')}
-                        </span>
-                      )}
+                      <div className={cn(
+                        "w-7 h-7 rounded-full flex items-center justify-center shrink-0",
+                        sale.isSettlement ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                        sale.type === 'SALE' ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                        "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                      )}>
+                        {sale.isSettlement ? <CheckCircle size={14} /> : sale.type === 'SALE' ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
+                      </div>
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-gray-500">
+                    <TableCell className="font-mono text-xs font-medium text-gray-500">
                       {sale.invoiceNumber || `#${sale.id}`}
                     </TableCell>
                     <TableCell><MethodBadge sale={sale} /></TableCell>
                     <TableCell>
-                      <span className={cn('font-bold tabular-nums text-sm', sale.type === 'RETURN' ? 'text-red-600' : 'text-gray-900 dark:text-white')}>
-                        {sale.type === 'RETURN' ? '-' : ''}{sale.totalAmount.toFixed(2)}
+                      <span className={cn('font-bold tabular-nums text-sm', sale.type === 'RETURN' ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white')}>
+                        {sale.type === 'RETURN' ? '-' : '+'}{sale.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </span>
                       {sale.methods.has('CASH') && sale.methods.has('NETWORK') && (
                         <div className="text-[10px] text-gray-400 mt-0.5">
@@ -629,11 +644,11 @@ export default function SalesPage({
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="text-sm text-gray-900 dark:text-white font-medium truncate max-w-[200px]">
-                          {sale.description || '—'}
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[200px]">
+                          {sale.description || (sale.type === 'SALE' ? 'Sale' : sale.type === 'RETURN' ? 'Return' : 'Payment')}
                         </span>
                         {(sale.customerName || sale.customerPhone) && (
-                          <span className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase flex items-center gap-1 mt-0.5">
                             {sale.customerName || t('noName')} · {sale.customerPhone}
                           </span>
                         )}
@@ -642,7 +657,7 @@ export default function SalesPage({
                     <TableCell className="text-xs font-bold text-gray-600 uppercase whitespace-nowrap">
                       {sale.salesperson}
                     </TableCell>
-                    <TableCell className="text-xs text-gray-500 whitespace-nowrap">{format(new Date(sale.createdAt), 'PP · p')}</TableCell>
+                    <TableCell className="text-xs text-gray-500 whitespace-nowrap font-medium tabular-nums">{format(new Date(sale.createdAt), 'MMM d, h:mm a')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -655,65 +670,47 @@ export default function SalesPage({
               <div
                 key={sale.id}
                 className={cn(
-                  'p-4 space-y-3 active:bg-gray-50 dark:active:bg-gray-900/50 transition-colors',
+                  'flex items-center justify-between p-4 active:bg-gray-50 dark:active:bg-gray-800/50 transition-colors',
                   sale.invoiceNumber && 'cursor-pointer',
-                  sale.type === 'RETURN' && 'bg-red-50/30 dark:bg-red-900/5'
+                  sale.type === 'RETURN' && 'bg-rose-50/20 dark:bg-rose-900/5'
                 )}
                 onClick={() => sale.invoiceNumber && setSelectedInvoice(sale.invoiceNumber)}
               >
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Sale/Refund/Settlement type indicator */}
-                      {sale.isSettlement ? (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">
-                          <CheckCircle size={10} /> Payment
-                        </span>
-                      ) : sale.type === 'RETURN' ? (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full">
-                          <ArrowDownLeft size={10} /> {t('refund')}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">
-                          <ArrowUpRight size={10} /> {t('sale')}
-                        </span>
-                      )}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                    sale.isSettlement ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                    sale.type === 'SALE' ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                    "bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                  )}>
+                    {sale.isSettlement ? <CheckCircle size={18} /> : sale.type === 'SALE' ? <ArrowUpRight size={18} /> : <ArrowDownLeft size={18} />}
+                  </div>
+                  
+                  <div className="min-w-0 flex flex-col">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                        {sale.description || (sale.type === 'SALE' ? 'Sale' : sale.type === 'RETURN' ? 'Return' : 'Payment')}
+                      </p>
                       <MethodBadge sale={sale} />
-                      <span className="text-xs font-mono text-gray-400">{sale.invoiceNumber || `#${sale.id}`}</span>
                     </div>
-                    <p className="text-[11px] text-gray-400">{format(new Date(sale.createdAt), 'MMM d, yyyy · h:mm a')}</p>
-                  </div>
-                  <p className={cn('text-xl font-black tabular-nums', sale.type === 'RETURN' ? 'text-red-600' : 'text-gray-900 dark:text-white')}>
-                    {sale.type === 'RETURN' ? '-' : ''}{sale.totalAmount.toFixed(2)}
-                    <span className="text-xs font-normal text-gray-400 ml-1">SAR</span>
-                  </p>
-                </div>
-
-                {sale.cashAmount > 0 && sale.networkAmount > 0 && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-lg text-center">
-                      <p className="text-[10px] text-emerald-600 font-semibold uppercase">{t('cash')}</p>
-                      <p className="text-sm font-bold text-emerald-700 tabular-nums">{sale.cashAmount.toFixed(2)}</p>
-                    </div>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg text-center">
-                      <p className="text-[10px] text-blue-600 font-semibold uppercase">{t('network')}</p>
-                      <p className="text-sm font-bold text-blue-700 tabular-nums">{sale.networkAmount.toFixed(2)}</p>
-                    </div>
-                  </div>
-                )}
-
-                {(sale.customerName || sale.customerPhone) && (
-                  <div className="flex items-center gap-2 p-2 bg-amber-500/5 dark:bg-amber-500/10 rounded-lg border border-amber-200/20">
-                    <Users size={12} className="text-amber-600" />
-                    <p className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
-                      {sale.customerName || t('noName')} · {sale.customerPhone}
+                    <p className="text-xs font-mono text-gray-400 truncate">
+                      {sale.invoiceNumber || `#${sale.id}`} • {sale.salesperson}
                     </p>
                   </div>
-                )}
-
-                {sale.description && (
-                  <p className="text-xs text-gray-500 italic truncate">{sale.description}</p>
-                )}
+                </div>
+                
+                <div className="flex flex-col items-end shrink-0 pl-3">
+                  <p className={cn(
+                    "text-sm font-bold tabular-nums",
+                    sale.type === 'SALE' || sale.isSettlement ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                  )}>
+                    {sale.type === 'RETURN' ? '-' : '+'}{sale.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <span className="text-[10px] ml-1 font-semibold text-gray-400 uppercase">SAR</span>
+                  </p>
+                  <p className="text-[11px] font-medium text-gray-400 tabular-nums mt-0.5">
+                    {format(new Date(sale.createdAt), 'MMM d, h:mm a')}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

@@ -361,6 +361,11 @@ export const en = {
   noResults: 'No pages found',
   confirmTransaction: 'Confirm Transaction',
   confirmSettlement: 'Confirm Settlement',
+  staffPerformanceAndCommissions: 'Staff Performance & Commissions',
+  trackMonthlySalesAndPayouts: 'Track monthly sales and calculate estimated payouts.',
+  estCommission: 'Est. Commission',
+  topEarner: 'Top Earner',
+  rate: 'Rate',
 }
 
 export const ar = {
@@ -726,4 +731,9 @@ export const ar = {
   noResults: 'لم يتم العثور على نتائج',
   confirmTransaction: 'تأكيد المعاملة',
   confirmSettlement: 'تأكيد التسوية',
+  staffPerformanceAndCommissions: 'أداء الموظفين والعمولات',
+  trackMonthlySalesAndPayouts: 'تتبع المبيعات الشهرية وحساب العمولات المقدرة.',
+  estCommission: 'العمولة المقدرة',
+  topEarner: 'الأعلى مبيعاً',
+  rate: 'النسبة',
 }
