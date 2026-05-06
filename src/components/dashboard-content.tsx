@@ -265,7 +265,7 @@ export function DashboardContent({
 
       {/* Floating Action Button for Mobile */}
       {!isOwner && (
-        <div className="fixed bottom-6 right-6 z-50 sm:hidden">
+        <div className="fixed bottom-28 right-6 z-50 sm:hidden">
           <Button 
             onClick={() => setIsAddTxOpen(true)}
             className="w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-500/30 flex items-center justify-center active:scale-95 transition-all p-0 border-none"
