@@ -21,6 +21,8 @@ import { SettleAllSalaries } from './settle-all-salaries'
 import { SalarySettlementPdfButton } from './salary-settlement-pdf-button'
 import { Printer, History, FileWarning } from 'lucide-react'
 import { getStaffOverdueCredits } from '@/actions/staff'
+import { EditStaffModal } from './edit-staff-modal'
+import { MoreVertical } from 'lucide-react'
 
 type SalarySettlement = {
   id: number
@@ -63,9 +65,10 @@ type Transaction = {
 interface StaffLedgerProps {
   staff: Staff[]
   transactions: Transaction[]
+  onRefresh?: () => void
 }
 
-export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
+export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps) {
   const { t } = useLanguage()
   const { data: session } = useSession()
   const currentRole = session?.user?.role
@@ -214,7 +217,12 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                   <User size={24} />
                 </div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('staffMembers')}</p>
-                <p className="text-2xl font-black text-gray-900 dark:text-white break-words">{selectedStaff.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-black text-gray-900 dark:text-white break-words">{selectedStaff.name}</p>
+                  {canModify && (
+                    <EditStaffModal staff={selectedStaff} onUpdated={onRefresh} />
+                  )}
+                </div>
                 <div className="mt-2 flex flex-col gap-1">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">ID: <span className="text-gray-900 dark:text-gray-200">{selectedStaff.idNumber || 'N/A'}</span></p>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nationality: <span className="text-gray-900 dark:text-gray-200">{selectedStaff.nationality || 'N/A'}</span></p>
@@ -304,7 +312,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
             {canModify && (
               <div className="sm:col-span-2 lg:col-span-4 flex justify-center pt-2">
                 <SalarySettlementModal 
-                  staff={{ id: selectedStaff.id, name: selectedStaff.name, baseSalary: selectedStaff.baseSalary }}
+                  staff={selectedStaff}
                   advances={staffTxs}
                   totalAdvances={totalStaffTotalDebt}
                   netPaid={netSalary}
@@ -569,7 +577,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                 <div className="w-12 h-12 rounded-2xl bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-green-600 mb-2">
                   <CheckCircle2 size={24} />
                 </div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Net Payout</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('netSalary')}</p>
                 <p className={`text-2xl font-black tabular-nums ${allNetSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {allNetSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </p>
@@ -582,10 +590,14 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
               <TableHeader>
                 <TableRow className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 hover:bg-transparent">
                   <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400 pl-6">{t('staffMembers')}</TableHead>
-                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Base Salary</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Base</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">O.T.</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Trans.</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Other</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Total</TableHead>
                   <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Advances</TableHead>
                   <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400">Deductions</TableHead>
-                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400 pr-6">Net Salary</TableHead>
+                  <TableHead className="h-14 font-black uppercase text-[10px] tracking-wider text-gray-400 pr-6">{t('netSalary')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -600,6 +612,10 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                     <TableRow key={s.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                       <TableCell className="pl-6 py-4 font-black text-gray-900 dark:text-white whitespace-nowrap">{s.name.split(' ')[0]}</TableCell>
                       <TableCell className="py-4 font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap tabular-nums">{s.baseSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="py-4 font-bold text-gray-500 whitespace-nowrap tabular-nums">{(s.overtimeAllowance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="py-4 font-bold text-gray-500 whitespace-nowrap tabular-nums">{(s.transportAllowance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="py-4 font-bold text-gray-500 whitespace-nowrap tabular-nums">{(s.otherAllowance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="py-4 font-black text-gray-900 dark:text-white whitespace-nowrap tabular-nums">{s.totalSalary.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                       <TableCell className="py-4 font-bold text-orange-600 whitespace-nowrap tabular-nums">{s.advances.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                       <TableCell className="py-4 font-bold text-red-600 whitespace-nowrap tabular-nums">{s.deductions.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
                       <TableCell className={`py-4 pr-6 font-black whitespace-nowrap tabular-nums ${s.netSalary < 0 ? 'text-red-600' : 'text-green-600'}`}>

@@ -18,6 +18,9 @@ export function SalarySettlementDocument({
   month, 
   year, 
   baseSalary = 0, 
+  overtimeAllowance = 0,
+  transportAllowance = 0,
+  otherAllowance = 0,
   advances = [], 
   totalAdvances = 0, 
   netPaid = 0,
@@ -30,6 +33,9 @@ export function SalarySettlementDocument({
   month: number, 
   year: number, 
   baseSalary: number, 
+  overtimeAllowance?: number,
+  transportAllowance?: number,
+  otherAllowance?: number,
   advances: any[], 
   totalAdvances: number, 
   netPaid: number,
@@ -56,8 +62,8 @@ export function SalarySettlementDocument({
     col2: { flex: 1, textAlign: isRtl ? 'left' : 'right' },
     summary: { marginTop: 30, padding: 15, backgroundColor: '#f0f9ff', borderRadius: 8 },
     totalRow: { flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between', marginTop: 5 },
-    totalLabel: { fontSize: 12, color: '#0369a1' },
-    totalValue: { fontSize: 16, fontWeight: 'bold', color: '#0c4a6e' },
+    totalLabel: { fontSize: 10, color: '#0369a1', textTransform: 'uppercase' },
+    totalValue: { fontSize: 12, fontWeight: 'bold', color: '#1f2937' },
     
     declarationBox: { marginTop: 50, padding: 20, borderTop: 1, borderTopColor: '#e5e7eb' },
     declarationTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 10, textAlign: isRtl ? 'right' : 'left' },
@@ -92,6 +98,39 @@ export function SalarySettlementDocument({
           </View>
         </View>
 
+        <View style={styles.summary}>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>{t('baseSalary')}</Text>
+            <Text style={styles.totalValue}>{baseSalary.toFixed(2)}</Text>
+          </View>
+          {overtimeAllowance > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>{t('overtime')}</Text>
+              <Text style={styles.totalValue}>{overtimeAllowance.toFixed(2)}</Text>
+            </View>
+          )}
+          {transportAllowance > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>{t('transport')}</Text>
+              <Text style={styles.totalValue}>{transportAllowance.toFixed(2)}</Text>
+            </View>
+          )}
+          {otherAllowance > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>{t('otherAllowance')}</Text>
+              <Text style={styles.totalValue}>{otherAllowance.toFixed(2)}</Text>
+            </View>
+          )}
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>{t('deductionsTotal')}</Text>
+            <Text style={[styles.totalValue, { color: '#b91c1c' }]}>- {totalAdvances.toFixed(2)}</Text>
+          </View>
+          <View style={[styles.totalRow, { marginTop: 10, borderTop: 1, borderTopColor: '#bae6fd', paddingTop: 10 }]}>
+            <Text style={[styles.totalLabel, { fontWeight: 'bold', fontSize: 14, color: '#0369a1' }]}>{t('netSalaryPaid')}</Text>
+            <Text style={[styles.totalValue, { fontSize: 18, color: '#0c4a6e' }]}>{netPaid.toFixed(2)}</Text>
+          </View>
+        </View>
+
         <View style={styles.table}>
           <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 10, textAlign: isRtl ? 'right' : 'left' }}>{t('deductionsTotal')}</Text>
           <View style={styles.tableHeader}>
@@ -104,27 +143,6 @@ export function SalarySettlementDocument({
               <Text style={[styles.col2, { fontSize: 10 }]}>{adv.amount.toFixed(2)}</Text>
             </View>
           ))}
-          {advances.length === 0 && (
-            <View style={styles.tableRow}>
-              <Text style={[styles.col1, { fontSize: 10, color: '#9ca3af' }]}>{t('noTransactionsFound')}</Text>
-              <Text style={[styles.col2, { fontSize: 10 }]}>0.00</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.summary}>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>{t('baseSalary')}</Text>
-            <Text style={[styles.totalValue, { fontSize: 14, color: '#1f2937' }]}>{baseSalary.toFixed(2)}</Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>{t('deductionsTotal')}</Text>
-            <Text style={[styles.totalValue, { fontSize: 14, color: '#b91c1c' }]}>- {totalAdvances.toFixed(2)}</Text>
-          </View>
-          <View style={[styles.totalRow, { marginTop: 10, borderTop: 1, borderTopColor: '#bae6fd', paddingTop: 10 }]}>
-            <Text style={[styles.totalLabel, { fontWeight: 'bold' }]}>{t('netSalaryPaid')}</Text>
-            <Text style={styles.totalValue}>{netPaid.toFixed(2)}</Text>
-          </View>
         </View>
 
         <View style={styles.declarationBox}>

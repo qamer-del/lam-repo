@@ -28,7 +28,14 @@ export function SalarySettlementModal({
   totalAdvances, 
   netPaid 
 }: { 
-  staff: { id: number, name: string, baseSalary: number },
+  staff: { 
+    id: number, 
+    name: string, 
+    baseSalary: number,
+    overtimeAllowance?: number,
+    transportAllowance?: number,
+    otherAllowance?: number
+  },
   advances: any[],
   totalAdvances: number,
   netPaid: number
@@ -113,17 +120,35 @@ export function SalarySettlementModal({
                   </p>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 font-bold uppercase text-[10px]">Base Salary</span>
+                <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl space-y-2">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-gray-400 font-bold uppercase">{t('baseSalary')}</span>
                     <span className="font-bold">{staff.baseSalary.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500 font-bold uppercase text-[10px]">Advances Deducted</span>
+                  {(staff.overtimeAllowance || 0) > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400 font-bold uppercase">{t('overtime')}</span>
+                      <span className="font-bold">{staff.overtimeAllowance?.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(staff.transportAllowance || 0) > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400 font-bold uppercase">{t('transport')}</span>
+                      <span className="font-bold">{staff.transportAllowance?.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(staff.otherAllowance || 0) > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400 font-bold uppercase">{t('otherAllowance')}</span>
+                      <span className="font-bold">{staff.otherAllowance?.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm pt-1 border-t border-gray-100 dark:border-gray-800">
+                    <span className="text-gray-500 font-bold uppercase text-[10px]">{t('advancesDeducted') || 'Advances Deducted'}</span>
                     <span className="font-bold text-red-500">- {totalAdvances.toFixed(2)}</span>
                   </div>
-                  <div className="pt-3 border-t border-gray-200 dark:border-gray-800 flex justify-between">
-                    <span className="text-emerald-600 font-black uppercase text-xs">Net Payout Today</span>
+                  <div className="pt-2 border-t border-gray-200 dark:border-gray-800 flex justify-between">
+                    <span className="text-emerald-600 font-black uppercase text-xs">{t('netSalary')}</span>
                     <span className="text-xl font-black text-emerald-600">
                       {(netPaid - (deductOverdueCredit && overdueInfo ? overdueInfo.total : 0)).toFixed(2)}
                     </span>
@@ -212,6 +237,9 @@ export function SalarySettlementModal({
                       month={settledData.month}
                       year={settledData.year}
                       baseSalary={settledData.baseSalary}
+                      overtimeAllowance={staff.overtimeAllowance}
+                      transportAllowance={staff.transportAllowance}
+                      otherAllowance={staff.otherAllowance}
                       advances={advances}
                       totalAdvances={settledData.advancesTally}
                       netPaid={settledData.netPaid}

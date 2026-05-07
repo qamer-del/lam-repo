@@ -81,7 +81,7 @@ export default function StaffPage() {
           </div>
         </div>
       ) : (
-        <StaffLedger staff={staff} transactions={transactions} />
+        <StaffLedger staff={staff} transactions={transactions} onRefresh={loadData} />
       )}
     </div>
   )

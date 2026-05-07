@@ -18,6 +18,9 @@ interface SalarySettlementDocumentProps {
     month: number;
     year: number;
     baseSalary: number;
+    overtimeAllowance?: number;
+    transportAllowance?: number;
+    otherAllowance?: number;
     advancesTally: number;
     netPaid: number;
     method: string;
@@ -172,8 +175,8 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
             <Text style={styles.title}>{t('salarySettlementVoucher')}</Text>
             <View style={{ marginTop: 8, gap: 2, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
               <Text style={{ fontSize: 12, fontWeight: 'bold' }}>{t('employee')}: {staffName}</Text>
-              <Text style={{ fontSize: 9, color: '#4b5563' }}>{t('idNumber')}: {idNumber || 'N/A'}</Text>
-              <Text style={{ fontSize: 9, color: '#4b5563' }}>{t('nationality')}: {nationality || 'N/A'}</Text>
+              {idNumber && <Text style={{ fontSize: 9, color: '#4b5563' }}>{t('idNumber')}: {idNumber}</Text>}
+              {nationality && <Text style={{ fontSize: 9, color: '#4b5563' }}>{t('nationality')}: {nationality}</Text>}
             </View>
           </View>
           <View style={styles.meta}>
@@ -186,7 +189,7 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
         </View>
 
         <View style={{ marginBottom: 20 }}>
-          <Text style={{ fontSize: 9, fontStyle: 'italic', color: '#4b5563', textAlign: isRtl ? 'right' : 'left' }}>
+          <Text style={{ fontSize: 9, color: '#4b5563', textAlign: isRtl ? 'right' : 'left' }}>
             {t('declarationText')}
           </Text>
         </View>
@@ -196,14 +199,38 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
             <Text style={styles.label}>{t('baseSalary')}</Text>
             <Text style={styles.value}>{settlement.baseSalary.toFixed(2)}</Text>
           </View>
+          
+          {(settlement.overtimeAllowance || 0) > 0 && (
+            <View style={styles.summaryItem}>
+              <Text style={styles.label}>{t('overtime')}</Text>
+              <Text style={styles.value}>{settlement.overtimeAllowance?.toFixed(2)}</Text>
+            </View>
+          )}
+
+          {(settlement.transportAllowance || 0) > 0 && (
+            <View style={styles.summaryItem}>
+              <Text style={styles.label}>{t('transport')}</Text>
+              <Text style={styles.value}>{settlement.transportAllowance?.toFixed(2)}</Text>
+            </View>
+          )}
+
+          {(settlement.otherAllowance || 0) > 0 && (
+            <View style={styles.summaryItem}>
+              <Text style={styles.label}>{t('otherAllowance')}</Text>
+              <Text style={styles.value}>{settlement.otherAllowance?.toFixed(2)}</Text>
+            </View>
+          )}
+
           <View style={styles.summaryItem}>
             <Text style={styles.label}>{t('deductionsTotal')}</Text>
             <Text style={[styles.value, { color: '#dc2626' }]}>- {settlement.advancesTally.toFixed(2)}</Text>
           </View>
+          
           <View style={[styles.summaryItem, { backgroundColor: '#f0fdf4', borderRightWidth: 0, borderLeftWidth: 0 }]}>
             <Text style={styles.label}>{t('netSalaryPaid')}</Text>
             <Text style={[styles.value, { color: '#059669' }]}>{settlement.netPaid.toFixed(2)}</Text>
           </View>
+          
           <View style={[styles.summaryItem, { borderBottomWidth: 0, borderRightWidth: 0, borderLeftWidth: 0 }]}>
             <Text style={styles.label}>{t('paymentMethod')}</Text>
             <Text style={styles.value}>{t(settlement.method.toLowerCase() as any) || settlement.method}</Text>
@@ -227,11 +254,6 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
                 <View style={[styles.tableCol, styles.amountCol]}><Text>{tx.amount.toFixed(2)}</Text></View>
               </View>
             ))}
-            {settlement.transactions.length === 0 && (
-              <View style={styles.tableRow}>
-                <View style={[styles.tableCol, { width: '100%', textAlign: 'center', borderRightWidth: 0, borderLeftWidth: 0 }]}><Text>{t('noTransactionsFound')}</Text></View>
-              </View>
-            )}
           </View>
         </View>
 

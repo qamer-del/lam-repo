@@ -103,3 +103,35 @@ export async function getStaffOverdueCredits(staffId: number) {
     invoices: unpaidInvoices
   }
 }
+export async function updateStaff(id: number, data: { 
+  name: string; 
+  baseSalary: number;
+  overtimeAllowance?: number;
+  transportAllowance?: number;
+  otherAllowance?: number;
+  idNumber?: string;
+  nationality?: string;
+  userId?: string;
+}) {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
+    throw new Error("Unauthorized")
+  }
+  
+  const staff = await prisma.staff.update({
+    where: { id },
+    data: {
+      name: data.name,
+      baseSalary: data.baseSalary,
+      overtimeAllowance: data.overtimeAllowance || 0,
+      transportAllowance: data.transportAllowance || 0,
+      otherAllowance: data.otherAllowance || 0,
+      idNumber: data.idNumber,
+      nationality: data.nationality,
+      userId: data.userId === 'none' ? null : (data.userId || null),
+    }
+  })
+  revalidatePath('/staff')
+  revalidatePath('/')
+  return staff
+}

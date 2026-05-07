@@ -69,20 +69,35 @@ export function Sidebar({ role }: { role?: string }) {
       </nav>
 
       {/* Language Toggle, Logout */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
-        <button
-          onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
-          className="w-full px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-        >
-          {locale === 'ar' ? t('switchToEn') : t('switchToAr')}
-        </button>
-        <button
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-        >
-          <LogOut size={16} />
-          {t('logout')}
-        </button>
+      <div className="p-4 mt-auto border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+        <div className="flex items-center gap-3 mb-4 p-2 rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 group hover:shadow-md transition-all duration-300">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black shadow-lg shadow-blue-500/20">
+            {role?.[0] || 'U'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-black text-gray-900 dark:text-white truncate uppercase tracking-widest">{role?.replace('_', ' ') || 'User'}</p>
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] text-gray-400 font-bold truncate">Online Status</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex gap-2">
+          <button
+            onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
+            className="flex-1 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all font-black text-[10px] uppercase tracking-[0.1em] text-gray-600 dark:text-gray-300 shadow-sm active:scale-95"
+          >
+            {locale === 'ar' ? 'EN' : 'AR'}
+          </button>
+          <button
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all shadow-sm active:scale-95 border border-red-100/50 dark:border-red-900/30"
+            title={t('logout')}
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
       </div>
     </aside>
   )
