@@ -44,8 +44,11 @@ export async function getDashboardData() {
     ? {} 
     : { 
         recordedById: session?.user?.id,
-        isSettled: false,
-        settlementId: null // Crucial: exclude transactions that are already part of a handover/report
+        settlementId: null, // Crucial: exclude transactions that are already part of a handover/report
+        OR: [
+          { isSettled: false },
+          { salarySettlementId: { not: null } }
+        ]
       }
 
   const allTxs = await prisma.transaction.findMany({
@@ -60,7 +63,7 @@ export async function getDashboardData() {
   // For cashiers, we only show what's currently in their active session (unsettled)
   const transactions = isAdmin 
     ? allTxs.filter(tx => !tx.isInternal)
-    : allTxs.filter(tx => !tx.isInternal && !tx.isSettled && !tx.settlementId)
+    : allTxs.filter(tx => !tx.isInternal && (!tx.isSettled || tx.salarySettlementId) && !tx.settlementId)
 
   const internalTransactions = role === 'SUPER_ADMIN' ? allTxs.filter(tx => tx.isInternal) : []
 
@@ -94,7 +97,13 @@ export async function getDashboardData() {
     const isClearedByAdmin = tx.settlementId && tx.settlement?.performedBy?.role && 
       ['SUPER_ADMIN', 'ADMIN', 'OWNER'].includes(tx.settlement.performedBy.role)
     
-    const isActiveInDrawer = !tx.isSettled && !isClearedByAdmin
+    const isStaffRelated = tx.type === 'ADVANCE' || tx.type === 'SALARY_PAYMENT' || (tx.type === 'EXPENSE' && tx.staffId !== null)
+    
+    // Staff-related transactions stay active in the drawer until explicitly cleared by an ADMIN settlement,
+    // even if marked isSettled: true (which happens during monthly salary settlement).
+    const isActiveInDrawer = isStaffRelated 
+      ? !isClearedByAdmin 
+      : !tx.isSettled && !isClearedByAdmin
 
     if (tx.type === 'SALE') {
       if (tx.method === 'CASH') {
@@ -117,14 +126,14 @@ export async function getDashboardData() {
       if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
       if (tx.method === 'TABBY' && isActiveInDrawer) tabbyBalance -= tx.amount
       if (tx.method === 'TAMARA' && isActiveInDrawer) tamaraBalance -= tx.amount
-    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'AGENT_PURCHASE'].includes(tx.type)) {
+    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'AGENT_PURCHASE', 'SALARY_PAYMENT'].includes(tx.type)) {
       if (tx.method === 'CASH' && isActiveInDrawer) cashInDrawer -= tx.amount
       else if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
       else if (tx.method === 'TABBY' && isActiveInDrawer) tabbyBalance -= tx.amount
       else if (tx.method === 'TAMARA' && isActiveInDrawer) tamaraBalance -= tx.amount
-    } else if (tx.type === 'SALARY_PAYMENT') {
-      // Per user request, salary settlements are from a dedicated fund and don't affect standard cash account
-      if (isThisMonth) salaryPayouts += tx.amount
+      
+      // Keep track of total payouts for the monthly salary pool
+      if (isStaffRelated && isThisMonth) salaryPayouts += tx.amount
     }
   })
 
@@ -486,10 +495,19 @@ export async function createSettlement(actualCashCounted: number) {
   console.log('[createSettlement] Fetching unsettled transactions...')
   const unsettled = await prisma.transaction.findMany({
     where: { 
-      isSettled: false,
-      OR: [
-        { settlementId: null },
-        { settlement: { performedBy: { role: 'CASHIER' } } }
+      AND: [
+        {
+          OR: [
+            { isSettled: false },
+            { salarySettlementId: { not: null } }
+          ]
+        },
+        {
+          OR: [
+            { settlementId: null },
+            { settlement: { performedBy: { role: 'CASHIER' } } }
+          ]
+        }
       ]
     },
     include: {
@@ -566,7 +584,10 @@ export async function createCashierHandover(actualCashCounted: number) {
   // Finds all unsettled transactions recorded by THIS user
   const unsettled = await prisma.transaction.findMany({
     where: { 
-      isSettled: false,
+      OR: [
+        { isSettled: false },
+        { salarySettlementId: { not: null } }
+      ],
       settlementId: null,
       recordedById: session.user.id
     }
