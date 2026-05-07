@@ -190,7 +190,9 @@ model InventoryItem {
   reorderLevel     Float             @default(5)
   unitCost         Float             @default(0)
   costIncludesVat  Boolean           @default(false)
-  sellingPrice     Float             @default(0)
+  basePrice        Float?            // Pre-VAT selling price (set during Excel import)
+  vatRate          Float?            // VAT rate applied (e.g. 0.15 = 15%)
+  sellingPrice     Float             @default(0) // Final price after VAT (always the price shown to customer)
   isActive         Boolean           @default(true)
   // ── Warranty config ───────────────────────────────────────
   hasWarranty      Boolean           @default(false)

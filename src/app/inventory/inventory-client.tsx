@@ -13,6 +13,7 @@ import { useLanguage } from '@/providers/language-provider'
 import { AddInventoryItemModal } from '@/components/add-inventory-item-modal'
 import { AddPurchaseModal } from '@/components/add-purchase-modal'
 import { StockAdjustmentModal } from '@/components/stock-adjustment-modal'
+import { ImportInventoryModal } from '@/components/import-inventory-modal'
 import { deactivateInventoryItem } from '@/actions/inventory'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
@@ -215,6 +216,7 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
         </div>
         {isAdmin && (
           <div className="flex flex-wrap gap-3">
+            <ImportInventoryModal />
             <AddInventoryItemModal triggerClassName="h-10 px-4 text-sm" />
             <AddPurchaseModal triggerClassName="h-10 px-4 text-sm" />
           </div>

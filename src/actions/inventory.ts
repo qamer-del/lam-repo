@@ -107,6 +107,65 @@ export async function createInventoryItem(data: {
   return item
 }
 
+export async function bulkCreateInventoryItems(items: {
+  name: string
+  sku?: string
+  category: InventoryCategory
+  unit: string
+  reorderLevel: number
+  unitCost: number
+  basePrice: number      // Pre-VAT selling price from Excel
+  initialStock: number
+}[]) {
+  const session = await requireAdminOrAbove()
+
+  const VAT_RATE = 0.15
+
+  // Prepare all rows with VAT computed upfront
+  const rows = items.map((data) => {
+    const vatAmount = data.basePrice * VAT_RATE
+    const finalPrice = parseFloat((data.basePrice + vatAmount).toFixed(2))
+    return {
+      name: data.name,
+      sku: data.sku || null,
+      category: data.category,
+      unit: data.unit,
+      reorderLevel: data.reorderLevel,
+      unitCost: data.unitCost,
+      costIncludesVat: false,
+      basePrice: data.basePrice,
+      vatRate: VAT_RATE,
+      sellingPrice: finalPrice,
+      currentStock: data.initialStock,
+      hasWarranty: false,
+    }
+  })
+
+  // Single SQL INSERT — no transaction timeout, works for any number of rows
+  const created = await prisma.inventoryItem.createManyAndReturn({ data: rows })
+
+  // Record initial stock movements for items that have stock > 0
+  const withStock = created
+    .map((item, i) => ({ item, initialStock: items[i].initialStock, unitCost: items[i].unitCost }))
+    .filter(({ initialStock }) => initialStock > 0)
+
+  if (withStock.length > 0) {
+    await prisma.stockMovement.createMany({
+      data: withStock.map(({ item, initialStock, unitCost }) => ({
+        itemId: item.id,
+        type: 'ADJUSTMENT' as const,
+        quantity: initialStock,
+        unitCost,
+        note: 'Initial stock — imported from Excel',
+        recordedById: session.user.id,
+      })),
+    })
+  }
+
+  revalidatePath('/inventory')
+  return created
+}
+
 export async function updateInventoryItem(
   id: number,
   data: {
