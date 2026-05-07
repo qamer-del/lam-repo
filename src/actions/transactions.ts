@@ -263,7 +263,7 @@ export async function recordRefund(data: {
   })
 }
 
-export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK' }) {
+export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK', deductOverdueCredit?: boolean }) {
   const session = await auth()
   if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN' && session?.user?.role !== 'OWNER') {
     throw new Error("Unauthorized")
@@ -282,8 +282,40 @@ export async function settleSalary(data: { staffId: number, month: number, year:
   
   if (!staff) throw new Error("Staff not found")
 
-  const totalAdvances = staff.transactions.reduce((sum, tx) => sum + tx.amount, 0)
-  const netPaid = staff.baseSalary - totalAdvances
+  let totalAdvances = staff.transactions.reduce((sum, tx) => sum + tx.amount, 0)
+  
+  let totalOverdueRemaining = 0
+  const deductionsToMake: { tx: any, remaining: number }[] = []
+
+  if (data.deductOverdueCredit && staff.userId) {
+    const overdueCredits = await prisma.transaction.findMany({
+      where: {
+        type: 'SALE',
+        method: 'CREDIT',
+        isSettled: false,
+        recordedById: staff.userId,
+        OR: [
+          { dueDate: { lt: new Date() } },
+          { dueDate: null } // Handle older invoices created before we added the dueDate field
+        ]
+      },
+      include: { linkedBy: { select: { amount: true } } }
+    })
+
+    for (const creditTx of overdueCredits) {
+      const paidSoFar = creditTx.linkedBy.reduce((sum: number, p: any) => sum + p.amount, 0)
+      const remaining = creditTx.amount - paidSoFar
+      if (remaining > 0.01) {
+        totalOverdueRemaining += remaining
+        deductionsToMake.push({ tx: creditTx, remaining })
+      }
+    }
+  }
+
+  const finalAdvancesTally = totalAdvances + totalOverdueRemaining
+  // Calculate total salary (base + allowances)
+  const totalSalary = staff.baseSalary + (staff.overtimeAllowance || 0) + (staff.transportAllowance || 0) + (staff.otherAllowance || 0)
+  const netPaid = totalSalary - finalAdvancesTally
 
   // 2. Create SalarySettlement record
   const salarySettlement = await prisma.salarySettlement.create({
@@ -291,8 +323,8 @@ export async function settleSalary(data: { staffId: number, month: number, year:
       staffId: data.staffId,
       month: data.month,
       year: data.year,
-      baseSalary: staff.baseSalary,
-      advancesTally: totalAdvances,
+      baseSalary: totalSalary, // Saving the total calculated salary instead of just baseSalary for accuracy in reports
+      advancesTally: finalAdvancesTally,
       netPaid: netPaid,
       method: data.method,
       transactions: {
@@ -300,6 +332,56 @@ export async function settleSalary(data: { staffId: number, month: number, year:
       }
     }
   })
+
+  // 2b. If we have overdue credits to deduct, record the deduction and payment transactions
+  if (totalOverdueRemaining > 0) {
+    // Record the deduction on the staff ledger
+    const deductionTx = await prisma.transaction.create({
+      data: {
+        type: 'EXPENSE',
+        amount: totalOverdueRemaining,
+        method: 'CASH', // Deduction from payout
+        description: `[DEDUCTION] Automatic deduction for ${deductionsToMake.length} overdue credit invoice(s)`,
+        staffId: staff.id,
+        recordedById: session.user.id,
+        isSettled: true,
+        salarySettlementId: salarySettlement.id
+      }
+    })
+
+    // Update the salary settlement to include this new deduction transaction
+    await prisma.salarySettlement.update({
+      where: { id: salarySettlement.id },
+      data: {
+        transactions: {
+          connect: { id: deductionTx.id }
+        }
+      }
+    })
+
+    // Record payments for each overdue invoice
+    for (const { tx, remaining } of deductionsToMake) {
+      await prisma.transaction.create({
+        data: {
+          type: 'SALE',
+          amount: remaining,
+          method: data.method,
+          description: `[SETTLEMENT] Paid via Staff Salary Deduction (${staff.name})`,
+          recordedById: session.user.id,
+          linkedTransactionId: tx.id,
+          invoiceNumber: tx.invoiceNumber,
+          customerName: tx.customerName,
+          customerPhone: tx.customerPhone,
+          customerId: tx.customerId,
+          isSettled: true // No need to be physically settled again
+        }
+      })
+      await prisma.transaction.update({
+        where: { id: tx.id },
+        data: { isSettled: true }
+      })
+    }
+  }
 
   // 3. Record final SALARY_PAYMENT if netPaid > 0
   let paymentTransaction = null
@@ -551,6 +633,7 @@ export async function recordDailySales(data: {
   customerId?: number
   customerName?: string
   customerPhone?: string
+  dueDate?: Date
 }) {
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthorized')
@@ -566,6 +649,7 @@ export async function recordDailySales(data: {
     customerId?: number
     customerName?: string
     customerPhone?: string
+    dueDate?: Date
   }
 
   const exactTime = new Date()
@@ -596,6 +680,7 @@ export async function recordDailySales(data: {
     transactions.push({ type: 'SALE', method: 'NETWORK', amount: data.totalAmount, description: data.description, recordedById: session.user.id, createdAt: exactTime, invoiceNumber, ...customerFields })
   } else if (data.paymentMode === 'CREDIT') {
     if (!data.customerId && (!data.customerName || !data.customerPhone)) throw new Error('Customer is required for credit sales.')
+    const dueDate = new Date(exactTime.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days default
     transactions.push({ 
       type: 'SALE', 
       method: 'CREDIT', 
@@ -604,6 +689,7 @@ export async function recordDailySales(data: {
       recordedById: session.user.id, 
       createdAt: exactTime, 
       invoiceNumber,
+      dueDate,
       ...customerFields,
     })
   } else {

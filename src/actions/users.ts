@@ -35,3 +35,13 @@ export async function deleteUser(id: string) {
   await prisma.user.delete({ where: { id } })
   revalidatePath('/admin/users')
 }
+
+export async function getUsers() {
+  const session = await auth()
+  if (!session?.user) throw new Error("Unauthorized")
+  
+  return prisma.user.findMany({
+    select: { id: true, name: true, role: true, username: true },
+    orderBy: { name: 'asc' }
+  })
+}

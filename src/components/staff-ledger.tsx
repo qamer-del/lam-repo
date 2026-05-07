@@ -19,7 +19,8 @@ import { User, DollarSign, Calendar, CheckCircle2, AlertCircle, Wallet, Landmark
 import { SalarySettlementModal } from './salary-settlement-modal'
 import { SettleAllSalaries } from './settle-all-salaries'
 import { SalarySettlementPdfButton } from './salary-settlement-pdf-button'
-import { Printer, History } from 'lucide-react'
+import { Printer, History, FileWarning } from 'lucide-react'
+import { getStaffOverdueCredits } from '@/actions/staff'
 
 type SalarySettlement = {
   id: number
@@ -37,7 +38,7 @@ type Staff = {
   id: number
   name: string
   baseSalary: number
-  housingAllowance?: number
+  overtimeAllowance?: number
   transportAllowance?: number
   otherAllowance?: number
   isActive: boolean
@@ -76,6 +77,15 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const [selected, setSelected] = useState<number | null>(null)
   const [editingRow, setEditingRow] = useState<number | null>(null)
   const [editAmount, setEditAmount] = useState<string>('')
+  const [overdueInfo, setOverdueInfo] = useState<{count: number, total: number, invoices: any[]} | null>(null)
+
+  useEffect(() => {
+    if (selected) {
+      getStaffOverdueCredits(selected).then(setOverdueInfo).catch(console.error)
+    } else {
+      setOverdueInfo(null)
+    }
+  }, [selected])
 
   const handleEditSave = async (txId: number) => {
     try {
@@ -123,7 +133,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
   const totalStaffTotalDebt = selectedAdvances + selectedDeductions
 
   const selectedStaff = staff.find(s => Number(s.id) === Number(selected))
-  const selectedTotalSalary = selectedStaff ? (selectedStaff.baseSalary + (selectedStaff.housingAllowance || 0) + (selectedStaff.transportAllowance || 0) + (selectedStaff.otherAllowance || 0)) : 0
+  const selectedTotalSalary = selectedStaff ? (selectedStaff.baseSalary + (selectedStaff.overtimeAllowance || 0) + (selectedStaff.transportAllowance || 0) + (selectedStaff.otherAllowance || 0)) : 0
   const netSalary = selectedStaff ? selectedTotalSalary - totalStaffTotalDebt : 0
 
   const staffSummary = staff.map(s => {
@@ -134,7 +144,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
     const advances = sTxs.filter(tx => tx.type === 'ADVANCE').reduce((sum, tx) => sum + tx.amount, 0)
     const deductions = sTxs.filter(tx => tx.type === 'EXPENSE').reduce((sum, tx) => sum + tx.amount, 0)
     
-    const totalSal = s.baseSalary + (s.housingAllowance || 0) + (s.transportAllowance || 0) + (s.otherAllowance || 0)
+    const totalSal = s.baseSalary + (s.overtimeAllowance || 0) + (s.transportAllowance || 0) + (s.otherAllowance || 0)
     const netSalary = totalSal - advances - deductions
 
     return {
@@ -196,7 +206,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
 
       {selected && selectedStaff && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
               <div className="relative flex flex-col items-center text-center space-y-2">
@@ -227,10 +237,10 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Base:</span>
                     <span className="text-[10px] font-bold text-gray-900 dark:text-gray-200">{selectedStaff.baseSalary}</span>
                   </div>
-                  {(selectedStaff.housingAllowance || 0) > 0 && (
+                  {(selectedStaff.overtimeAllowance || 0) > 0 && (
                     <div className="flex justify-between items-center w-full">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Housing:</span>
-                      <span className="text-[10px] font-bold text-gray-900 dark:text-gray-200">{selectedStaff.housingAllowance}</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Overtime:</span>
+                      <span className="text-[10px] font-bold text-gray-900 dark:text-gray-200">{selectedStaff.overtimeAllowance}</span>
                     </div>
                   )}
                   {(selectedStaff.transportAllowance || 0) > 0 && (
@@ -262,7 +272,23 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
               </div>
             </div>
 
-            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500 sm:col-span-3">
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-red-100 dark:border-red-900/30 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center text-red-600 mb-2">
+                  <FileWarning size={24} />
+                </div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Overdue Credits</p>
+                <p className="text-3xl font-black text-red-600 tabular-nums">
+                  {overdueInfo ? overdueInfo.total.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '0.00'}
+                </p>
+                <div className="mt-2 flex flex-col gap-1 w-full max-w-[180px]">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Unpaid Invoices: <span className="text-gray-900 dark:text-gray-200">{overdueInfo ? overdueInfo.count : 0}</span></p>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500 sm:col-span-2 lg:col-span-4">
               <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110 duration-700" />
               <div className="relative flex flex-col items-center text-center space-y-2 py-4">
                 <div className="w-16 h-16 rounded-3xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 mb-2">
@@ -276,7 +302,7 @@ export function StaffLedger({ staff, transactions }: StaffLedgerProps) {
             </div>
             
             {canModify && (
-              <div className="sm:col-span-3 flex justify-center pt-2">
+              <div className="sm:col-span-2 lg:col-span-4 flex justify-center pt-2">
                 <SalarySettlementModal 
                   staff={{ id: selectedStaff.id, name: selectedStaff.name, baseSalary: selectedStaff.baseSalary }}
                   advances={staffTxs}

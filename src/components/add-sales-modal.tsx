@@ -26,6 +26,7 @@ import { recordDailySales } from '@/actions/transactions'
 import { getAllInventoryItemsForSelect } from '@/actions/inventory'
 import { getAllCustomersForSelect, createCustomer } from '@/actions/customers'
 import { useRouter } from 'next/navigation'
+import { format, addDays } from 'date-fns'
 import { en } from '@/lib/translations'
 import { ModernLoader } from './ui/modern-loader'
 import { WarrantyNotification } from './warranty-notification'
@@ -80,6 +81,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([])
   const [comboboxOpen, setComboboxOpen] = useState<{ [key: number]: boolean }>({})
   const [pendingWarranties, setPendingWarranties] = useState<any[]>([])
+  const [dueDate, setDueDate] = useState<string>(() => format(addDays(new Date(), 30), 'yyyy-MM-dd'))
 
   // Auto-calc network from total - cash in split mode
   useEffect(() => {
@@ -141,6 +143,7 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
         customerId: customerId || undefined,
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
+        dueDate: (payMode === 'CREDIT' && dueDate) ? new Date(dueDate) : undefined,
         consumedItems: consumedItems
           .filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0)
           .map(ci => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity) })),
@@ -489,6 +492,18 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
                         className="h-11 rounded-xl border-amber-100 dark:border-amber-900 bg-white dark:bg-gray-950 focus:border-amber-500 font-bold"
                       />
                     </div>
+                  </div>
+                )}
+
+                {payMode === 'CREDIT' && (
+                  <div className="space-y-1.5 mt-3 pt-3 border-t border-amber-200/50 dark:border-amber-800/30">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-amber-500 ml-1">{t('dueDate') || 'Due Date'}</Label>
+                    <Input
+                      type="date"
+                      value={dueDate}
+                      onChange={e => setDueDate(e.target.value)}
+                      className="h-11 rounded-xl border-amber-100 dark:border-amber-900 bg-white dark:bg-gray-950 focus:border-amber-500 font-bold"
+                    />
                   </div>
                 )}
               </div>

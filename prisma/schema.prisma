@@ -78,6 +78,7 @@ model User {
   settlements    Settlement[]    @relation("UserSettlements")
   stockMovements StockMovement[]
   purchaseOrders PurchaseOrder[]
+  staffProfile   Staff?
 }
 
 model Staff {
@@ -86,10 +87,12 @@ model Staff {
   idNumber          String?            // ID or Iqama Number
   nationality       String?
   baseSalary        Float
-  housingAllowance  Float              @default(0)
+  overtimeAllowance Float              @default(0)
   transportAllowance Float             @default(0)
   otherAllowance    Float              @default(0)
   isActive          Boolean            @default(true)
+  userId            String?            @unique
+  user              User?              @relation(fields: [userId], references: [id])
   transactions      Transaction[]
   salarySettlements SalarySettlement[]
 }
@@ -144,6 +147,7 @@ model Transaction {
   customer            Customer?         @relation(fields: [customerId], references: [id])
   customerName        String?           // Freetext fallback (kept for backward-compat)
   customerPhone       String?           // Freetext fallback
+  dueDate             DateTime?         // For tracking overdue credit invoices
   createdAt           DateTime          @default(now())
 }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Wallet, CheckCircle2, Download, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { useLanguage } from '@/providers/language-provider'
 import { settleSalary } from '@/actions/transactions'
+import { getStaffOverdueCredits } from '@/actions/staff'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useRouter } from 'next/navigation'
@@ -38,6 +39,18 @@ export function SalarySettlementModal({
   const [loading, setLoading] = useState(false)
   const [method, setMethod] = useState<'CASH' | 'NETWORK'>('CASH')
   const [settledData, setSettledData] = useState<any>(null)
+  const [overdueInfo, setOverdueInfo] = useState<{count: number, total: number, invoices: any[]} | null>(null)
+  const [deductOverdueCredit, setDeductOverdueCredit] = useState(false)
+  const [showInvoices, setShowInvoices] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      getStaffOverdueCredits(staff.id).then(setOverdueInfo).catch(console.error)
+    } else {
+      setDeductOverdueCredit(false)
+      setOverdueInfo(null)
+    }
+  }, [open, staff.id])
 
   const handleSettle = async () => {
     setLoading(true)
@@ -47,7 +60,8 @@ export function SalarySettlementModal({
         staffId: staff.id,
         month: now.getMonth() + 1,
         year: now.getFullYear(),
-        method
+        method,
+        deductOverdueCredit
       })
       setSettledData(res)
       toast.success('Salary Settled', {
@@ -110,9 +124,58 @@ export function SalarySettlementModal({
                   </div>
                   <div className="pt-3 border-t border-gray-200 dark:border-gray-800 flex justify-between">
                     <span className="text-emerald-600 font-black uppercase text-xs">Net Payout Today</span>
-                    <span className="text-xl font-black text-emerald-600">{netPaid.toFixed(2)}</span>
+                    <span className="text-xl font-black text-emerald-600">
+                      {(netPaid - (deductOverdueCredit && overdueInfo ? overdueInfo.total : 0)).toFixed(2)}
+                    </span>
                   </div>
                 </div>
+
+                {overdueInfo && overdueInfo.count > 0 && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-xl space-y-3 shadow-sm">
+                    <div className="flex gap-3 text-red-600">
+                      <AlertTriangle size={20} className="shrink-0" />
+                      <div>
+                        <p className="text-sm font-bold">Unpaid Credit Warning</p>
+                        <p className="text-xs mt-1 text-red-800 dark:text-red-400">
+                          {staff.name} recorded <strong>{overdueInfo.count}</strong> unpaid credit invoice(s) totaling <strong>{overdueInfo.total.toFixed(2)} SAR</strong>.
+                        </p>
+                        <button 
+                          type="button"
+                          onClick={() => setShowInvoices(!showInvoices)} 
+                          className="text-[10px] text-red-600 dark:text-red-400 font-bold uppercase tracking-widest mt-2 hover:underline"
+                        >
+                          {showInvoices ? 'Hide Invoices' : 'View Invoices'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {showInvoices && (
+                      <div className="mt-2 max-h-32 overflow-y-auto space-y-1 bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-red-100 dark:border-red-900/30">
+                        {overdueInfo.invoices.map((inv: any) => (
+                          <div key={inv.id} className="flex justify-between text-[10px] text-red-800 dark:text-red-300 border-b border-red-100/50 dark:border-red-900/20 last:border-0 pb-1 last:pb-0">
+                            <span className="truncate pr-2">{inv.invoiceNumber || `#${inv.id}`} • {inv.customerName || 'No Name'}</span>
+                            <span className="font-bold shrink-0">{inv.remaining.toFixed(2)} SAR</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="pt-3 border-t border-red-200 dark:border-red-800 flex items-start gap-2">
+                      <input 
+                        type="checkbox" 
+                        id="deductCredit" 
+                        className="mt-1 w-4 h-4 rounded text-red-600 focus:ring-red-500 border-red-300"
+                        checked={deductOverdueCredit}
+                        onChange={(e) => setDeductOverdueCredit(e.target.checked)}
+                      />
+                      <label htmlFor="deductCredit" className="text-xs text-red-800 dark:text-red-400 cursor-pointer">
+                        Deduct overdue credit invoices ({overdueInfo.total.toFixed(2)} SAR) from this salary settlement.
+                        <br/>
+                        <span className="text-[10px] opacity-80">(This will mark the customer invoices as paid via the employee's salary)</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase text-gray-400">Payment Method</Label>

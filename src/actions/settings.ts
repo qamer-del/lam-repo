@@ -13,6 +13,7 @@ export async function factoryReset() {
 
   try {
     // Delete in reverse order of relationships to prevent foreign key constraints
+    await prisma.warranty.deleteMany({})
     await prisma.purchaseOrderItem.deleteMany({})
     await prisma.stockMovement.deleteMany({})
     await prisma.transaction.deleteMany({})
@@ -20,6 +21,7 @@ export async function factoryReset() {
     await prisma.salarySettlement.deleteMany({})
     await prisma.settlement.deleteMany({})
     await prisma.inventoryItem.deleteMany({})
+    await prisma.customer.deleteMany({})
     await prisma.agent.deleteMany({})
     await prisma.staff.deleteMany({})
     
