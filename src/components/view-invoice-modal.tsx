@@ -11,10 +11,12 @@ import { getInvoiceDetails } from '@/actions/transactions'
 import { checkWarrantyStatus } from '@/actions/warranty'
 import { ModernLoader } from './ui/modern-loader'
 import { format } from 'date-fns'
-import { Receipt, Package, ShieldCheck, ShieldOff, ShieldAlert, Download } from 'lucide-react'
+import { Receipt, Package, ShieldCheck, ShieldOff, ShieldAlert, Download, Printer } from 'lucide-react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InvoiceDocument } from './invoice-document'
 import { useLanguage } from '@/providers/language-provider'
+import { usePrinter } from '@/providers/printer-provider'
+import { calcVat15, generateZatcaQrDataUrl } from '@/lib/zatca-qr'
 
 export function ViewInvoiceModal({ 
   invoiceNumber, 
@@ -26,9 +28,11 @@ export function ViewInvoiceModal({
   onOpenChange: (open: boolean) => void
 }) {
   const { locale } = useLanguage();
+  const { print: printThermal, status: printerStatus, isPrinting } = usePrinter()
   const [loading, setLoading] = useState(false)
   const [details, setDetails] = useState<any>(null)
   const [warranties, setWarranties] = useState<any[]>([])
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (open && invoiceNumber) {
@@ -41,6 +45,17 @@ export function ViewInvoiceModal({
           setDetails(res)
           setWarranties(warRes)
           setLoading(false)
+          // Generate ZATCA QR after details load
+          if (res) {
+            const { vat } = calcVat15(res.totalAmount)
+            generateZatcaQrDataUrl({
+              sellerName: 'LAMAHA Car Care Center',
+              vatNumber: '300000000000000',
+              invoiceDate: new Date(res.createdAt),
+              totalWithVat: res.totalAmount,
+              vatAmount: vat,
+            }).then(setQrDataUrl)
+          }
         })
         .catch(err => {
           console.error(err)
@@ -70,14 +85,41 @@ export function ViewInvoiceModal({
                 </div>
               </DialogTitle>
               {details && (
-                <PDFDownloadLink
-                  document={<InvoiceDocument details={details} warranties={warranties} locale={locale} />}
-                  fileName={`invoice-${details.invoiceNumber}.pdf`}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors"
-                >
-                  <Download size={16} />
-                  <span className="hidden sm:inline">Save PDF</span>
-                </PDFDownloadLink>
+                <div className="flex items-center gap-2">
+                  {/* Thermal Reprint — only shown when QZ Tray is connected */}
+                  {printerStatus === 'connected' && (
+                    <button
+                      disabled={isPrinting}
+                      onClick={() => {
+                        printThermal({
+                          invoiceNumber: details.invoiceNumber,
+                          createdAt: new Date(details.createdAt),
+                          cashierName: details.salesperson || 'Cashier',
+                          items: (details.items || []).map((item: any) => ({
+                            name: item.name,
+                            quantity: item.quantitySold,
+                            unit: item.unit,
+                          })),
+                          totalAmount: details.totalAmount,
+                          paymentMethod: details.transactions?.[0]?.method || 'CASH',
+                        })
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors disabled:opacity-50"
+                    >
+                      <Printer size={16} />
+                      <span className="hidden sm:inline">{isPrinting ? 'Printing...' : 'Reprint'}</span>
+                    </button>
+                  )}
+                  {/* Save PDF */}
+                  <PDFDownloadLink
+                    document={<InvoiceDocument details={details} warranties={warranties} locale={locale} qrDataUrl={qrDataUrl} />}
+                    fileName={`invoice-${details.invoiceNumber}.pdf`}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors"
+                  >
+                    <Download size={16} />
+                    <span className="hidden sm:inline">Save PDF</span>
+                  </PDFDownloadLink>
+                </div>
               )}
             </div>
           </DialogHeader>
@@ -110,29 +152,43 @@ export function ViewInvoiceModal({
                 </div>
               </div>
 
-              {/* Total Section */}
-              <div className="relative overflow-hidden p-8 rounded-[2rem] bg-emerald-600 text-white shadow-xl shadow-emerald-600/20">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
-                <div className="relative z-10 flex justify-between items-end">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100 mb-2">Grand Total</p>
-                    <p className="text-5xl font-black tabular-nums tracking-tighter">
-                      {details.totalAmount.toFixed(2)}
-                      <span className="text-lg ml-2 opacity-80 italic">SAR</span>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-100 mb-2">Method</p>
-                    <div className="flex gap-2 justify-end flex-wrap">
-                      {details.transactions.map((t: any) => (
-                        <span key={t.id} className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full uppercase tracking-wider">
-                          {t.method}
-                        </span>
-                      ))}
+              {/* Total Section — ZATCA tax breakdown */}
+              {(() => {
+                const { base: subtotal, vat } = calcVat15(details.totalAmount)
+                return (
+                  <div className="relative overflow-hidden rounded-[2rem] bg-slate-900 text-white shadow-xl shadow-slate-900/20">
+                    {/* Tax summary strip */}
+                    <div className="flex items-center justify-between gap-4 px-8 pt-7 pb-5 border-b border-white/10">
+                      <div className="text-center">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Subtotal (excl. VAT)</p>
+                        <p className="text-base font-black tabular-nums text-slate-200">{subtotal.toFixed(2)} <span className="text-xs opacity-60">SAR</span></p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">VAT (15%)</p>
+                        <p className="text-base font-black tabular-nums text-amber-400">{vat.toFixed(2)} <span className="text-xs opacity-60">SAR</span></p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-1">Total incl. VAT</p>
+                        <p className="text-2xl font-black tabular-nums text-emerald-400">{details.totalAmount.toFixed(2)} <span className="text-sm opacity-70">SAR</span></p>
+                      </div>
+                    </div>
+                    {/* Payment method + ZATCA note */}
+                    <div className="flex items-center justify-between px-8 py-4">
+                      <div className="flex gap-2 flex-wrap">
+                        {details.transactions.map((t: any) => (
+                          <span key={t.id} className="text-[10px] font-black bg-white/10 px-3 py-1 rounded-full uppercase tracking-wider">
+                            {t.method}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-[9px] text-slate-500 text-right">
+                        Tax Invoice<br/>
+                        فاتورة ضريبية مبسطة
+                      </p>
                     </div>
                   </div>
-                </div>
-              </div>
+                )
+              })()}
 
               {/* Items Table */}
               <div className="space-y-4">

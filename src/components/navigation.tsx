@@ -10,6 +10,7 @@ import {
 import { useLanguage } from '@/providers/language-provider'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import { PrinterStatus } from '@/components/ui/printer-status'
 import { 
   Sheet, 
   SheetContent, 
@@ -82,6 +83,10 @@ export function Sidebar({ role }: { role?: string }) {
             </div>
           </div>
         </div>
+        {/* Printer Status Badge */}
+        <div className="mb-3">
+          <PrinterStatus className="w-full justify-center" />
+        </div>
         
         <div className="flex gap-2">
           <button
@@ -114,6 +119,7 @@ export function MobileTopBar() {
         </h1>
         
         <div className="flex items-center gap-2">
+          <PrinterStatus />
           <button
             onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
             className="px-3 py-1.5 text-[10px] font-bold rounded-full bg-gray-100 dark:bg-gray-800 border border-transparent active:border-blue-500 transition"

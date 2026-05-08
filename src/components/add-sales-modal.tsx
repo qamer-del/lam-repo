@@ -32,6 +32,7 @@ import { ModernLoader } from './ui/modern-loader'
 import { WarrantyNotification } from './warranty-notification'
 import { toast } from 'sonner'
 import { useStore, Transaction } from '@/store/useStore'
+import { usePrinter } from '@/providers/printer-provider'
 
 type PayMode = 'CASH' | 'NETWORK' | 'SPLIT' | 'TABBY' | 'TAMARA' | 'CREDIT'
 
@@ -60,6 +61,7 @@ const PAY_METHODS: { mode: PayMode; labelKey: keyof typeof en; icon: any; color:
 export function AddSalesModal({ triggerClassName }: { triggerClassName?: string }) {
   const { t } = useLanguage()
   const router = useRouter()
+  const { print: printReceipt, status: printerStatus } = usePrinter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -151,6 +153,36 @@ export function AddSalesModal({ triggerClassName }: { triggerClassName?: string 
       
       if (results) {
         useStore.getState().addTransactions(results as Transaction[])
+
+        // ── Auto-print receipt ──────────────────────────────────────────────
+        const validItems = consumedItems.filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0)
+        const receiptItems = validItems.map(ci => {
+          const invItem = inventoryList.find(i => i.id === ci.itemId)
+          return {
+            name: invItem?.name || `Item #${ci.itemId}`,
+            quantity: parseFloat(ci.quantity),
+            price: parseFloat(ci.price) || invItem?.sellingPrice || 0,
+            unit: invItem?.unit,
+          }
+        })
+
+        if (printerStatus === 'connected' && results.length > 0) {
+          printReceipt({
+            invoiceNumber: results[0].invoiceNumber || '',
+            createdAt: results[0].createdAt ? new Date(results[0].createdAt) : new Date(),
+            cashierName: (results[0] as any).recordedBy?.name || 'Cashier',
+            items: receiptItems,
+            totalAmount: parseFloat(total),
+            paymentMethod: payMode,
+            cashAmount: payMode === 'SPLIT' ? (parseFloat(cashAmt) || 0) : undefined,
+            networkAmount: payMode === 'SPLIT' ? (parseFloat(netAmt) || 0) : undefined,
+            customerName: customerName || undefined,
+            description: description || undefined,
+          }).catch(() => {
+            // Print errors are handled inside usePrinter — toast shown there
+          })
+        }
+        // ───────────────────────────────────────────────────────────────────
 
         // Check if any sold items have warranty — fetch created warranty records
         const soldItemIds = consumedItems.filter(ci => ci.itemId > 0 && parseFloat(ci.quantity) > 0).map(ci => ci.itemId)

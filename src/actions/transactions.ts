@@ -973,6 +973,8 @@ export async function getInvoiceDetails(invoiceNumber: string) {
     createdAt: saleTxs[0].createdAt,
     description: saleTxs[0].description,
     salesperson: saleTxs[0].recordedBy?.name || 'Unknown',
+    customerName: saleTxs[0].customerName || null,
+    customerPhone: saleTxs[0].customerPhone || null,
     paymentMethods: [...new Set(saleTxs.map(t => t.method))],
     items: saleMovements.map(m => ({
       itemId: m.itemId,
