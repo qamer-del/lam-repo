@@ -13,10 +13,10 @@
 // ─── ESC/POS Command Constants ─────────────────────────────────────────────────
 // Only raw hardware commands are needed — text formatting is handled by HTML/CSS.
 const ESC = '\x1B'
-const GS  = '\x1D'
+const GS = '\x1D'
 
 const CMD = {
-  CUT_PAPER:   `${GS}\x56\x42\x00`,        // Full paper cut
+  CUT_PAPER: `${GS}\x56\x42\x00`,        // Full paper cut
   CASH_DRAWER: `${ESC}\x70\x00\x19\xFA`,   // Kick cash drawer (pin 2)
 }
 
@@ -163,10 +163,10 @@ async function getPrinterName(qzInstance: any): Promise<string> {
 
 // ─── Store constants ────────────────────────────────────────────────────────────
 // Update these to match your actual business details.
-const STORE_NAME   = 'LAMAHA'
-const STORE_SUB    = 'Car Care Center'
-const STORE_PHONE  = '+966 50 000 0000'
-const STORE_VAT_NO = '300000000000000'
+const STORE_NAME = 'لمعة لزينة السيارات'
+const STORE_SUB = ''
+const STORE_PHONE = '+966 546590141'
+const STORE_VAT_NO = '3109204959'
 
 // ─── HTML Receipt builder ───────────────────────────────────────────────────────
 // QZ Tray renders this HTML page on the local Windows machine (which has Tahoma/
@@ -194,17 +194,17 @@ function buildReceiptHtml(data: ReceiptData, qrDataUrl?: string | null): string 
   })
 
   const PAY_LABELS: Record<string, string> = {
-    CASH:    'كاش / CASH',
+    CASH: 'كاش / CASH',
     NETWORK: 'شبكة / CARD',
-    SPLIT:   'كاش+شبكة / SPLIT',
-    TABBY:   'TABBY',
-    TAMARA:  'TAMARA',
-    CREDIT:  'آجل / CREDIT',
+    SPLIT: 'كاش+شبكة / SPLIT',
+    TABBY: 'TABBY',
+    TAMARA: 'TAMARA',
+    CREDIT: 'آجل / CREDIT',
   }
   const payLabel = PAY_LABELS[paymentMethod] ?? paymentMethod
 
   const vatAmount = (totalAmount * 15) / 115
-  const subtotal  = totalAmount - vatAmount
+  const subtotal = totalAmount - vatAmount
 
   const itemRows = items.map((item, i) => `
     <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f7f7f7'};">
@@ -218,7 +218,7 @@ function buildReceiptHtml(data: ReceiptData, qrDataUrl?: string | null): string 
     : ''
 
   const customerRows = [
-    customerName      ? `<tr><td style="color:#555;">العميل / Customer</td><td style="font-weight:600;">${esc(customerName)}</td></tr>` : '',
+    customerName ? `<tr><td style="color:#555;">العميل / Customer</td><td style="font-weight:600;">${esc(customerName)}</td></tr>` : '',
     customerTaxNumber ? `<tr><td style="color:#555;">الرقم الضريبي</td><td style="font-weight:600;">${esc(customerTaxNumber)}</td></tr>` : '',
   ].join('')
 
@@ -349,7 +349,7 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
   }
 
   const printerName = await getPrinterName(qzInstance)
-  const rawConfig   = qzInstance.configs.create(printerName)
+  const rawConfig = qzInstance.configs.create(printerName)
   // size tells QZ Tray the paper dimensions so the HTML viewport matches the
   // printable area. height:null means unlimited (continuous roll).
   const pixelConfig = qzInstance.configs.create(printerName, {
@@ -363,11 +363,11 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
   const { generateZatcaQrDataUrl, calcVat15 } = await import('@/lib/zatca-qr')
   const { vat } = calcVat15(data.totalAmount)
   const qrDataUrl = await generateZatcaQrDataUrl({
-    sellerName:   STORE_NAME + ' ' + STORE_SUB,
-    vatNumber:    STORE_VAT_NO,
-    invoiceDate:  new Date(data.createdAt),
+    sellerName: STORE_NAME + ' ' + STORE_SUB,
+    vatNumber: STORE_VAT_NO,
+    invoiceDate: new Date(data.createdAt),
     totalWithVat: data.totalAmount,
-    vatAmount:    vat,
+    vatAmount: vat,
   })
 
   // Call 1: HTML receipt as bitmap
