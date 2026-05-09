@@ -239,13 +239,14 @@ function buildReceiptHtml(data: ReceiptData, qrDataUrl?: string | null): string 
 <html>
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=380"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
     font-family:'Tahoma','Arial',sans-serif;
-    font-size:11px;
-    width:380px;
+    font-size:12px;
+    width:100%;
+    padding:0 4px;
     direction:ltr;
     background:#fff;
     color:#000;
