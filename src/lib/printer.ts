@@ -119,6 +119,12 @@ export async function connectPrinter(): Promise<void> {
   setStatus('connecting')
 
   try {
+    // Desktop only check: Don't even try to load QZ or connect on mobile/tablets
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setStatus('disconnected');
+      return;
+    }
+
     const qzInstance = await loadQZ()
 
     // Security callbacks must be registered ONCE — re-registering them on every
@@ -318,11 +324,27 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
   })
 
   const receiptLines = buildReceiptData(data)
+  
+  // Create a simple HTML wrapper for the receipt to ensure perfect Arabic rendering
+  const receiptHtml = `
+    <div style="font-family: sans-serif; width: 280px; font-size: 13px; line-height: 1.4;">
+      <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">${receiptLines.join('')}</pre>
+    </div>
+  `;
+
   const printData: any[] = [
-    { type: 'raw', format: 'plain', data: receiptLines.join('') }
+    { 
+      type: 'html', 
+      format: 'plain', 
+      data: receiptHtml,
+      options: { 
+        pageWidth: 2.1, // ~58mm or 80mm based on printer
+        margin: 0 
+      } 
+    }
   ]
 
-  // Open cash drawer automatically for cash payments (combined in same print job)
+  // Open cash drawer automatically for cash payments
   if (data.paymentMethod === 'CASH' || data.paymentMethod === 'SPLIT') {
     printData.unshift({ type: 'raw', format: 'plain', data: CMD.CASH_DRAWER })
   }

@@ -77,7 +77,7 @@ export function PrinterStatus({ className }: { className?: string }) {
           setTimeout(reconnect, 5000)
         }}
         className={cn(
-          'flex items-center gap-2 px-3 py-1.5 rounded-full border border-transparent transition-all duration-300 select-none cursor-pointer hover:ring-2',
+          'hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border border-transparent transition-all duration-300 select-none cursor-pointer hover:ring-2',
           config.bg,
           config.ring,
           className
@@ -103,7 +103,7 @@ export function PrinterStatus({ className }: { className?: string }) {
       }}
       title={status === 'connected' ? 'Printer connected' : 'Click to reconnect printer'}
       className={cn(
-        'flex items-center gap-2 px-3 py-1.5 rounded-full border border-transparent transition-all duration-300 select-none',
+        'hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border border-transparent transition-all duration-300 select-none',
         config.bg,
         status !== 'connected' && 'cursor-pointer hover:ring-2 ' + config.ring,
         status === 'connected' && 'cursor-default',
