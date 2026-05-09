@@ -1,35 +1,24 @@
 'use client'
 
 /**
- * printer.ts — QZ Tray ESC/POS printing library
+ * printer.ts — QZ Tray printing library
  *
  * Handles:
  *   - QZ Tray WebSocket connection & security setup
- *   - ESC/POS receipt formatting (English structure, Arabic item names)
- *   - Auto paper cut
- *   - Cash drawer control
+ *   - HTML-based receipt rendering (supports Arabic item names via Windows fonts)
+ *   - Auto paper cut  (raw ESC/POS appended after HTML page)
+ *   - Cash drawer control (raw ESC/POS)
  */
 
 // ─── ESC/POS Command Constants ────────────────────────────────────────────────
-const ESC  = '\x1B'
-const GS   = '\x1D'
+// Only the raw hardware commands are still needed — text formatting is now
+// handled entirely by HTML/CSS and rendered as a bitmap by QZ Tray.
+const ESC = '\x1B'
+const GS  = '\x1D'
 
 const CMD = {
-  INIT:           `${ESC}\x40`,           // Initialize printer
-  ALIGN_LEFT:     `${ESC}\x61\x00`,       // Left align
-  ALIGN_CENTER:   `${ESC}\x61\x01`,       // Center align
-  ALIGN_RIGHT:    `${ESC}\x61\x02`,       // Right align
-  BOLD_ON:        `${ESC}\x45\x01`,       // Bold text on
-  BOLD_OFF:       `${ESC}\x45\x00`,       // Bold text off
-  DOUBLE_HEIGHT:  `${GS}\x21\x01`,        // Double height text
-  DOUBLE_SIZE:    `${GS}\x21\x11`,        // Double width + height
-  NORMAL_SIZE:    `${GS}\x21\x00`,        // Normal size
-  LINE_FEED:      '\n',
-  FEED_2:         `${ESC}\x64\x02`,       // Feed 2 lines
-  FEED_4:         `${ESC}\x64\x04`,       // Feed 4 lines
-  CUT_PAPER:      `${GS}\x56\x42\x00`,   // Full cut
-  CASH_DRAWER:    `${ESC}\x70\x00\x19\xFA`, // Kick cash drawer pin 2
-  DIVIDER:        '--------------------------------',  // 32 chars (58mm paper)
+  CUT_PAPER:   `${GS}\x56\x42\x00`,        // Full paper cut
+  CASH_DRAWER: `${ESC}\x70\x00\x19\xFA`,   // Kick cash drawer (pin 2)
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -188,8 +177,11 @@ async function getPrinterName(qzInstance: any): Promise<string> {
   return envName || 'EPSON TM-T88V'
 }
 
-// ─── Receipt builder ──────────────────────────────────────────────────────────
-function buildReceiptData(data: ReceiptData): string[] {
+// ─── HTML Receipt builder ─────────────────────────────────────────────────────
+// Renders an HTML page that QZ Tray converts to a bitmap before sending to the
+// printer. This is the only reliable way to print Arabic text on ESC/POS
+// thermal printers, which have no built-in Unicode Arabic glyph support.
+function buildReceiptHtml(data: ReceiptData): string {
   const {
     invoiceNumber, createdAt, cashierName, items,
     totalAmount, paymentMethod, cashAmount, networkAmount,
@@ -215,92 +207,150 @@ function buildReceiptData(data: ReceiptData): string[] {
     }
   }
 
-  const pad = (left: string, right: string, width = 32): string => {
-    const gap = width - left.length - right.length
-    return gap > 0 ? left + ' '.repeat(gap) + right : left + ' ' + right
-  }
-
-  const lines: string[] = [
-    CMD.INIT,
-
-    // ── Header ──
-    CMD.ALIGN_CENTER,
-    CMD.BOLD_ON,
-    CMD.DOUBLE_SIZE,
-    'LAMAHA\n',
-    CMD.NORMAL_SIZE,
-    CMD.BOLD_OFF,
-    'Car Care Center\n',
-    CMD.DIVIDER + '\n',
-
-    // ── Invoice meta ──
-    CMD.ALIGN_LEFT,
-    `Date : ${dateStr}  ${timeStr}\n`,
-    `Inv  : ${invoiceNumber}\n`,
-    `By   : ${cashierName}\n`,
-  ]
-
-  if (customerName) {
-    lines.push(`Cust : ${customerName}\n`)
-  }
-
-  lines.push(CMD.DIVIDER + '\n')
-
-  // ── Items ──
-  lines.push(CMD.BOLD_ON)
-  lines.push(pad('ITEM', 'QTY') + '\n')
-  lines.push(CMD.BOLD_OFF)
-  lines.push(CMD.DIVIDER + '\n')
-
-  for (const item of items) {
-    // Item name (Arabic) — left side, quantity right side
-    const qtyStr = `x${item.quantity}`
-    // Wrap long names
-    const maxNameLen = 32 - qtyStr.length - 1
-    const name = item.name.length > maxNameLen
-      ? item.name.slice(0, maxNameLen - 1) + '…'
-      : item.name
-    lines.push(pad(name, qtyStr) + '\n')
-  }
-
-  lines.push(CMD.DIVIDER + '\n')
-
-  // ── Totals with VAT breakdown ──
   const vatAmount = (totalAmount * 15) / 115
-  const subtotal = totalAmount - vatAmount
+  const subtotal  = totalAmount - vatAmount
 
-  if (paymentMethod === 'SPLIT' && cashAmount !== undefined && networkAmount !== undefined) {
-    lines.push(pad('Cash:', `${cashAmount.toFixed(2)} SAR`) + '\n')
-    lines.push(pad('Card:', `${networkAmount.toFixed(2)} SAR`) + '\n')
-    lines.push(CMD.DIVIDER + '\n')
+  // ── Item rows ──
+  const itemRows = items.map(item => `
+    <tr>
+      <td class="item-name">${item.name}</td>
+      <td class="item-qty">x${item.quantity}</td>
+    </tr>
+  `).join('')
+
+  // ── Split payment rows ──
+  const splitRows = (paymentMethod === 'SPLIT' && cashAmount !== undefined && networkAmount !== undefined)
+    ? `
+      <tr><td>Cash</td><td>${cashAmount.toFixed(2)} SAR</td></tr>
+      <tr><td>Card</td><td>${networkAmount.toFixed(2)} SAR</td></tr>
+    `
+    : ''
+
+  const customerRow = customerName
+    ? `<tr><td>Customer</td><td>${customerName}</td></tr>`
+    : ''
+
+  const noteSection = description
+    ? `<div class="divider"></div><div class="note">Note: ${description}</div>`
+    : ''
+
+  // ── Full HTML ──
+  // Width is 72mm which maps to 80mm paper (8mm margins).
+  // Tahoma is the best Arabic-supporting monospace-friendly font on Windows 7+.
+  return `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Tahoma', 'Arial', sans-serif;
+    font-size: 13px;
+    width: 72mm;
+    padding: 2mm 1mm;
+    direction: rtl;
   }
-
-  lines.push(pad('Subtotal (excl.VAT):', `${subtotal.toFixed(2)}`) + '\n')
-  lines.push(pad('VAT 15%:', `${vatAmount.toFixed(2)}`) + '\n')
-  lines.push(CMD.DIVIDER + '\n')
-
-  lines.push(CMD.BOLD_ON)
-  lines.push(CMD.DOUBLE_HEIGHT)
-  lines.push(pad('TOTAL (incl.VAT):', `${totalAmount.toFixed(2)}`) + '\n')
-  lines.push(CMD.NORMAL_SIZE)
-  lines.push(CMD.BOLD_OFF)
-
-  lines.push(pad('Method:', payLabel(paymentMethod)) + '\n')
-  lines.push(CMD.DIVIDER + '\n')
-
-  if (description) {
-    lines.push(`Note: ${description}\n`)
-    lines.push(CMD.DIVIDER + '\n')
+  .header {
+    text-align: center;
+    margin-bottom: 4px;
   }
+  .store-name {
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 2px;
+  }
+  .store-sub {
+    font-size: 12px;
+    color: #333;
+  }
+  .divider {
+    border-top: 1px dashed #000;
+    margin: 4px 0;
+  }
+  .meta-table, .items-table, .totals-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .meta-table td { padding: 1px 2px; }
+  .meta-table td:first-child { color: #555; width: 60px; direction: ltr; text-align: left; }
+  .meta-table td:last-child { direction: ltr; text-align: left; }
+  .items-table th {
+    font-weight: bold;
+    padding: 2px;
+    border-bottom: 1px solid #000;
+    font-size: 11px;
+    text-align: right;
+  }
+  .items-table th.item-qty-h { text-align: left; direction: ltr; }
+  .items-table td { padding: 3px 2px; vertical-align: top; }
+  .item-name { text-align: right; direction: rtl; }
+  .item-qty  { text-align: left;  direction: ltr; white-space: nowrap; font-weight: bold; }
+  .totals-table td { padding: 2px; }
+  .totals-table td:first-child { direction: ltr; text-align: left; color: #444; }
+  .totals-table td:last-child  { direction: ltr; text-align: right; font-weight: bold; }
+  .total-row td { font-size: 16px; font-weight: bold; padding-top: 4px; }
+  .method-row td { font-size: 11px; color: #555; }
+  .footer {
+    text-align: center;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #333;
+  }
+  .note { font-size: 11px; color: #444; padding: 2px; }
+</style>
+</head>
+<body>
 
-  // ── Footer ──
-  lines.push(CMD.ALIGN_CENTER)
-  lines.push('Thank you for your visit!\n')
-  lines.push('شكراً لزيارتكم\n')
-  lines.push(CMD.FEED_4)
-  lines.push(CMD.CUT_PAPER)
+<div class="header">
+  <div class="store-name">LAMAHA</div>
+  <div class="store-sub">Car Care Center</div>
+</div>
 
-  return lines
+<div class="divider"></div>
+
+<table class="meta-table">
+  <tr><td>Date</td><td>${dateStr} ${timeStr}</td></tr>
+  <tr><td>Invoice</td><td>${invoiceNumber}</td></tr>
+  <tr><td>Cashier</td><td>${cashierName}</td></tr>
+  ${customerRow}
+</table>
+
+<div class="divider"></div>
+
+<table class="items-table">
+  <thead>
+    <tr>
+      <th>الصنف / Item</th>
+      <th class="item-qty-h">الكمية</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${itemRows}
+  </tbody>
+</table>
+
+<div class="divider"></div>
+
+<table class="totals-table">
+  ${splitRows}
+  <tr><td>Subtotal (excl. VAT)</td><td>${subtotal.toFixed(2)} SAR</td></tr>
+  <tr><td>VAT 15%</td><td>${vatAmount.toFixed(2)} SAR</td></tr>
+  <tr class="total-row"><td>TOTAL (incl. VAT)</td><td>${totalAmount.toFixed(2)} SAR</td></tr>
+  <tr class="method-row"><td>Method</td><td>${payLabel(paymentMethod)}</td></tr>
+</table>
+
+${noteSection}
+
+<div class="divider"></div>
+
+<div class="footer">
+  <div>Thank you for your visit!</div>
+  <div>شكراً لزيارتكم</div>
+</div>
+
+</body>
+</html>`
 }
 
 // ─── Print receipt ─────────────────────────────────────────────────────────────
@@ -312,20 +362,28 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
   }
 
   const printerName = await getPrinterName(qzInstance)
+
+  // pixel/html config: QZ Tray renders the HTML on the local Windows machine
+  // (which has Arabic fonts) and sends the resulting bitmap to the printer.
   const config = qzInstance.configs.create(printerName, {
-    encoding: 'UTF8',
+    colorType: 'blackwhite',
     copies: 1,
+    units: 'mm',
+    size: { width: 80, height: null },  // 80mm thermal paper
   })
 
-  const receiptLines = buildReceiptData(data)
-  const printData: any[] = [
-    { type: 'raw', format: 'plain', data: receiptLines.join('') }
-  ]
+  const htmlReceipt = buildReceiptHtml(data)
 
-  // Open cash drawer automatically for cash payments (combined in same print job)
-  if (data.paymentMethod === 'CASH' || data.paymentMethod === 'SPLIT') {
-    printData.unshift({ type: 'raw', format: 'plain', data: CMD.CASH_DRAWER })
-  }
+  const printData: any[] = [
+    // 1. Cash drawer kick (raw — must come before the HTML page)
+    ...(data.paymentMethod === 'CASH' || data.paymentMethod === 'SPLIT'
+      ? [{ type: 'raw', format: 'plain', flavor: 'plain', data: CMD.CASH_DRAWER }]
+      : []),
+    // 2. Receipt rendered as bitmap (supports Arabic via system fonts)
+    { type: 'pixel', format: 'html', flavor: 'plain', data: htmlReceipt },
+    // 3. Paper cut (raw — must come after the HTML page)
+    { type: 'raw', format: 'plain', flavor: 'plain', data: CMD.CUT_PAPER },
+  ]
 
   await qzInstance.print(config, printData)
 }
