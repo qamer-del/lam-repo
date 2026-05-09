@@ -1,15 +1,27 @@
 'use client'
 
 import { usePrinter } from '@/providers/printer-provider'
-import { Printer, Loader2, WifiOff } from 'lucide-react'
+import { Printer, Loader2, WifiOff, ShieldAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+// QZ Tray listens on this port for secure WebSocket connections (WSS)
+const QZ_WSS_TRUST_URL = 'https://localhost:8181'
 
 /**
  * PrinterStatus — a compact badge showing QZ Tray connection state.
  * Renders a colored dot + label; clicking it triggers a reconnect attempt.
+ *
+ * On HTTPS deployments (e.g. Vercel), QZ Tray requires a one-time browser
+ * trust of its localhost SSL certificate. When disconnected/errored on HTTPS,
+ * this component shows a direct link to the trust URL.
  */
 export function PrinterStatus({ className }: { className?: string }) {
   const { status, reconnect } = usePrinter()
+
+  // Detect HTTPS — on HTTPS, browsers block ws:// and require wss:// from QZ Tray.
+  // QZ Tray's wss:// uses a self-signed cert the browser must explicitly trust once.
+  const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  const needsCertTrust = isHttps && (status === 'disconnected' || status === 'error')
 
   const config = {
     connected: {
@@ -35,8 +47,8 @@ export function PrinterStatus({ className }: { className?: string }) {
       ring: 'ring-gray-400/30',
       text: 'text-gray-500 dark:text-gray-400',
       bg: 'bg-gray-50 dark:bg-gray-800/50',
-      label: 'Printer Offline',
-      icon: <WifiOff size={12} />,
+      label: needsCertTrust ? 'Trust Required' : 'Printer Offline',
+      icon: needsCertTrust ? <ShieldAlert size={12} /> : <WifiOff size={12} />,
       pulse: false,
     },
     error: {
@@ -44,11 +56,43 @@ export function PrinterStatus({ className }: { className?: string }) {
       ring: 'ring-red-500/30',
       text: 'text-red-600 dark:text-red-400',
       bg: 'bg-red-50 dark:bg-red-900/20',
-      label: 'Printer Error',
-      icon: <WifiOff size={12} />,
+      label: needsCertTrust ? 'Trust Required' : 'Printer Error',
+      icon: needsCertTrust ? <ShieldAlert size={12} /> : <WifiOff size={12} />,
       pulse: false,
     },
   }[status]
+
+  // On HTTPS with untrusted cert: open the QZ Tray WSS URL so the browser
+  // can prompt the user to accept the self-signed certificate.
+  if (needsCertTrust) {
+    return (
+      <a
+        href={QZ_WSS_TRUST_URL}
+        target="_blank"
+        rel="noreferrer"
+        title="Click to trust QZ Tray certificate, then return here and refresh"
+        onClick={() => {
+          // After a short delay, attempt reconnect so the user doesn't need to
+          // manually refresh after trusting the cert in the new tab.
+          setTimeout(reconnect, 5000)
+        }}
+        className={cn(
+          'flex items-center gap-2 px-3 py-1.5 rounded-full border border-transparent transition-all duration-300 select-none cursor-pointer hover:ring-2',
+          config.bg,
+          config.ring,
+          className
+        )}
+      >
+        <span className="relative flex h-2 w-2 items-center justify-center">
+          <span className={cn('relative inline-flex rounded-full h-2 w-2', config.dot)} />
+        </span>
+        <span className={cn('flex items-center gap-1 text-[10px] font-black uppercase tracking-widest', config.text)}>
+          {config.icon}
+          {config.label}
+        </span>
+      </a>
+    )
+  }
 
   return (
     <button
