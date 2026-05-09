@@ -354,6 +354,8 @@ ${noteSection}
 }
 
 // ─── Print receipt ─────────────────────────────────────────────────────────────
+// QZ Tray does NOT support mixing 'raw' and 'pixel' types in a single
+// qz.print() call. Each type must be sent as a separate call.
 export async function printReceipt(data: ReceiptData): Promise<void> {
   const qzInstance = await loadQZ()
 
@@ -363,29 +365,27 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
 
   const printerName = await getPrinterName(qzInstance)
 
-  // pixel/html config: QZ Tray renders the HTML on the local Windows machine
-  // (which has Arabic fonts) and sends the resulting bitmap to the printer.
-  const config = qzInstance.configs.create(printerName, {
-    colorType: 'blackwhite',
-    copies: 1,
-    units: 'mm',
-    size: { width: 80, height: null },  // 80mm thermal paper
-  })
+  // Config for raw ESC/POS commands (drawer kick, paper cut)
+  const rawConfig   = qzInstance.configs.create(printerName)
+  // Config for HTML pixel rendering (Arabic-safe bitmap)
+  const pixelConfig = qzInstance.configs.create(printerName, { colorType: 'blackwhite', copies: 1 })
 
-  const htmlReceipt = buildReceiptHtml(data)
+  // ── Step 1: Cash drawer kick (raw) ──
+  if (data.paymentMethod === 'CASH' || data.paymentMethod === 'SPLIT') {
+    await qzInstance.print(rawConfig, [
+      { type: 'raw', format: 'plain', data: CMD.CASH_DRAWER },
+    ])
+  }
 
-  const printData: any[] = [
-    // 1. Cash drawer kick (raw — must come before the HTML page)
-    ...(data.paymentMethod === 'CASH' || data.paymentMethod === 'SPLIT'
-      ? [{ type: 'raw', format: 'plain', flavor: 'plain', data: CMD.CASH_DRAWER }]
-      : []),
-    // 2. Receipt rendered as bitmap (supports Arabic via system fonts)
-    { type: 'pixel', format: 'html', flavor: 'plain', data: htmlReceipt },
-    // 3. Paper cut (raw — must come after the HTML page)
-    { type: 'raw', format: 'plain', flavor: 'plain', data: CMD.CUT_PAPER },
-  ]
+  // ── Step 2: HTML receipt rendered as bitmap (Arabic-safe) ──
+  await qzInstance.print(pixelConfig, [
+    { type: 'pixel', format: 'html', flavor: 'plain', data: buildReceiptHtml(data) },
+  ])
 
-  await qzInstance.print(config, printData)
+  // ── Step 3: Paper cut (raw) ──
+  await qzInstance.print(rawConfig, [
+    { type: 'raw', format: 'plain', data: CMD.CUT_PAPER },
+  ])
 }
 
 // ─── Open cash drawer ─────────────────────────────────────────────────────────

@@ -70,10 +70,11 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
     try {
       await printReceipt(data)
       toast.success('Receipt Printed', { description: `Invoice ${data.invoiceNumber} sent to printer.` })
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Printer] Print error:', err)
+      const detail = err?.message || String(err) || 'Unknown error'
       toast.error('Printing Failed', {
-        description: 'Could not send receipt to printer. Is QZ Tray running?',
+        description: detail.length < 120 ? detail : 'Check browser console for details.',
       })
     } finally {
       setIsPrinting(false)
