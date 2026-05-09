@@ -10,9 +10,8 @@
  *   - Cash drawer control (raw ESC/POS)
  */
 
-// ─── ESC/POS Command Constants ────────────────────────────────────────────────
-// Only the raw hardware commands are still needed — text formatting is now
-// handled entirely by HTML/CSS and rendered as a bitmap by QZ Tray.
+// ─── ESC/POS Command Constants ─────────────────────────────────────────────────
+// Only raw hardware commands are needed — text formatting is handled by HTML/CSS.
 const ESC = '\x1B'
 const GS  = '\x1D'
 
@@ -21,7 +20,7 @@ const CMD = {
   CASH_DRAWER: `${ESC}\x70\x00\x19\xFA`,   // Kick cash drawer (pin 2)
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 export interface ReceiptItem {
   name: string           // Arabic name (from inventory)
   quantity: number
@@ -39,12 +38,13 @@ export interface ReceiptData {
   cashAmount?: number
   networkAmount?: number
   customerName?: string
+  customerTaxNumber?: string
   description?: string
 }
 
 export type PrinterStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
-// ─── QZ Tray state ────────────────────────────────────────────────────────────
+// ─── QZ Tray state ─────────────────────────────────────────────────────────────
 let qz: any = null
 let connectionStatus: PrinterStatus = 'disconnected'
 let statusListeners: ((s: PrinterStatus) => void)[] = []
@@ -64,7 +64,7 @@ export function onStatusChange(fn: (s: PrinterStatus) => void) {
   return () => { statusListeners = statusListeners.filter(l => l !== fn) }
 }
 
-// ─── Load QZ Tray (client-side only) ─────────────────────────────────────────
+// ─── Load QZ Tray (client-side only) ───────────────────────────────────────────
 async function loadQZ(): Promise<any> {
   if (qz) return qz
   const mod = await import('qz-tray')
@@ -72,7 +72,7 @@ async function loadQZ(): Promise<any> {
   return qz
 }
 
-// ─── Security: certificate + signing ─────────────────────────────────────────
+// ─── Security: certificate + signing ───────────────────────────────────────────
 async function setupSecurity(qzInstance: any) {
   qzInstance.security.setCertificatePromise((resolve: any, reject: any) => {
     fetch('/digital-certificate.txt', {
@@ -102,7 +102,7 @@ async function setupSecurity(qzInstance: any) {
   })
 }
 
-// ─── Connect ──────────────────────────────────────────────────────────────────
+// ─── Connect ───────────────────────────────────────────────────────────────────
 export async function connectPrinter(): Promise<void> {
   if (connectionStatus === 'connected') return
   setStatus('connecting')
@@ -110,7 +110,7 @@ export async function connectPrinter(): Promise<void> {
   try {
     const qzInstance = await loadQZ()
 
-    // Security callbacks must be registered ONCE — re-registering them on every
+    // Security callbacks must be registered ONCE — re-registering on every
     // retry causes QZ Tray to silently reject the connection.
     if (!securityReady) {
       await setupSecurity(qzInstance)
@@ -142,34 +142,18 @@ export function isPrinterConnected(): boolean {
   return connectionStatus === 'connected'
 }
 
-// ─── Get printer name (auto-detect or env fallback) ──────────────────────────
+// ─── Get printer name (auto-detect or env fallback) ────────────────────────────
 async function getPrinterName(qzInstance: any): Promise<string> {
-  // 1. Try env variable first (exact override)
   const envName = process.env.NEXT_PUBLIC_PRINTER_NAME
-  if (envName && envName !== 'EPSON TM-T88V') {
-    return envName
-  }
+  if (envName && envName !== 'EPSON TM-T88V') return envName
 
-  // 2. Auto-detect: look for any Epson/thermal receipt printer
   try {
     const allPrinters: string[] = await qzInstance.printers.find()
     const keywords = ['epson', 'tm-t', 'tm-u', 'tm-m', 'receipt', 'thermal', 'pos']
-    const found = allPrinters.find(p =>
-      keywords.some(kw => p.toLowerCase().includes(kw))
-    )
-    if (found) {
-      console.log(`[Printer] Auto-detected: "${found}"`)
-      return found
-    }
-
-    // 3. If no Epson found, use env fallback (even if it's the default)
+    const found = allPrinters.find(p => keywords.some(kw => p.toLowerCase().includes(kw)))
+    if (found) { console.log(`[Printer] Auto-detected: "${found}"`); return found }
     if (envName) return envName
-
-    // 4. Last resort: use first available printer
-    if (allPrinters.length > 0) {
-      console.warn(`[Printer] No Epson found, using first available: "${allPrinters[0]}"`)
-      return allPrinters[0]
-    }
+    if (allPrinters.length > 0) { console.warn(`[Printer] Using first: "${allPrinters[0]}"`); return allPrinters[0] }
   } catch {
     // QZ Tray might not support listing — fall back silently
   }
@@ -177,16 +161,30 @@ async function getPrinterName(qzInstance: any): Promise<string> {
   return envName || 'EPSON TM-T88V'
 }
 
-// ─── HTML Receipt builder ─────────────────────────────────────────────────────
-// Renders an HTML page that QZ Tray converts to a bitmap before sending to the
-// printer. This is the only reliable way to print Arabic text on ESC/POS
-// thermal printers, which have no built-in Unicode Arabic glyph support.
-function buildReceiptHtml(data: ReceiptData): string {
+// ─── Store constants ────────────────────────────────────────────────────────────
+// Update these to match your actual business details.
+const STORE_NAME   = 'LAMAHA'
+const STORE_SUB    = 'Car Care Center'
+const STORE_PHONE  = '+966 50 000 0000'
+const STORE_VAT_NO = '300000000000000'
+
+// ─── HTML Receipt builder ───────────────────────────────────────────────────────
+// QZ Tray renders this HTML page on the local Windows machine (which has Tahoma/
+// Arial with full Arabic glyph support), converts it to a bitmap, and sends the
+// image to the thermal printer. This is the only reliable way to print Arabic
+// on ESC/POS printers that have no built-in Unicode support.
+//
+// ALIGNMENT FIX: body uses direction:ltr so the 560px viewport fills the paper
+// left-to-right. Arabic text is applied per-cell with direction:rtl.
+function buildReceiptHtml(data: ReceiptData, qrDataUrl?: string | null): string {
   const {
     invoiceNumber, createdAt, cashierName, items,
     totalAmount, paymentMethod, cashAmount, networkAmount,
-    customerName, description,
+    customerName, customerTaxNumber, description,
   } = data
+
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
   const dateStr = new Date(createdAt).toLocaleDateString('en-GB', {
     day: '2-digit', month: '2-digit', year: 'numeric',
@@ -195,167 +193,153 @@ function buildReceiptHtml(data: ReceiptData): string {
     hour: '2-digit', minute: '2-digit', hour12: true,
   })
 
-  const payLabel = (m: string) => {
-    switch (m) {
-      case 'CASH':    return 'CASH'
-      case 'NETWORK': return 'NETWORK / CARD'
-      case 'SPLIT':   return 'SPLIT (CASH + CARD)'
-      case 'TABBY':   return 'TABBY'
-      case 'TAMARA':  return 'TAMARA'
-      case 'CREDIT':  return 'CREDIT (DEFERRED)'
-      default:        return m
-    }
+  const PAY_LABELS: Record<string, string> = {
+    CASH:    'كاش / CASH',
+    NETWORK: 'شبكة / CARD',
+    SPLIT:   'كاش+شبكة / SPLIT',
+    TABBY:   'TABBY',
+    TAMARA:  'TAMARA',
+    CREDIT:  'آجل / CREDIT',
   }
+  const payLabel = PAY_LABELS[paymentMethod] ?? paymentMethod
 
   const vatAmount = (totalAmount * 15) / 115
   const subtotal  = totalAmount - vatAmount
 
-  // ── Item rows ──
-  const itemRows = items.map(item => `
-    <tr>
-      <td class="item-name">${item.name}</td>
-      <td class="item-qty">x${item.quantity}</td>
-    </tr>
-  `).join('')
+  const itemRows = items.map((item, i) => `
+    <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f7f7f7'};">
+      <td style="padding:5px 8px;text-align:right;direction:rtl;word-break:break-all;">${esc(item.name)}</td>
+      <td style="padding:5px 8px;text-align:center;white-space:nowrap;font-weight:700;">x${item.quantity}</td>
+    </tr>`).join('')
 
-  // ── Split payment rows ──
-  const splitRows = (paymentMethod === 'SPLIT' && cashAmount !== undefined && networkAmount !== undefined)
-    ? `
-      <tr><td>Cash</td><td>${cashAmount.toFixed(2)} SAR</td></tr>
-      <tr><td>Card</td><td>${networkAmount.toFixed(2)} SAR</td></tr>
-    `
+  const splitRows = (paymentMethod === 'SPLIT' && cashAmount != null && networkAmount != null)
+    ? `<tr><td style="padding:2px 8px;color:#555;">كاش / Cash</td><td style="padding:2px 8px;text-align:right;">${cashAmount.toFixed(2)}</td></tr>
+       <tr><td style="padding:2px 8px;color:#555;">شبكة / Card</td><td style="padding:2px 8px;text-align:right;">${networkAmount.toFixed(2)}</td></tr>`
     : ''
 
-  const customerRow = customerName
-    ? `<tr><td>Customer</td><td>${customerName}</td></tr>`
+  const customerRows = [
+    customerName      ? `<tr><td style="color:#555;">العميل / Customer</td><td style="font-weight:600;">${esc(customerName)}</td></tr>` : '',
+    customerTaxNumber ? `<tr><td style="color:#555;">الرقم الضريبي</td><td style="font-weight:600;">${esc(customerTaxNumber)}</td></tr>` : '',
+  ].join('')
+
+  const noteHtml = description
+    ? `<div style="margin:4px 8px;padding:4px 6px;border:1px dashed #bbb;font-size:11px;color:#444;">
+         <span style="color:#888;">ملاحظة / Note:</span> ${esc(description)}
+       </div>`
     : ''
 
-  const noteSection = description
-    ? `<div class="divider"></div><div class="note">Note: ${description}</div>`
+  const qrHtml = qrDataUrl
+    ? `<div style="text-align:center;margin:6px 0 2px;">
+         <img src="${qrDataUrl}" width="130" height="130" alt="QR"/>
+         <div style="font-size:9px;color:#888;margin-top:2px;">ZATCA QR • فاتورة ضريبية مبسطة</div>
+       </div>`
     : ''
 
-  // ── Full HTML ──
-  // Width is 72mm which maps to 80mm paper (8mm margins).
-  // Tahoma is the best Arabic-supporting monospace-friendly font on Windows 7+.
   return `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=560"/>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Tahoma', 'Arial', sans-serif;
-    font-size: 13px;
-    width: 72mm;
-    padding: 2mm 1mm;
-    direction: rtl;
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Tahoma','Arial',sans-serif;
+    font-size:12px;
+    width:560px;
+    direction:ltr;
+    background:#fff;
+    color:#000;
   }
-  .header {
-    text-align: center;
-    margin-bottom: 4px;
-  }
-  .store-name {
-    font-size: 22px;
-    font-weight: bold;
-    letter-spacing: 2px;
-  }
-  .store-sub {
-    font-size: 12px;
-    color: #333;
-  }
-  .divider {
-    border-top: 1px dashed #000;
-    margin: 4px 0;
-  }
-  .meta-table, .items-table, .totals-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  .meta-table td { padding: 1px 2px; }
-  .meta-table td:first-child { color: #555; width: 60px; direction: ltr; text-align: left; }
-  .meta-table td:last-child { direction: ltr; text-align: left; }
-  .items-table th {
-    font-weight: bold;
-    padding: 2px;
-    border-bottom: 1px solid #000;
-    font-size: 11px;
-    text-align: right;
-  }
-  .items-table th.item-qty-h { text-align: left; direction: ltr; }
-  .items-table td { padding: 3px 2px; vertical-align: top; }
-  .item-name { text-align: right; direction: rtl; }
-  .item-qty  { text-align: left;  direction: ltr; white-space: nowrap; font-weight: bold; }
-  .totals-table td { padding: 2px; }
-  .totals-table td:first-child { direction: ltr; text-align: left; color: #444; }
-  .totals-table td:last-child  { direction: ltr; text-align: right; font-weight: bold; }
-  .total-row td { font-size: 16px; font-weight: bold; padding-top: 4px; }
-  .method-row td { font-size: 11px; color: #555; }
-  .footer {
-    text-align: center;
-    margin-top: 6px;
-    font-size: 12px;
-    color: #333;
-  }
-  .note { font-size: 11px; color: #444; padding: 2px; }
+  .hdr{text-align:center;padding:8px 6px 5px;border-bottom:2px solid #000;}
+  .hdr-name{font-size:22px;font-weight:900;letter-spacing:4px;}
+  .hdr-sub{font-size:11px;color:#444;margin-top:1px;}
+  .hdr-phone{font-size:11px;color:#333;margin-top:2px;}
+  .hdr-vat{font-size:10px;color:#888;margin-top:1px;}
+  .sep{border-top:1px dashed #aaa;margin:3px 0;}
+  .sep-solid{border-top:2px solid #000;margin:3px 0;}
+  .meta{width:100%;border-collapse:collapse;font-size:11px;margin:4px 0;}
+  .meta td{padding:2px 8px;}
+  .meta td:first-child{color:#555;white-space:nowrap;width:45%;}
+  .meta td:last-child{font-weight:600;text-align:right;}
+  .items{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+  .items thead tr{background:#000;color:#fff;}
+  .items th{padding:5px 8px;font-size:11px;}
+  .items th:first-child{text-align:right;direction:rtl;width:75%;}
+  .items th:last-child{text-align:center;width:25%;}
+  .totals{width:100%;border-collapse:collapse;font-size:12px;}
+  .totals td{padding:3px 8px;}
+  .totals td:first-child{color:#555;}
+  .totals td:last-child{text-align:right;font-weight:600;}
+  .grand{width:100%;border-collapse:collapse;}
+  .grand td{padding:6px 8px;font-size:16px;font-weight:900;border-top:2px solid #000;border-bottom:2px solid #000;}
+  .grand td:last-child{text-align:right;}
+  .method{width:100%;border-collapse:collapse;font-size:11px;}
+  .method td{padding:3px 8px;color:#555;}
+  .method td:last-child{text-align:right;font-weight:600;color:#000;}
+  .footer{text-align:center;padding:6px 4px;font-size:11px;color:#444;border-top:2px solid #000;margin-top:4px;}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="store-name">LAMAHA</div>
-  <div class="store-sub">Car Care Center</div>
+<div class="hdr">
+  <div class="hdr-name">${STORE_NAME}</div>
+  <div class="hdr-sub">${STORE_SUB}</div>
+  <div class="hdr-phone">&#128222; ${STORE_PHONE}</div>
+  <div class="hdr-vat">VAT# ${STORE_VAT_NO}</div>
 </div>
 
-<div class="divider"></div>
-
-<table class="meta-table">
-  <tr><td>Date</td><td>${dateStr} ${timeStr}</td></tr>
-  <tr><td>Invoice</td><td>${invoiceNumber}</td></tr>
-  <tr><td>Cashier</td><td>${cashierName}</td></tr>
-  ${customerRow}
+<table class="meta">
+  <tr><td>Invoice# / رقم الفاتورة</td><td>${esc(invoiceNumber)}</td></tr>
+  <tr><td>Date / التاريخ</td><td>${dateStr} ${timeStr}</td></tr>
+  <tr><td>Cashier / الكاشير</td><td>${esc(cashierName)}</td></tr>
+  ${customerRows}
 </table>
 
-<div class="divider"></div>
+<div class="sep"></div>
 
-<table class="items-table">
+<table class="items">
   <thead>
     <tr>
-      <th>الصنف / Item</th>
-      <th class="item-qty-h">الكمية</th>
+      <th style="text-align:right;direction:rtl;">الصنف / Item</th>
+      <th>الكمية</th>
     </tr>
   </thead>
-  <tbody>
-    ${itemRows}
-  </tbody>
+  <tbody>${itemRows}</tbody>
 </table>
 
-<div class="divider"></div>
+<div class="sep"></div>
 
-<table class="totals-table">
+<table class="totals">
   ${splitRows}
   <tr><td>Subtotal (excl. VAT)</td><td>${subtotal.toFixed(2)} SAR</td></tr>
   <tr><td>VAT 15%</td><td>${vatAmount.toFixed(2)} SAR</td></tr>
-  <tr class="total-row"><td>TOTAL (incl. VAT)</td><td>${totalAmount.toFixed(2)} SAR</td></tr>
-  <tr class="method-row"><td>Method</td><td>${payLabel(paymentMethod)}</td></tr>
 </table>
 
-${noteSection}
+<table class="grand">
+  <tr><td>TOTAL / الإجمالي</td><td>${totalAmount.toFixed(2)} SAR</td></tr>
+</table>
 
-<div class="divider"></div>
+<table class="method">
+  <tr><td>Payment / الدفع</td><td>${payLabel}</td></tr>
+</table>
+
+${noteHtml}
+
+${qrHtml}
 
 <div class="footer">
-  <div>Thank you for your visit!</div>
-  <div>شكراً لزيارتكم</div>
+  <div style="font-size:14px;font-weight:700;">Thank you! شكراً لزيارتكم</div>
+  <div style="margin-top:2px;">Tax Invoice • فاتورة ضريبية مبسطة</div>
 </div>
 
 </body>
 </html>`
 }
 
-// ─── Print receipt ─────────────────────────────────────────────────────────────
-// QZ Tray does NOT support mixing 'raw' and 'pixel' types in a single
-// qz.print() call. Each type must be sent as a separate call.
+// ─── Print receipt ──────────────────────────────────────────────────────────────
+// Uses exactly 2 qz.print() calls to minimise QZ Tray security prompts:
+//   Call 1 (pixel) — HTML receipt rendered as bitmap (Arabic-safe)
+//   Call 2 (raw)   — cash drawer kick (if CASH/SPLIT) + paper cut in one job
 export async function printReceipt(data: ReceiptData): Promise<void> {
   const qzInstance = await loadQZ()
 
@@ -364,31 +348,33 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
   }
 
   const printerName = await getPrinterName(qzInstance)
-
-  // Config for raw ESC/POS commands (drawer kick, paper cut)
   const rawConfig   = qzInstance.configs.create(printerName)
-  // Config for HTML pixel rendering (Arabic-safe bitmap)
   const pixelConfig = qzInstance.configs.create(printerName, { colorType: 'blackwhite', copies: 1 })
 
-  // ── Step 1: Cash drawer kick (raw) ──
-  if (data.paymentMethod === 'CASH' || data.paymentMethod === 'SPLIT') {
-    await qzInstance.print(rawConfig, [
-      { type: 'raw', format: 'plain', data: CMD.CASH_DRAWER },
-    ])
-  }
+  // Generate ZATCA QR (falls back to null gracefully if qrcode lib fails)
+  const { generateZatcaQrDataUrl, calcVat15 } = await import('@/lib/zatca-qr')
+  const { vat } = calcVat15(data.totalAmount)
+  const qrDataUrl = await generateZatcaQrDataUrl({
+    sellerName:   STORE_NAME + ' ' + STORE_SUB,
+    vatNumber:    STORE_VAT_NO,
+    invoiceDate:  new Date(data.createdAt),
+    totalWithVat: data.totalAmount,
+    vatAmount:    vat,
+  })
 
-  // ── Step 2: HTML receipt rendered as bitmap (Arabic-safe) ──
+  // Call 1: HTML receipt as bitmap
   await qzInstance.print(pixelConfig, [
-    { type: 'pixel', format: 'html', flavor: 'plain', data: buildReceiptHtml(data) },
+    { type: 'pixel', format: 'html', flavor: 'plain', data: buildReceiptHtml(data, qrDataUrl) },
   ])
 
-  // ── Step 3: Paper cut (raw) ──
+  // Call 2: hardware — cash drawer (if CASH/SPLIT) + paper cut in one raw job
+  const isCash = data.paymentMethod === 'CASH' || data.paymentMethod === 'SPLIT'
   await qzInstance.print(rawConfig, [
-    { type: 'raw', format: 'plain', data: CMD.CUT_PAPER },
+    { type: 'raw', format: 'plain', data: (isCash ? CMD.CASH_DRAWER : '') + CMD.CUT_PAPER },
   ])
 }
 
-// ─── Open cash drawer ─────────────────────────────────────────────────────────
+// ─── Open cash drawer ───────────────────────────────────────────────────────────
 export async function openCashDrawer(): Promise<void> {
   const qzInstance = await loadQZ()
 
