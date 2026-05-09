@@ -244,9 +244,9 @@ function buildReceiptHtml(data: ReceiptData, qrDataUrl?: string | null): string 
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
     font-family:'Tahoma','Arial',sans-serif;
-    font-size:12px;
+    font-size:11px;
     width:100%;
-    padding:0 4px;
+    padding:0 6mm;
     direction:ltr;
     background:#fff;
     color:#000;
