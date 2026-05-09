@@ -318,15 +318,16 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
   })
 
   const receiptLines = buildReceiptData(data)
+  const printData: any[] = [
+    { type: 'raw', format: 'plain', data: receiptLines.join('') }
+  ]
 
-  await qzInstance.print(config, [
-    { type: 'raw', format: 'plain', data: receiptLines.join('') },
-  ])
-
-  // Open cash drawer automatically for cash payments
+  // Open cash drawer automatically for cash payments (combined in same print job)
   if (data.paymentMethod === 'CASH' || data.paymentMethod === 'SPLIT') {
-    await openCashDrawer()
+    printData.unshift({ type: 'raw', format: 'plain', data: CMD.CASH_DRAWER })
   }
+
+  await qzInstance.print(config, printData)
 }
 
 // ─── Open cash drawer ─────────────────────────────────────────────────────────
