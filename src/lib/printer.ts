@@ -230,22 +230,22 @@ function buildReceiptHtml(data: ReceiptData, qrDataUrl?: string | null): string 
 
   const qrHtml = qrDataUrl
     ? `<div style="text-align:center;margin:6px 0 2px;">
-         <img src="${qrDataUrl}" width="130" height="130" alt="QR"/>
+         <img src="${qrDataUrl}" style="width:110px;height:110px;max-width:100%;" alt="QR"/>
          <div style="font-size:9px;color:#888;margin-top:2px;">ZATCA QR • فاتورة ضريبية مبسطة</div>
        </div>`
     : ''
 
   return `<!DOCTYPE html>
-<html lang="ar">
+<html>
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=560"/>
+<meta name="viewport" content="width=380"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
     font-family:'Tahoma','Arial',sans-serif;
-    font-size:12px;
-    width:560px;
+    font-size:11px;
+    width:380px;
     direction:ltr;
     background:#fff;
     color:#000;
@@ -349,7 +349,14 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
 
   const printerName = await getPrinterName(qzInstance)
   const rawConfig   = qzInstance.configs.create(printerName)
-  const pixelConfig = qzInstance.configs.create(printerName, { colorType: 'blackwhite', copies: 1 })
+  // size tells QZ Tray the paper dimensions so the HTML viewport matches the
+  // printable area. height:null means unlimited (continuous roll).
+  const pixelConfig = qzInstance.configs.create(printerName, {
+    colorType: 'blackwhite',
+    copies: 1,
+    units: 'mm',
+    size: { width: 80, height: null },
+  })
 
   // Generate ZATCA QR (falls back to null gracefully if qrcode lib fails)
   const { generateZatcaQrDataUrl, calcVat15 } = await import('@/lib/zatca-qr')
