@@ -59,6 +59,7 @@ export type PrinterStatus = 'disconnected' | 'connecting' | 'connected' | 'error
 let qz: any = null
 let connectionStatus: PrinterStatus = 'disconnected'
 let statusListeners: ((s: PrinterStatus) => void)[] = []
+let securityReady = false   // setupSecurity must only run once per session
 
 function setStatus(s: PrinterStatus) {
   connectionStatus = s
@@ -119,7 +120,13 @@ export async function connectPrinter(): Promise<void> {
 
   try {
     const qzInstance = await loadQZ()
-    await setupSecurity(qzInstance)
+
+    // Security callbacks must be registered ONCE — re-registering them on every
+    // retry causes QZ Tray to silently reject the connection.
+    if (!securityReady) {
+      await setupSecurity(qzInstance)
+      securityReady = true
+    }
 
     if (!qzInstance.websocket.isActive()) {
       await qzInstance.websocket.connect({ retries: 3, delay: 1 })
