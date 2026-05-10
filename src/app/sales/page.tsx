@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { getCashierPerformance } from '@/actions/transactions'
 import SalesClientPage from './sales-client'
 import { auth } from '@/auth'
-import { startOfDay } from 'date-fns'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,17 +10,13 @@ export default async function SalesRoute() {
   const session = await auth()
   const role = session?.user?.role
 
+  // Cashiers use the dedicated POS page
+  if (role === 'CASHIER') {
+    redirect('/sales/pos')
+  }
+
   const typeFilter = { in: ['SALE', 'RETURN'] }
   const baseWhere: any = { type: typeFilter }
-
-  if (role === 'CASHIER') {
-    if (session?.user?.id) {
-      baseWhere.recordedById = session.user.id
-    }
-    baseWhere.isSettled = false
-    baseWhere.settlementId = null
-    baseWhere.createdAt = { gte: startOfDay(new Date()) }
-  }
 
   const [sales, unpaidCreditSales, cashierPerformance] = await Promise.all([
     prisma.transaction.findMany({
@@ -31,22 +27,7 @@ export default async function SalesRoute() {
         linkedBy: { select: { amount: true } },
       }
     }),
-    // Fetch ONLY the unpaid credit sales created by this specific cashier
-    role === 'CASHIER'
-      ? prisma.transaction.findMany({
-          where: {
-            type: 'SALE',
-            method: 'CREDIT',
-            isSettled: false,
-            recordedById: session?.user?.id,
-          },
-          orderBy: { createdAt: 'desc' },
-          include: {
-            recordedBy: { select: { name: true } },
-            linkedBy: { select: { amount: true } },
-          }
-        })
-      : Promise.resolve(null), // Admins already have credit sales in main query
+    Promise.resolve(null), // Cashiers are redirected to /sales/pos; admins have credit in main query
     getCashierPerformance()
   ])
 

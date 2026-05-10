@@ -250,7 +250,7 @@ export default function SalesPage({
         </div>
 
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto">
-          <AddSalesModal triggerClassName="w-full sm:w-auto h-10 sm:h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center" />
+          {!isCashier && <AddSalesModal triggerClassName="w-full sm:w-auto h-10 sm:h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center" />}
           {!isCashier && (
             <>
               <AddRefundModal triggerClassName="w-full sm:w-auto h-10 sm:h-9 px-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold text-sm shadow-sm transition-all flex items-center justify-center" />
