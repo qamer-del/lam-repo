@@ -426,6 +426,7 @@ export const en = {
   saveAndSelect: 'Save & Select',
   descriptionOptional: 'Description (optional)',
   sar: 'SAR',
+  or: 'or',
 }
 
 export const ar = {
@@ -856,4 +857,5 @@ export const ar = {
   saveAndSelect: 'حفظ واختيار',
   descriptionOptional: 'الوصف (اختياري)',
   sar: 'ريال',
+  or: 'أو',
 }
