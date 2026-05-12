@@ -64,6 +64,11 @@ enum PurchaseStatus {
   PARTIAL
 }
 
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
@@ -76,6 +81,8 @@ model User {
 
   records        Transaction[]   @relation("UserRecords")
   settlements    Settlement[]    @relation("UserSettlements")
+  openedShifts   Shift[]         @relation("OpenedShifts")
+  closedShifts   Shift[]         @relation("ClosedShifts")
   stockMovements StockMovement[]
   purchaseOrders PurchaseOrder[]
   staffProfile   Staff?
@@ -148,6 +155,8 @@ model Transaction {
   customerName        String?           // Freetext fallback (kept for backward-compat)
   customerPhone       String?           // Freetext fallback
   dueDate             DateTime?         // For tracking overdue credit invoices
+  shiftId             Int?
+  shift               Shift?            @relation(fields: [shiftId], references: [id])
   createdAt           DateTime          @default(now())
 }
 
@@ -162,6 +171,42 @@ model Settlement {
   transactions        Transaction[]
   performedById       String?
   performedBy         User?         @relation("UserSettlements", fields: [performedById], references: [id])
+  shift               Shift?
+}
+
+model Shift {
+  id              Int       @id @default(autoincrement())
+  openedById      String
+  openedBy        User      @relation("OpenedShifts", fields: [openedById], references: [id])
+  closedById      String?
+  closedBy        User?     @relation("ClosedShifts", fields: [closedById], references: [id])
+  openedAt        DateTime  @default(now())
+  closedAt        DateTime?
+  status          ShiftStatus @default(OPEN)
+  
+  // Sales Summary
+  cashSales       Float     @default(0)
+  cardSales       Float     @default(0)
+  tamaraSales     Float     @default(0)
+  tabbySales      Float     @default(0)
+  creditSales     Float     @default(0)
+  totalSales      Float     @default(0)
+  invoiceCount    Int       @default(0)
+  
+  // Reconciliation
+  expectedCash    Float     @default(0)
+  actualCash      Float     @default(0)
+  difference      Float     @default(0)
+  
+  denominations   Json?     // { "200": 5, "100": 10, ... }
+  
+  settlementId    Int?      @unique
+  settlement      Settlement? @relation(fields: [settlementId], references: [id])
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  transactions    Transaction[]
 }
 
 model SalarySettlement {
@@ -277,4 +322,10 @@ model Warranty {
   @@index([invoiceNumber])
   @@index([itemId])
   @@index([status])
+}
+
+model SystemSettings {
+  id                         Int      @id @default(1)
+  enableDenominationCounting Boolean  @default(true)
+  updatedAt                  DateTime @updatedAt
 }

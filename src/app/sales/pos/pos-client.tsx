@@ -43,6 +43,7 @@ interface PosClientProps {
   unsettledCash: number; unsettledNetwork: number; unsettledTabby: number; unsettledTamara: number
   allTodaySales: any[]
   unpaidCreditSales: any[]
+  activeShift: any | null
 }
 
 const PAY_METHODS: { mode: PayMode; label: string; shortcut: string; icon: any; active: string }[] = [
@@ -57,19 +58,33 @@ const PAY_METHODS: { mode: PayMode; label: string; shortcut: string; icon: any; 
 export function PosClient({
   inventoryItems, customers: initialCustomers, cashierName,
   hasUnsettled, unsettledCash, unsettledNetwork, unsettledTabby, unsettledTamara,
-  allTodaySales, unpaidCreditSales,
+  allTodaySales, unpaidCreditSales, activeShift
 }: PosClientProps) {
   const { t, locale } = useLanguage()
   const isRTL = locale === 'ar'
   const router = useRouter()
   const { print: printReceipt, status: printerStatus, isPrinting } = usePrinter()
 
+  const { activeShift: storeActiveShift, setVaultData } = useStore()
+
+  useEffect(() => {
+    setVaultData({ 
+      activeShift, 
+      transactions: allTodaySales,
+      cashInDrawer: unsettledCash,
+      networkSales: unsettledNetwork,
+      tabbyBalance: unsettledTabby,
+      tamaraBalance: unsettledTamara
+    })
+  }, [activeShift, allTodaySales, unsettledCash, unsettledNetwork, unsettledTabby, unsettledTamara, setVaultData])
+  
   const [activeTab, setActiveTab] = useState<ActiveTab>('pos')
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null)
   const [expandedDetails, setExpandedDetails] = useState<any>(null)
   const [expandedLoading, setExpandedLoading] = useState(false)
   const [mobilePosView, setMobilePosView] = useState<'items' | 'cart'>('items')
+  const [collapsedShifts, setCollapsedShifts] = useState<number[]>([])
 
   const [search, setSearch] = useState('')
   const [focusedIdx, setFocusedIdx] = useState(-1)
@@ -291,13 +306,21 @@ export function PosClient({
             </div>
             <div className="leading-none hidden sm:block">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">{t('pointOfSale')}</p>
-              <p className="text-sm font-black text-gray-800 leading-none">{cashierName}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-black text-gray-800 leading-none">{cashierName}</p>
+                {activeShift && (
+                  <>
+                    <div className="w-1 h-1 rounded-full bg-gray-300" />
+                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Shift #{activeShift.id}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="flex-1 flex justify-center min-w-0">
             <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto no-scrollbar max-w-full">
-            {([['pos', t('pos'), ShoppingCart], ['sales', t('today'), History], ['credit', t('credit'), CreditCard]] as const).map(([tab, label, Icon]) => (
+            {([['pos', t('pos'), ShoppingCart], ['sales', t('activity'), History], ['credit', t('credit'), CreditCard]] as const).map(([tab, label, Icon]) => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={cn('flex-1 sm:flex-none flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[11px] font-black transition-all whitespace-nowrap',
                   activeTab === tab ? 'bg-white text-blue-600 shadow-md scale-105' : 'text-gray-500 hover:text-gray-700')}>
@@ -317,10 +340,8 @@ export function PosClient({
               {t('printer')}
             </div>
             <CloseShiftBtn
-              triggerClassName="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl text-[11px] font-black border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 flex items-center justify-center"
+              triggerClassName="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl text-[11px] font-black border bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center shadow-sm"
               triggerIcon={<LogOut size={18} className="sm:hidden" />}
-              cashTotal={unsettledCash} networkTotal={unsettledNetwork}
-              tabbyTotal={unsettledTabby} tamaraTotal={unsettledTamara}
             />
           </div>
         </header>
@@ -340,176 +361,283 @@ export function PosClient({
         {/* ── SALES TAB ── */}
         {activeTab === 'sales' && (
           <div className="flex-1 overflow-y-auto">
-            <div className="max-w-2xl mx-auto px-4 py-4 space-y-2">
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('todaysTransactions')}</h2>
+            <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('dailyActivityLog')}</h2>
               {allTodaySales.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-gray-300">
                   <Receipt size={28} className="mb-2" /><p className="text-xs font-medium">{t('noTransactionsToday')}</p>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                  {allTodaySales.map((tx: any) => {
-                    const isExpanded = expandedTxId === tx.id
-                    return (
-                      <div key={tx.id} className="border-b border-gray-100 last:border-b-0">
-                        {/* Row */}
-                        <button
-                          onClick={async () => {
-                            if (isExpanded) {
-                              setExpandedTxId(null); setExpandedDetails(null); return
-                            }
-                            setExpandedTxId(tx.id)
-                            if (tx.invoiceNumber) {
-                              setExpandedLoading(true); setExpandedDetails(null)
-                              try {
-                                const res = await getInvoiceDetails(tx.invoiceNumber)
-                                setExpandedDetails(res)
-                              } catch { setExpandedDetails(null) }
-                              finally { setExpandedLoading(false) }
-                            }
-                          }}
-                          className={cn('w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-50 transition-colors text-start',
-                            isExpanded && 'bg-gray-50')}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0',
-                              tx.type === 'SALE' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600')}>
-                              {tx.type === 'SALE' ? <ArrowUpRight size={13} /> : <ArrowDownLeft size={13} />}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 truncate">{tx.description || (tx.type === 'SALE' ? t('sale') : t('refund'))}</p>
-                              <p className="text-[10px] text-gray-400 font-mono">{tx.invoiceNumber || `#${tx.id}`} · {format(new Date(tx.createdAt), 'h:mm a')}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 ps-3">
-                            <span className={cn('text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full',
-                              tx.method === 'CASH' ? 'bg-emerald-100 text-emerald-700' :
-                              tx.method === 'NETWORK' ? 'bg-blue-100 text-blue-700' :
-                              tx.method === 'CREDIT' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
-                            )}>{tx.method}</span>
-                            <span className={cn('text-sm font-black tabular-nums', tx.type === 'RETURN' ? 'text-rose-600' : 'text-gray-900')}>
-                              {tx.type === 'RETURN' ? '-' : '+'}{tx.amount.toFixed(2)}
-                            </span>
-                            {tx.isSettled && <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />}
-                            {isExpanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-300" />}
-                          </div>
-                        </button>
+                <div className="space-y-6 pb-8">
+                  {(() => {
+                    // Grouping allTodaySales by shiftId
+                    // Since allTodaySales is already sorted by createdAt desc, shift groups will naturally be in order
+                    const groups: any[] = [];
+                    let currentShiftId: number | null = -999;
+                    let currentGroup: any = null;
 
-                        {/* Expanded inline detail */}
-                        {isExpanded && (
-                          <div className="bg-gray-50 border-t border-gray-100 px-4 py-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                            {expandedLoading ? (
-                              <div className="flex items-center justify-center py-6 gap-2 text-gray-400">
-                                <Loader2 size={16} className="animate-spin" />
-                                <span className="text-xs font-medium">Loading details...</span>
+                    allTodaySales.forEach((tx: any) => {
+                      if (tx.shiftId !== currentShiftId) {
+                        currentShiftId = tx.shiftId;
+                        currentGroup = {
+                          shift: tx.shift,
+                          transactions: [],
+                          totalAmount: 0
+                        };
+                        groups.push(currentGroup);
+                      }
+                      currentGroup.transactions.push(tx);
+                      // Calculate total (Sales - Refunds)
+                      currentGroup.totalAmount += (tx.type === 'SALE' ? tx.amount : -tx.amount);
+                    });
+
+                    return groups.map((group, gIdx) => {
+                      const shiftId = group.shift?.id || -1;
+                      const isCollapsed = group.shift?.status === 'CLOSED' && !collapsedShifts.includes(shiftId);
+                      
+                      return (
+                        <div key={shiftId !== -1 ? shiftId : `no-shift-${gIdx}`} className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                          {/* ── Shift Header ── */}
+                          <button 
+                            onClick={() => {
+                              if (collapsedShifts.includes(shiftId)) {
+                                setCollapsedShifts(prev => prev.filter(id => id !== shiftId))
+                              } else {
+                                setCollapsedShifts(prev => [...prev, shiftId])
+                              }
+                            }}
+                            className="w-full flex items-center justify-between px-1.5 py-1 hover:bg-gray-50/50 rounded-xl transition-all"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className={cn("w-1.5 h-1.5 rounded-full", 
+                                group.shift?.status === 'OPEN' ? "bg-emerald-500 animate-pulse" : "bg-gray-400")} />
+                              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                                {group.shift ? `${t('shift')} #${group.shift.id}` : t('other')}
+                              </span>
+                              <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter", 
+                                group.shift?.status === 'OPEN' 
+                                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100" 
+                                  : "bg-gray-100 text-gray-500 border border-gray-200")}>
+                                {group.shift?.status === 'OPEN' ? t('shiftActive') : t('shiftClosed')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black tabular-nums text-gray-600 bg-white shadow-sm border border-gray-100 px-2 py-0.5 rounded-lg">
+                                  {group.totalAmount.toFixed(2)} <span className="text-[8px] opacity-60">SAR</span>
+                                </span>
                               </div>
-                            ) : expandedDetails ? (
-                              <>
-                                {/* Meta row */}
-                                <div className="flex flex-wrap gap-3 text-[10px]">
-                                  <div className="bg-white rounded-lg border border-gray-200 px-2.5 py-1.5">
-                                    <span className="font-black text-gray-400 uppercase tracking-wider">Invoice</span>
-                                    <p className="font-mono font-bold text-gray-800 mt-0.5">{expandedDetails.invoiceNumber}</p>
+                              <div className="text-[9px] text-gray-400 font-bold hidden md:flex items-center gap-3">
+                                {group.shift?.openedAt && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="opacity-60">{t('openedAtLabel')}:</span>
+                                    <span>{format(new Date(group.shift.openedAt), 'h:mm a')}</span>
                                   </div>
-                                  <div className="bg-white rounded-lg border border-gray-200 px-2.5 py-1.5">
-                                    <span className="font-black text-gray-400 uppercase tracking-wider">Date</span>
-                                    <p className="font-bold text-gray-800 mt-0.5">{format(new Date(expandedDetails.createdAt), 'MMM dd, yyyy · hh:mm a')}</p>
+                                )}
+                                {group.shift?.closedAt && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="opacity-60">{t('closedAtLabel')}:</span>
+                                    <span>{format(new Date(group.shift.closedAt), 'h:mm a')}</span>
                                   </div>
-                                  <div className="bg-white rounded-lg border border-gray-200 px-2.5 py-1.5">
-                                    <span className="font-black text-gray-400 uppercase tracking-wider">Cashier</span>
-                                    <p className="font-bold text-gray-800 mt-0.5">{expandedDetails.salesperson}</p>
-                                  </div>
-                                </div>
+                                )}
+                              </div>
+                              {isCollapsed ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronUp size={14} className="text-gray-400" />}
+                            </div>
+                          </button>
 
-                                {/* Items */}
-                                {expandedDetails.items && expandedDetails.items.length > 0 && (
-                                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 border-b border-gray-100">
-                                      <Package size={10} className="text-gray-400" />
-                                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Items</span>
-                                    </div>
-                                    {expandedDetails.items.map((item: any, i: number) => (
-                                      <div key={i} className="flex items-center justify-between px-2.5 py-2 border-b border-gray-50 last:border-b-0">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <span className="w-4 h-4 rounded bg-gray-100 text-gray-400 text-[9px] font-bold flex items-center justify-center shrink-0">{i+1}</span>
-                                          <div className="min-w-0">
-                                            <p className="text-xs font-semibold text-gray-800 truncate">{item.name}</p>
-                                            {item.sku && <p className="text-[9px] text-gray-400 font-mono">{item.sku}</p>}
-                                          </div>
+                          {!isCollapsed && (
+                            <div className={cn(
+                              "bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-300",
+                              group.shift?.status === 'CLOSED' ? "opacity-90 bg-gray-50/30" : "ring-1 ring-blue-500/5 shadow-blue-500/5"
+                            )}>
+                              {group.transactions.map((tx: any) => {
+                                const isExpanded = expandedTxId === tx.id
+                                return (
+                                  <div key={tx.id} className="border-b border-gray-100 last:border-b-0">
+                                    {/* Row */}
+                                    <button
+                                      onClick={async () => {
+                                        if (isExpanded) {
+                                          setExpandedTxId(null); setExpandedDetails(null); return
+                                        }
+                                        setExpandedTxId(tx.id)
+                                        if (tx.invoiceNumber) {
+                                          setExpandedLoading(true); setExpandedDetails(null)
+                                          try {
+                                            const res = await getInvoiceDetails(tx.invoiceNumber)
+                                            setExpandedDetails(res)
+                                          } catch { setExpandedDetails(null) }
+                                          finally { setExpandedLoading(false) }
+                                        }
+                                      }}
+                                      className={cn('w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50/80 transition-colors text-start',
+                                        isExpanded && 'bg-gray-50')}
+                                    >
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-sm',
+                                          tx.type === 'SALE' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600')}>
+                                          {tx.type === 'SALE' ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
                                         </div>
-                                        <div className="text-end shrink-0 ps-3">
-                                          <span className="text-xs font-black text-gray-800 tabular-nums">{item.quantitySold}</span>
-                                          <span className="text-[9px] text-gray-400 font-bold ms-1">{item.unit}</span>
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-bold text-gray-900 truncate leading-tight">{tx.description || (tx.type === 'SALE' ? t('sale') : t('refund'))}</p>
+                                          <p className="text-[10px] text-gray-400 font-bold font-mono mt-0.5">{tx.invoiceNumber || `#${tx.id}`} · {format(new Date(tx.createdAt), 'h:mm a')}</p>
                                         </div>
                                       </div>
-                                    ))}
-                                  </div>
-                                )}
+                                      <div className="flex items-center gap-3 shrink-0 ps-3">
+                                        <div className="flex flex-col items-end gap-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className={cn('text-[9px] font-black uppercase px-1.5 py-0.5 rounded-lg border tabular-nums',
+                                              tx.method === 'CASH' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                              tx.method === 'NETWORK' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                              tx.method === 'CREDIT' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-gray-50 text-gray-600 border-gray-100'
+                                            )}>{getPayMethodLabel(tx.method)}</span>
+                                            <span className={cn('text-sm font-black tabular-nums', tx.type === 'RETURN' ? 'text-rose-600' : 'text-gray-900')}>
+                                              {tx.type === 'RETURN' ? '-' : '+'}{tx.amount.toFixed(2)}
+                                            </span>
+                                          </div>
+                                          
+                                          <div className="flex items-center gap-2">
+                                            {tx.settlementId && (
+                                              <span className="bg-blue-50 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-md border border-blue-100 flex items-center gap-0.5 uppercase tracking-tighter">
+                                                <CheckCircle2 size={9} /> {t('settled')}
+                                              </span>
+                                            )}
+                                            {tx.isSettled && !tx.settlementId && (
+                                              <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                                            )}
+                                          </div>
+                                        </div>
+                                        {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-300" />}
+                                      </div>
+                                    </button>
 
-                                {/* Total with VAT */}
-                                <div className="bg-slate-800 text-white rounded-lg px-3 py-2.5 flex items-center justify-between">
-                                  <div className="flex items-center gap-3 text-[10px]">
-                                    <div>
-                                      <span className="text-slate-400 font-bold uppercase">Excl. VAT</span>
-                                      <p className="font-bold tabular-nums text-slate-300">{(expandedDetails.totalAmount / 1.15).toFixed(2)}</p>
-                                    </div>
-                                    <div>
-                                      <span className="text-amber-400 font-bold uppercase">VAT 15%</span>
-                                      <p className="font-bold tabular-nums text-amber-300">{(expandedDetails.totalAmount - expandedDetails.totalAmount / 1.15).toFixed(2)}</p>
-                                    </div>
-                                  </div>
-                                  <div className="text-end">
-                                    <span className="text-[9px] text-emerald-400 font-bold uppercase">Total</span>
-                                    <p className="text-lg font-black tabular-nums text-emerald-400">{expandedDetails.totalAmount.toFixed(2)} <span className="text-xs opacity-60">SAR</span></p>
-                                  </div>
-                                </div>
+                                    {/* Expanded inline detail */}
+                                    {isExpanded && (
+                                      <div className="bg-gray-50/50 border-t border-gray-100 px-4 py-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        {expandedLoading ? (
+                                          <div className="flex items-center justify-center py-8 gap-3 text-gray-400">
+                                            <Loader2 size={18} className="animate-spin text-blue-500" />
+                                            <span className="text-xs font-bold uppercase tracking-widest opacity-70">Loading Details...</span>
+                                          </div>
+                                        ) : expandedDetails ? (
+                                          <>
+                                            {/* Meta row */}
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                              <div className="bg-white rounded-xl border border-gray-200 p-2.5 shadow-sm">
+                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Invoice</span>
+                                                <p className="font-mono font-bold text-gray-800 text-xs mt-0.5">{expandedDetails.invoiceNumber}</p>
+                                              </div>
+                                              <div className="bg-white rounded-xl border border-gray-200 p-2.5 shadow-sm">
+                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Date</span>
+                                                <p className="font-bold text-gray-800 text-[11px] mt-0.5">{format(new Date(expandedDetails.createdAt), 'MMM dd, h:mm a')}</p>
+                                              </div>
+                                              <div className="bg-white rounded-xl border border-gray-200 p-2.5 shadow-sm col-span-2 sm:col-span-1">
+                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Cashier</span>
+                                                <p className="font-bold text-gray-800 text-[11px] mt-0.5">{expandedDetails.salesperson}</p>
+                                              </div>
+                                            </div>
 
-                                {/* Actions */}
-                                {printerStatus === 'connected' && (
-                                  <button
-                                    type="button"
-                                    disabled={isPrinting}
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      printReceipt({
-                                        invoiceNumber: expandedDetails.invoiceNumber,
-                                        createdAt: new Date(expandedDetails.createdAt),
-                                        cashierName: expandedDetails.salesperson || cashierName,
-                                        items: (expandedDetails.items || []).map((item: any) => ({
-                                          name: item.name,
-                                          quantity: item.quantitySold,
-                                          price: item.price || 0,
-                                          unit: item.unit,
-                                        })),
-                                        totalAmount: expandedDetails.totalAmount,
-                                        paymentMethod: expandedDetails.transactions?.[0]?.method || 'CASH',
-                                      })
-                                    }}
-                                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 mt-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50"
-                                  >
-                                    <Printer size={14} />
-                                    {isPrinting ? 'Printing...' : 'Reprint Receipt'}
-                                  </button>
-                                )}
+                                            {/* Items */}
+                                            {expandedDetails.items && expandedDetails.items.length > 0 && (
+                                              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                                                <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 border-b border-gray-100">
+                                                  <Package size={12} className="text-gray-400" />
+                                                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('items')}</span>
+                                                </div>
+                                                <div className="divide-y divide-gray-50">
+                                                  {expandedDetails.items.map((item: any, i: number) => (
+                                                    <div key={i} className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50/50 transition-colors">
+                                                      <div className="flex items-center gap-3 min-w-0">
+                                                        <span className="w-5 h-5 rounded-lg bg-gray-100 text-gray-400 text-[10px] font-black flex items-center justify-center shrink-0">{i+1}</span>
+                                                        <div className="min-w-0">
+                                                          <p className="text-xs font-bold text-gray-800 truncate leading-tight">{item.name}</p>
+                                                          {item.sku && <p className="text-[9px] text-gray-400 font-bold font-mono mt-0.5">{item.sku}</p>}
+                                                        </div>
+                                                      </div>
+                                                      <div className="text-end shrink-0 ps-4">
+                                                        <span className="text-xs font-black text-gray-900 tabular-nums">{item.quantitySold}</span>
+                                                        <span className="text-[10px] text-gray-400 font-bold ms-1">{item.unit}</span>
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
 
-                                {/* Description note */}
-                                {expandedDetails.description && (
-                                  <div className="bg-amber-50 rounded-lg border border-amber-100 px-2.5 py-2">
-                                    <p className="text-[9px] font-black text-amber-600 uppercase mb-0.5">Notes</p>
-                                    <p className="text-xs text-gray-600 italic">"{expandedDetails.description}"</p>
+                                            {/* Total with VAT */}
+                                            <div className="bg-gray-900 text-white rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-gray-900/10">
+                                              <div className="flex items-center gap-6 text-[10px] w-full sm:w-auto border-b sm:border-b-0 sm:border-e border-white/10 pb-3 sm:pb-0 sm:pe-6">
+                                                <div className="flex-1 sm:flex-none">
+                                                  <span className="text-gray-500 font-black uppercase tracking-widest opacity-80">Excl. VAT</span>
+                                                  <p className="font-bold tabular-nums text-gray-300 text-sm mt-0.5">{(expandedDetails.totalAmount / 1.15).toFixed(2)}</p>
+                                                </div>
+                                                <div className="flex-1 sm:flex-none">
+                                                  <span className="text-amber-500 font-black uppercase tracking-widest opacity-80">VAT 15%</span>
+                                                  <p className="font-bold tabular-nums text-amber-400 text-sm mt-0.5">{(expandedDetails.totalAmount - expandedDetails.totalAmount / 1.15).toFixed(2)}</p>
+                                                </div>
+                                              </div>
+                                              <div className="text-center sm:text-end w-full sm:w-auto">
+                                                <span className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Total Amount</span>
+                                                <p className="text-2xl font-black tabular-nums text-emerald-400 leading-none mt-1">{expandedDetails.totalAmount.toFixed(2)} <span className="text-xs font-bold opacity-60 ms-1 uppercase">SAR</span></p>
+                                              </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="flex flex-col sm:flex-row gap-2">
+                                              {printerStatus === 'connected' && (
+                                                <button
+                                                  type="button"
+                                                  disabled={isPrinting}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    printReceipt({
+                                                      invoiceNumber: expandedDetails.invoiceNumber,
+                                                      createdAt: new Date(expandedDetails.createdAt),
+                                                      cashierName: expandedDetails.salesperson || cashierName,
+                                                      items: (expandedDetails.items || []).map((item: any) => ({
+                                                        name: item.name,
+                                                        quantity: item.quantitySold,
+                                                        price: item.price || 0,
+                                                        unit: item.unit,
+                                                      })),
+                                                      totalAmount: expandedDetails.totalAmount,
+                                                      paymentMethod: expandedDetails.transactions?.[0]?.method || 'CASH',
+                                                    })
+                                                  }}
+                                                  className="flex-1 flex items-center justify-center gap-2 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 active:scale-[0.98] disabled:opacity-50"
+                                                >
+                                                  <Printer size={16} />
+                                                  {isPrinting ? 'Printing...' : 'Reprint Receipt'}
+                                                </button>
+                                              )}
+                                              
+                                              {expandedDetails.description && (
+                                                <div className="flex-[2] bg-amber-50 rounded-xl border border-amber-100 px-3 py-2 flex gap-2 items-start">
+                                                  <Tag size={12} className="text-amber-500 shrink-0 mt-0.5" />
+                                                  <div>
+                                                    <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest leading-none mb-1">Notes</p>
+                                                    <p className="text-[11px] text-gray-700 font-medium leading-tight">"{expandedDetails.description}"</p>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <div className="text-center py-8">
+                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No detailed info available</p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </>
-                            ) : (
-                              <div className="text-center py-4">
-                                <p className="text-xs text-gray-400">No detailed info available</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>
               )}
             </div>

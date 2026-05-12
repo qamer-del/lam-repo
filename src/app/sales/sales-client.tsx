@@ -260,10 +260,6 @@ export default function SalesPage({
             hasUnsettled ? (
               <CloseShiftBtn 
                 triggerClassName="w-full sm:w-auto h-10 sm:h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition-all animate-in fade-in duration-500 flex items-center justify-center" 
-                cashTotal={unsettledCash} 
-                networkTotal={unsettledNetwork} 
-                tabbyTotal={unsettledTabby}
-                tamaraTotal={unsettledTamara}
               />
             ) : (
               <div className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 h-10 sm:h-9 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-100 dark:border-emerald-800/30 animate-in zoom-in-95 duration-500 shadow-sm">
@@ -488,7 +484,7 @@ export default function SalesPage({
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-b border-gray-100 dark:border-gray-800">
                       <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('salesperson')}</TableHead>
-                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">{t('today')}</TableHead>
+                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">{t('activity')}</TableHead>
                       <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">{t('thisMonth')}</TableHead>
                       <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-emerald-500">{t('estCommission')}</TableHead>
                     </TableRow>

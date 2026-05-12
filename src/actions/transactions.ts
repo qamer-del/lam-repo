@@ -16,6 +16,12 @@ export async function addTransaction(data: {
   const session = await auth()
   if (!session?.user?.id) throw new Error("Unauthorized")
 
+  if (session.user.role === 'CASHIER' && ['RETURN', 'EXPENSE', 'ADVANCE'].includes(data.type)) {
+    throw new Error("Cashiers are not authorized to perform this action.")
+  }
+
+  const activeShift = await getOrCreateActiveShift()
+
   const tx = await prisma.transaction.create({
     data: {
       type: data.type,
@@ -23,7 +29,8 @@ export async function addTransaction(data: {
       method: data.method,
       description: data.description,
       staffId: data.staffId,
-      recordedById: session.user.id
+      recordedById: session.user.id,
+      shiftId: activeShift.id
     }
   })
   
@@ -140,6 +147,11 @@ export async function getDashboardData() {
   // Final available pool is total monthly sales minus what was paid out as salary
   const salaryFundRemaining = monthlySalaryPool - salaryPayouts
 
+  // Fetch or create active shift for the current user
+  const activeShift = session?.user?.id ? await prisma.shift.findFirst({
+    where: { openedById: session.user.id, status: 'OPEN' }
+  }) : null
+
   return {
     cashInDrawer,
     networkSales,
@@ -148,6 +160,7 @@ export async function getDashboardData() {
     salaryFundRemaining,
     totalOutstandingCredit,
     transactions,
+    activeShift,
     allStaffTransactions: allTxs, // Complete list including internal corrections
     internalTransactions, // Passed to the client for Super Admin view
     recentSettlements: await prisma.settlement.findMany({
@@ -160,6 +173,164 @@ export async function getDashboardData() {
       }
     })
   }
+}
+
+export async function getOrCreateActiveShift() {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  let shift = await prisma.shift.findFirst({
+    where: {
+      openedById: session.user.id,
+      status: 'OPEN'
+    },
+    include: {
+      transactions: true
+    }
+  })
+
+  if (!shift) {
+    shift = await prisma.shift.create({
+      data: {
+        openedById: session.user.id,
+        status: 'OPEN'
+      },
+      include: {
+        transactions: true
+      }
+    })
+  }
+
+  return shift
+}
+
+export async function getShiftSummary(shiftId: number) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  const transactions = await prisma.transaction.findMany({
+    where: { shiftId }
+  })
+
+  let cashSales = 0
+  let cardSales = 0
+  let tabbySales = 0
+  let tamaraSales = 0
+  let creditSales = 0
+  let expectedCash = 0
+
+  const uniqueInvoices = new Set()
+
+  transactions.forEach(tx => {
+    if (tx.invoiceNumber) uniqueInvoices.add(tx.invoiceNumber)
+    
+    if (tx.type === 'SALE') {
+      if (tx.method === 'CASH') {
+        cashSales += tx.amount
+        expectedCash += tx.amount
+      } else if (tx.method === 'NETWORK') {
+        cardSales += tx.amount
+      } else if (tx.method === 'TABBY') {
+        tabbySales += tx.amount
+      } else if (tx.method === 'TAMARA') {
+        tamaraSales += tx.amount
+      } else if (tx.method === 'CREDIT') {
+        creditSales += tx.amount
+      }
+    } else if (tx.type === 'RETURN') {
+      if (tx.method === 'CASH') {
+        cashSales -= tx.amount
+        expectedCash -= tx.amount
+      } else if (tx.method === 'NETWORK') {
+        cardSales -= tx.amount
+      }
+    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type)) {
+      if (tx.method === 'CASH') {
+        expectedCash -= tx.amount
+      }
+    }
+  })
+
+  return {
+    cashSales,
+    cardSales,
+    tabbySales,
+    tamaraSales,
+    creditSales,
+    totalSales: cashSales + cardSales + tabbySales + tamaraSales + creditSales,
+    invoiceCount: uniqueInvoices.size,
+    expectedCash
+  }
+}
+
+export async function closeShift(shiftId: number, data: {
+  actualCash: number
+  denominations: any
+}) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error("Unauthorized")
+
+  const shift = await prisma.shift.findUnique({
+    where: { id: shiftId },
+    include: { transactions: true }
+  })
+
+  if (!shift || shift.status === 'CLOSED') throw new Error("Shift not found or already closed")
+
+  const summary = await getShiftSummary(shiftId)
+  const difference = data.actualCash - summary.expectedCash
+
+  const settlement = await prisma.settlement.create({
+    data: {
+      totalCashHanded: summary.expectedCash,
+      actualCashCounted: data.actualCash,
+      totalNetworkVolume: summary.cardSales,
+      totalTabbyVolume: summary.tabbySales,
+      totalTamaraVolume: summary.tamaraSales,
+      performedById: session.user.id,
+      transactions: {
+        connect: shift.transactions.map(tx => ({ id: tx.id }))
+      }
+    }
+  })
+
+  const closedShift = await prisma.shift.update({
+    where: { id: shiftId },
+    data: {
+      status: 'CLOSED',
+      closedById: session.user.id,
+      closedAt: new Date(),
+      cashSales: summary.cashSales,
+      cardSales: summary.cardSales,
+      tamaraSales: summary.tamaraSales,
+      tabbySales: summary.tabbySales,
+      creditSales: summary.creditSales,
+      totalSales: summary.totalSales,
+      invoiceCount: summary.invoiceCount,
+      expectedCash: summary.expectedCash,
+      actualCash: data.actualCash,
+      difference: difference,
+      denominations: data.denominations,
+      settlementId: settlement.id
+    },
+    include: {
+      openedBy: { select: { name: true } },
+      closedBy: { select: { name: true } },
+      settlement: { include: { transactions: true } }
+    }
+  })
+
+  // Automatically create new shift
+  await prisma.shift.create({
+    data: {
+      openedById: session.user.id,
+      status: 'OPEN'
+    }
+  })
+
+  revalidatePath('/')
+  revalidatePath('/sales')
+  return closedShift
 }
 
 export async function getSettlementHistory() {
@@ -201,7 +372,14 @@ export async function recordRefund(data: {
 }) {
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthorized')
+  
+  if (session.user.role === 'CASHIER') {
+    throw new Error("Cashiers are not authorized to record refunds.")
+  }
+
   if (!data.amount || data.amount <= 0) throw new Error('Refund amount must be greater than zero')
+
+  const activeShift = await getOrCreateActiveShift()
 
   const fullDescription = data.reason
     ? `[${data.reason}] ${data.description || ''}`.trim()
@@ -218,6 +396,7 @@ export async function recordRefund(data: {
         description: fullDescription,
         invoiceNumber: data.invoiceNumber,
         recordedById: session.user.id,
+        shiftId: activeShift.id,
       },
     })
 
@@ -671,7 +850,10 @@ export async function recordDailySales(data: {
     customerName?: string
     customerPhone?: string
     dueDate?: Date
+    shiftId: number
   }
+
+  const activeShift = await getOrCreateActiveShift()
 
   const exactTime = new Date()
   const invoiceNumber = `INV-${Date.now()}` // Generate a unique serial number
@@ -682,6 +864,7 @@ export async function recordDailySales(data: {
     ...(data.customerId && { customerId: data.customerId }),
     ...(data.customerName && { customerName: data.customerName }),
     ...(data.customerPhone && { customerPhone: data.customerPhone }),
+    shiftId: activeShift.id,
   }
 
   if (data.paymentMode === 'SPLIT') {
@@ -770,7 +953,17 @@ export async function recordDailySales(data: {
   // Return the created transactions with relations for real-time store update
   return await prisma.transaction.findMany({
     where: { invoiceNumber },
-    include: { recordedBy: { select: { name: true } } }
+    include: { 
+      recordedBy: { select: { name: true } },
+      shift: { 
+        select: { 
+          id: true, 
+          status: true, 
+          openedAt: true, 
+          closedAt: true 
+        } 
+      }
+    }
   })
 }
 
@@ -806,6 +999,7 @@ export async function settleCreditSale(data: {
         invoiceNumber: originalTx.invoiceNumber,
         customerName: originalTx.customerName,
         customerPhone: originalTx.customerPhone,
+        shiftId: (await getOrCreateActiveShift()).id,
         isSettled: false // Standard sales are unsettled until cash handover
       }
     })
@@ -897,6 +1091,7 @@ export async function collectCreditPayment(data: {
           customerName: alloc.invoice.customerName,
           customerPhone: alloc.invoice.customerPhone,
           customerId: alloc.invoice.customerId,
+          shiftId: (await getOrCreateActiveShift()).id,
           isSettled: false, // Unsettled until cash handover / admin settlement
         }
       })

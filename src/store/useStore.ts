@@ -20,7 +20,14 @@ export interface Transaction {
   invoiceNumber: string | null
   customerName?: string | null
   customerPhone?: string | null
-  createdAt: Date
+  shiftId: number | null
+  shift?: {
+    id: number
+    status: 'OPEN' | 'CLOSED'
+    openedAt: Date | string
+    closedAt: Date | string | null
+  } | null
+  createdAt: Date | string
   staff?: { name: string } | null
   recordedBy?: { name: string } | null
 }
@@ -34,6 +41,7 @@ interface VaultState {
   totalOutstandingCredit: number
   transactions: Transaction[]
   recentSettlements: any[]
+  activeShift: any | null
   isSettleCashOpen: boolean
   isAddTxOpen: boolean
   setVaultData: (data: Partial<VaultState>) => void
@@ -52,6 +60,7 @@ export const useStore = create<VaultState>((set) => ({
   totalOutstandingCredit: 0,
   transactions: [],
   recentSettlements: [],
+  activeShift: null,
   isSettleCashOpen: false,
   isAddTxOpen: false,
   setVaultData: (data) => set((state) => ({ ...state, ...data })),

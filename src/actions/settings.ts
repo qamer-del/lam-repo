@@ -4,37 +4,61 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
 
+export async function getSystemSettings() {
+  let settings = await prisma.systemSettings.findFirst({
+    where: { id: 1 }
+  })
+
+  if (!settings) {
+    settings = await prisma.systemSettings.create({
+      data: { id: 1, enableDenominationCounting: true }
+    })
+  }
+
+  return settings
+}
+
+export async function updateSystemSettings(data: { enableDenominationCounting: boolean }) {
+  const session = await auth()
+  if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'OWNER') {
+    throw new Error("Unauthorized")
+  }
+
+  const settings = await prisma.systemSettings.upsert({
+    where: { id: 1 },
+    update: data,
+    create: { id: 1, ...data }
+  })
+
+  revalidatePath('/admin/settings')
+  return settings
+}
+
 export async function factoryReset() {
   const session = await auth()
-  
   if (session?.user?.role !== 'SUPER_ADMIN') {
-    return { error: 'Unauthorized. Only super admins can perform a factory reset.' }
+    throw new Error("Only Super Admins can perform a factory reset")
   }
 
   try {
-    // Delete in reverse order of relationships to prevent foreign key constraints
-    await prisma.warranty.deleteMany({})
-    await prisma.purchaseOrderItem.deleteMany({})
-    await prisma.stockMovement.deleteMany({})
-    await prisma.transaction.deleteMany({})
-    await prisma.purchaseOrder.deleteMany({})
-    await prisma.salarySettlement.deleteMany({})
-    await prisma.settlement.deleteMany({})
-    await prisma.inventoryItem.deleteMany({})
-    await prisma.customer.deleteMany({})
-    await prisma.agent.deleteMany({})
-    await prisma.staff.deleteMany({})
-    
-    // We intentionally do NOT delete users, so the admin can log back in.
-    
+    await prisma.$transaction([
+      prisma.warranty.deleteMany(),
+      prisma.purchaseOrderItem.deleteMany(),
+      prisma.stockMovement.deleteMany(),
+      prisma.purchaseOrder.deleteMany(),
+      prisma.inventoryItem.deleteMany(),
+      prisma.transaction.deleteMany(),
+      prisma.salarySettlement.deleteMany(),
+      prisma.shift.deleteMany(),
+      prisma.settlement.deleteMany(),
+      prisma.agent.deleteMany(),
+      prisma.customer.deleteMany(),
+    ])
+
     revalidatePath('/')
-    revalidatePath('/staff')
-    revalidatePath('/sales')
-    revalidatePath('/agents')
-    revalidatePath('/inventory')
     return { success: true }
   } catch (error: any) {
-    console.error('Factory reset failed:', error)
-    return { error: 'Failed to complete factory reset.' }
+    console.error('Factory Reset Error:', error)
+    return { error: error.message }
   }
 }

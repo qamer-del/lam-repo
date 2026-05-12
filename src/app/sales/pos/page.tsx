@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { startOfDay } from 'date-fns'
 import { PosClient } from './pos-client'
+import { getOrCreateActiveShift } from '@/actions/transactions'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -24,7 +25,7 @@ export default async function PosPage() {
   const userId = session?.user?.id
 
   // Parallel data fetch
-  const [inventoryItems, customers, unsettledSales, allTodaySales, unpaidCreditSales] = await Promise.all([
+  const [inventoryItems, customers, unsettledSales, allTodaySales, unpaidCreditSales, activeShift] = await Promise.all([
     prisma.inventoryItem.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
@@ -50,7 +51,16 @@ export default async function PosPage() {
       select: {
         id: true, amount: true, method: true, type: true,
         invoiceNumber: true, description: true, customerName: true,
-        createdAt: true, isSettled: true,
+        createdAt: true, isSettled: true, settlementId: true,
+        shiftId: true,
+        shift: {
+          select: {
+            id: true,
+            status: true,
+            openedAt: true,
+            closedAt: true,
+          }
+        },
         recordedBy: { select: { name: true } },
       },
     }) : Promise.resolve([]),
@@ -60,6 +70,7 @@ export default async function PosPage() {
       orderBy: { createdAt: 'desc' },
       include: { recordedBy: { select: { name: true } }, linkedBy: { select: { amount: true } } },
     }) : Promise.resolve([]),
+    userId ? getOrCreateActiveShift() : Promise.resolve(null),
   ])
 
   let unsettledCash = 0, unsettledNetwork = 0, unsettledTabby = 0, unsettledTamara = 0
@@ -86,6 +97,7 @@ export default async function PosPage() {
       unsettledTamara={unsettledTamara}
       allTodaySales={allTodaySales}
       unpaidCreditSales={unpaidCreditSales}
+      activeShift={activeShift}
     />
   )
 }

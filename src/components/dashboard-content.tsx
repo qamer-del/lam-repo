@@ -52,6 +52,7 @@ export function DashboardContent({
     transactions: Transaction[],
     allStaffTransactions?: Transaction[],
     internalTransactions?: Transaction[],
+    activeShift: any | null,
     recentSettlements: any[]
   } 
   userRole?: string
@@ -66,6 +67,7 @@ export function DashboardContent({
     salaryFundRemaining, 
     totalOutstandingCredit, 
     transactions, 
+    activeShift,
     setVaultData,
     isSettleCashOpen,
     setIsSettleCashOpen,
@@ -108,6 +110,12 @@ export function DashboardContent({
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               {t('dashboard')}
             </h1>
+            {activeShift && (
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Active Shift #{activeShift.id}</span>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-3">
