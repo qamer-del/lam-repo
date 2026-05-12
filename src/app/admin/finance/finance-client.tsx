@@ -1,20 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useLanguage } from '@/providers/language-provider'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { 
   BarChart3, TrendingUp, TrendingDown, Wallet, ShoppingBag, 
   ArrowUpRight, ArrowDownLeft, FileText, Calendar, Search,
-  ChevronRight, ArrowRight, History, CreditCard, Layers
+  ChevronRight, ArrowRight, History, CreditCard, Layers, Download, RefreshCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table'
+import { getFinanceDashboardData } from '@/actions/finance'
+
+// We will import PDF components dynamically or use a helper to avoid SSR issues
+import dynamic from 'next/dynamic'
+const PDFDownloadLink = dynamic(() => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink), { ssr: false })
+const FinanceReportDocument = dynamic(() => import('@/components/finance-report-document').then(mod => mod.FinanceReportDocument), { ssr: false })
 
 interface FinanceClientProps {
   data: any
@@ -22,15 +28,38 @@ interface FinanceClientProps {
 
 export default function FinanceClient({ data }: FinanceClientProps) {
   const { t, locale } = useLanguage()
-  const { stats, last6Months, methodBreakdown, recentExpenses, recentPurchases, allTransactions } = data
+  const [currentData, setCurrentData] = useState(data)
+  const { stats, last6Months, methodBreakdown, recentExpenses, recentPurchases, allTransactions } = currentData
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'purchases' | 'transactions'>('overview')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 10
+  const [isPending, startTransition] = useTransition()
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Date Range State (Default to current month)
+  const [fromDate, setFromDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
+  const [toDate, setToDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery])
+
+  const handleFetch = () => {
+    startTransition(async () => {
+      try {
+        const newData = await getFinanceDashboardData(new Date(fromDate), new Date(toDate))
+        setCurrentData(newData)
+        setCurrentPage(1)
+      } catch (error) {
+        console.error("Failed to fetch finance data:", error)
+      }
+    })
+  }
 
   const formatCurrency = (val: number) => {
     return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' SAR'
@@ -84,7 +113,7 @@ export default function FinanceClient({ data }: FinanceClientProps) {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
         <div>
           <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
             <div className="p-2.5 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20 text-white">
@@ -94,22 +123,74 @@ export default function FinanceClient({ data }: FinanceClientProps) {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">{t('financialStatus')}</p>
         </div>
-        
-        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-          {(['overview', 'expenses', 'purchases', 'transactions'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleTabChange(tab)}
-              className={cn(
-                "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                activeTab === tab 
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
-                  : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
-              )}
+
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+          {/* Date Filters */}
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full sm:w-auto">
+            <div className="flex items-center gap-2 px-2 border-r border-gray-100 dark:border-gray-700">
+              <Calendar size={14} className="text-gray-400" />
+              <input 
+                type="date" 
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="bg-transparent border-none text-[10px] font-black uppercase focus:ring-0 text-gray-600 dark:text-gray-300 outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-2 px-2">
+              <input 
+                type="date" 
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="bg-transparent border-none text-[10px] font-black uppercase focus:ring-0 text-gray-600 dark:text-gray-300 outline-none"
+              />
+            </div>
+            <Button 
+              size="sm" 
+              onClick={handleFetch}
+              disabled={isPending}
+              className="rounded-xl h-8 px-3 bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20"
             >
-              {t(tab)}
-            </button>
-          ))}
+              <RefreshCw size={14} className={cn(isPending && "animate-spin")} />
+            </Button>
+          </div>
+          
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 sm:flex-none">
+              {(['overview', 'expenses', 'purchases', 'transactions'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => handleTabChange(tab)}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                    activeTab === tab 
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
+                      : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  )}
+                >
+                  {t(tab)}
+                </button>
+              ))}
+            </div>
+
+            {/* PDF Export Button */}
+            {isMounted && (
+              <PDFDownloadLink
+                document={<FinanceReportDocument data={currentData} dateRange={{ from: new Date(fromDate), to: new Date(toDate) }} t={t} />}
+                fileName={`Finance_Report_${fromDate}_to_${toDate}.pdf`}
+              >
+                {/* @ts-ignore */}
+                {({ loading }) => (
+                  <Button 
+                    disabled={loading || isPending}
+                    className="rounded-2xl h-11 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 font-black text-xs uppercase tracking-widest gap-2"
+                  >
+                    <Download size={16} />
+                    {loading ? '...' : 'PDF'}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            )}
+          </div>
         </div>
       </div>
 

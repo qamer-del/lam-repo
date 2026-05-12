@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { startOfMonth, endOfMonth, subMonths, format, startOfYear } from 'date-fns'
 
-export async function getFinanceDashboardData() {
+export async function getFinanceDashboardData(startDate?: Date, endDate?: Date) {
   const session = await auth()
   const role = session?.user?.role
   if (role !== 'SUPER_ADMIN' && role !== 'ADMIN' && role !== 'OWNER') {
@@ -13,12 +13,16 @@ export async function getFinanceDashboardData() {
 
   const now = new Date()
   const startOfCurrentYear = startOfYear(now)
+  
+  const queryRange = (startDate && endDate) 
+    ? { gte: startDate, lte: endDate } 
+    : { gte: startOfCurrentYear }
 
-  // 1. Fetch all relevant data for the current year (or all time if preferred, but year is usually standard for simple dashboards)
+  // 1. Fetch all relevant data
   const [transactions, purchaseOrders, stockMovements] = await Promise.all([
     prisma.transaction.findMany({
       where: {
-        createdAt: { gte: startOfCurrentYear },
+        createdAt: queryRange,
         type: { in: ['SALE', 'RETURN', 'EXPENSE', 'SALARY_PAYMENT', 'AGENT_PAYMENT'] }
       },
       include: {
@@ -29,7 +33,7 @@ export async function getFinanceDashboardData() {
       orderBy: { createdAt: 'desc' }
     }),
     prisma.purchaseOrder.findMany({
-      where: { createdAt: { gte: startOfCurrentYear } },
+      where: { createdAt: queryRange },
       include: {
         items: { include: { item: { select: { name: true } } } },
         agent: { select: { name: true, companyName: true } },
@@ -39,7 +43,7 @@ export async function getFinanceDashboardData() {
     }),
     prisma.stockMovement.findMany({
       where: {
-        createdAt: { gte: startOfCurrentYear },
+        createdAt: queryRange,
         type: { in: ['SALE_OUT', 'RETURN_IN'] }
       },
       include: {
