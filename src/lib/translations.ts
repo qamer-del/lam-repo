@@ -471,6 +471,17 @@ export const en = {
   openedAtLabel: 'Opened at',
   closedAtLabel: 'Closed at',
   other: 'Other',
+  finance: 'Finance',
+  accountingHub: 'Accounting Hub',
+  financialOverview: 'Financial Overview',
+  operatingExpenses: 'Operating Expenses',
+  inventoryPurchases: 'Inventory Purchases',
+  grossProfit: 'Gross Profit',
+  cogs: 'COGS (Cost of Goods)',
+  revenue: 'Revenue',
+  netIncome: 'Net Income',
+  financialStatus: 'Overall Financial Status',
+  expenses: 'Expenses',
 }
 
 export const ar = {
@@ -946,4 +957,15 @@ export const ar = {
   openedAtLabel: 'فتحت في',
   closedAtLabel: 'أغلقت في',
   other: 'أخرى',
+  finance: 'المالية',
+  accountingHub: 'مركز المحاسبة',
+  financialOverview: 'نظرة مالية عامة',
+  operatingExpenses: 'المصروفات التشغيلية',
+  inventoryPurchases: 'مشتريات المخزون',
+  grossProfit: 'إجمالي الربح',
+  cogs: 'تكلفة البضاعة المباعة',
+  revenue: 'الإيرادات',
+  netIncome: 'صافي الدخل',
+  financialStatus: 'الوضع المالي العام',
+  expenses: 'المصروفات',
 }
