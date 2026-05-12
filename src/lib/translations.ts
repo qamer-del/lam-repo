@@ -427,6 +427,10 @@ export const en = {
   descriptionOptional: 'Description (optional)',
   sar: 'SAR',
   or: 'or',
+  backToItems: 'Add More Items',
+  reviewOrder: 'Review Order',
+  units: 'units',
+  total: 'Total',
 }
 
 export const ar = {
@@ -858,4 +862,8 @@ export const ar = {
   descriptionOptional: 'الوصف (اختياري)',
   sar: 'ريال',
   or: 'أو',
+  backToItems: 'إضافة المزيد من المنتجات',
+  reviewOrder: 'مراجعة الطلب',
+  units: 'وحدة',
+  total: 'الإجمالي',
 }

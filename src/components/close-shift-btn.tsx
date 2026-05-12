@@ -23,12 +23,14 @@ import { Calculator, CheckCircle2, AlertCircle, Banknote, History } from 'lucide
 
 export function CloseShiftBtn({ 
   triggerClassName,
+  triggerIcon,
   cashTotal,
   networkTotal,
   tabbyTotal,
   tamaraTotal
 }: { 
   triggerClassName?: string 
+  triggerIcon?: React.ReactNode
   cashTotal: number
   networkTotal: number
   tabbyTotal: number
@@ -91,8 +93,8 @@ export function CloseShiftBtn({
           />
         }
       >
-        <History size={14} />
-        {t('closeMyShift')}
+        {triggerIcon || <History size={14} />}
+        <span className={triggerIcon ? "hidden sm:inline" : ""}>{t('closeMyShift')}</span>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl rounded-[3rem] bg-white dark:bg-gray-950">
         <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 p-10 text-white relative overflow-hidden">

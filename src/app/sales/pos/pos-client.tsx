@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, Receipt, Banknote, Wifi,
   SplitSquareHorizontal, ShoppingBag, Users, Check, UserPlus, ArrowLeft,
-  CheckCircle2, Package, ChevronsUpDown, X, History, CreditCard,
+  CheckCircle2, Package, ChevronsUpDown, X, History, CreditCard, LogOut,
   ArrowUpRight, ArrowDownLeft, Percent, Tag, Keyboard, ChevronDown, ChevronUp, Loader2, Printer
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -69,6 +69,7 @@ export function PosClient({
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null)
   const [expandedDetails, setExpandedDetails] = useState<any>(null)
   const [expandedLoading, setExpandedLoading] = useState(false)
+  const [mobilePosView, setMobilePosView] = useState<'items' | 'cart'>('items')
 
   const [search, setSearch] = useState('')
   const [focusedIdx, setFocusedIdx] = useState(-1)
@@ -280,48 +281,44 @@ export function PosClient({
         <WarrantyNotification warranties={pendingWarranties} customerPhone={customerPhone || undefined} onDismiss={() => setPendingWarranties([])} />
       )}
 
-      <div className="h-screen flex flex-col bg-[#f0f2f5] overflow-hidden" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="fixed inset-0 lg:relative lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-[100] lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* ── HEADER ── */}
-        <header className="h-12 bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 z-20">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0">
-              <Receipt size={14} className="text-white" />
+        <header className="min-h-14 py-1 sm:py-0 bg-white border-b border-gray-200 px-2 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
+              <Receipt size={18} className="text-white" />
             </div>
-            <div className="hidden sm:block leading-none">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t('pointOfSale')}</p>
-              <p className="text-xs font-extrabold text-gray-800">{cashierName}</p>
+            <div className="leading-none hidden sm:block">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">{t('pointOfSale')}</p>
+              <p className="text-sm font-black text-gray-800 leading-none">{cashierName}</p>
             </div>
-            <span className="hidden sm:block text-[10px] text-gray-400 font-medium ms-2">{format(new Date(), 'EEE, MMM d · h:mm a')}</span>
           </div>
 
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+          <div className="flex-1 flex justify-center min-w-0">
+            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto no-scrollbar max-w-full">
             {([['pos', t('pos'), ShoppingCart], ['sales', t('today'), History], ['credit', t('credit'), CreditCard]] as const).map(([tab, label, Icon]) => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold transition-all',
-                  activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-                <Icon size={12} />{label}
+                className={cn('flex-1 sm:flex-none flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[11px] font-black transition-all whitespace-nowrap',
+                  activeTab === tab ? 'bg-white text-blue-600 shadow-md scale-105' : 'text-gray-500 hover:text-gray-700')}>
+                <Icon size={16} className="shrink-0" />
+                <span className="leading-none">{label}</span>
                 {tab === 'credit' && unpaidCreditSales.length > 0 && (
-                  <span className="bg-amber-500 text-white text-[8px] font-black rounded-full w-3.5 h-3.5 flex items-center justify-center">{unpaidCreditSales.length}</span>
+                  <span className="bg-amber-500 text-white text-[9px] font-black rounded-full min-w-[16px] h-[16px] flex items-center justify-center">{unpaidCreditSales.length}</span>
                 )}
               </button>
             ))}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowShortcuts(v => !v)} title="Keyboard shortcuts (?)"
-              className={cn('hidden sm:flex items-center gap-1 h-7 px-2 rounded-md border text-[10px] font-bold transition-colors',
-                showShortcuts ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100')}>
-              <Keyboard size={11} />
-            </button>
-            <div className={cn('hidden md:flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full',
-              printerStatus === 'connected' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400')}>
-              <div className={cn('w-1.5 h-1.5 rounded-full', printerStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300')} />
-              {printerStatus === 'connected' ? t('printer') : t('offline')}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden lg:flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {t('printer')}
             </div>
             <CloseShiftBtn
-              triggerClassName={cn('h-7 px-2.5 rounded-md text-[10px] font-semibold border',
-                hasUnsettled ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' : 'bg-gray-50 border-gray-200 text-gray-400')}
+              triggerClassName="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl text-[11px] font-black border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 flex items-center justify-center"
+              triggerIcon={<LogOut size={18} className="sm:hidden" />}
               cashTotal={unsettledCash} networkTotal={unsettledNetwork}
               tabbyTotal={unsettledTabby} tamaraTotal={unsettledTamara}
             />
@@ -531,10 +528,13 @@ export function PosClient({
 
         {/* ── POS TAB ── */}
         {activeTab === 'pos' && (
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
 
             {/* LEFT PANEL — Product Browser */}
-            <div className="w-[380px] shrink-0 flex flex-col bg-white border-e border-gray-200 overflow-hidden">
+            <div className={cn(
+              "w-full lg:w-[400px] lg:shrink-0 flex flex-col bg-white lg:border-e border-gray-200 transition-all duration-300",
+              mobilePosView === 'cart' ? 'hidden lg:flex' : 'flex'
+            )}>
               {/* Search */}
               <div className="px-3 py-2.5 border-b border-gray-100">
                 <div className="relative">
@@ -569,52 +569,99 @@ export function PosClient({
               </div>
 
               {/* Item list */}
-              <div ref={itemListRef} className="flex-1 overflow-y-auto">
+              <div ref={itemListRef} className="flex-1 overflow-y-auto p-2 lg:p-0">
                 {filteredItems.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-40 text-gray-300">
                     <Package size={24} className="mb-1.5" /><p className="text-[10px] font-medium">{t('noItemFound')}</p>
                   </div>
                 )}
-                {filteredItems.map((item, idx) => {
-                  const oos = item.currentStock <= 0
-                  const low = !oos && item.currentStock <= item.reorderLevel
-                  const inCart = cart.find(c => c.itemId === item.id)
-                  const isFocused = idx === focusedIdx
-                  return (
-                    <button key={item.id} onClick={() => { addToCart(item); setFocusedIdx(idx) }}
-                      disabled={oos}
-                      className={cn(
-                        'w-full flex items-center px-3 py-[7px] text-start transition-all border-b border-gray-50',
-                        oos ? 'opacity-35 cursor-not-allowed bg-gray-50' :
-                        isFocused ? 'bg-emerald-50 border-s-[3px] border-s-emerald-500' :
-                        inCart ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'hover:bg-gray-50 active:bg-gray-100'
-                      )}>
-                      <div className="flex-1 min-w-0 flex items-center gap-2">
-                        {inCart ? (
-                          <span className="w-5 h-5 rounded bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">{inCart.quantity}</span>
-                        ) : (
-                          <span className="w-5 h-5 rounded bg-gray-100 text-gray-400 flex items-center justify-center shrink-0"><Package size={10} /></span>
-                        )}
-                        <div className="min-w-0">
-                          <p className={cn('text-[13px] font-semibold truncate leading-tight', inCart || isFocused ? 'text-emerald-700' : 'text-gray-800')}>{item.name}</p>
-                          {item.sku && <p className="text-[9px] text-gray-400 font-mono mt-0.5">{item.sku}</p>}
+                <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:gap-0">
+                  {filteredItems.map((item, idx) => {
+                    const oos = item.currentStock <= 0
+                    const low = !oos && item.currentStock <= item.reorderLevel
+                    const inCart = cart.find(c => c.itemId === item.id)
+                    const isFocused = idx === focusedIdx
+                    return (
+                      <button key={item.id} onClick={() => { addToCart(item); setFocusedIdx(idx) }}
+                        disabled={oos}
+                        className={cn(
+                          'relative flex flex-col lg:flex-row lg:items-center p-4 lg:px-3 lg:py-[7px] text-start transition-all rounded-2xl lg:rounded-none border lg:border-0 lg:border-b border-gray-200 lg:border-gray-50 shadow-sm lg:shadow-none mb-1 lg:mb-0',
+                          oos ? 'opacity-35 cursor-not-allowed bg-gray-50' :
+                          isFocused ? 'bg-blue-50 border-blue-300 lg:border-s-[3px] lg:border-s-blue-500' :
+                          inCart ? 'bg-emerald-50/40 border-emerald-200' : 'bg-white hover:bg-gray-50 active:bg-gray-100'
+                        )}>
+                        <div className="flex-1 min-w-0 flex flex-col lg:flex-row lg:items-center gap-2">
+                          <div className="flex items-center justify-between lg:justify-start gap-2">
+                            {inCart ? (
+                              <span className="w-6 h-6 lg:w-5 lg:h-5 rounded-lg bg-emerald-500 text-white text-[10px] lg:text-[10px] font-black flex items-center justify-center shrink-0 shadow-sm">{inCart.quantity}</span>
+                            ) : (
+                              <span className="w-6 h-6 lg:w-5 lg:h-5 rounded-lg bg-gray-100 text-gray-400 flex items-center justify-center shrink-0"><Package size={12} /></span>
+                            )}
+                            <div className="lg:hidden text-end">
+                              <span className="text-sm font-black text-gray-900">{item.sellingPrice.toFixed(0)} <span className="text-[10px] text-gray-400">{t('sar')}</span></span>
+                            </div>
+                          </div>
+                          <div className="min-w-0 mt-1 lg:mt-0">
+                            <p className={cn('text-sm lg:text-[13px] font-bold lg:font-semibold truncate leading-tight', inCart || isFocused ? 'text-blue-700' : 'text-gray-800')}>{item.name}</p>
+                            {item.sku && <p className="text-[10px] lg:text-[9px] text-gray-400 font-mono mt-0.5">{item.sku}</p>}
+                          </div>
                         </div>
-                      </div>
-                      <span className={cn('w-16 text-center text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0',
-                        oos ? 'bg-red-100 text-red-600' : low ? 'bg-amber-100 text-amber-600' : 'bg-emerald-50 text-emerald-600')}>
-                        {oos ? t('outOfStock') : `${item.currentStock}`}
-                      </span>
-                      <span className="w-20 text-end text-[13px] font-bold text-gray-800 tabular-nums shrink-0">
-                        {item.sellingPrice.toFixed(0)} <span className="text-[9px] text-gray-400">{t('sar')}</span>
-                      </span>
-                    </button>
-                  )
-                })}
+                        <div className="flex items-center justify-between lg:justify-end gap-3 mt-2 lg:mt-0">
+                          <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0',
+                            oos ? 'bg-red-100 text-red-600' : low ? 'bg-amber-100 text-amber-600' : 'bg-emerald-50 text-emerald-600')}>
+                            {oos ? t('outOfStock') : `${item.currentStock} ${t('units') || ''}`}
+                          </span>
+                          <span className="hidden lg:block w-20 text-end text-[13px] font-bold text-gray-800 tabular-nums shrink-0">
+                            {item.sellingPrice.toFixed(0)} <span className="text-[9px] text-gray-400">{t('sar')}</span>
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
+
+              {/* Mobile Cart Toggle Footer */}
+              {cart.length > 0 && (
+                <div className="lg:hidden sticky bottom-0 p-4 bg-white border-t border-gray-100 shadow-[0_-8px_30px_rgba(0,0,0,0.1)] z-30">
+                  <button
+                    onClick={() => setMobilePosView('cart')}
+                    className="w-full h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-between px-6 shadow-xl shadow-blue-500/30 active:scale-[0.98] transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center relative">
+                        <ShoppingCart size={22} />
+                        <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+                          {cart.reduce((s,c)=>s+c.quantity,0)}
+                        </span>
+                      </div>
+                      <span className="font-black text-sm uppercase tracking-widest">{t('reviewOrder') || 'Review Order'}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] opacity-70 uppercase font-black tracking-widest">{t('total')}</p>
+                      <p className="text-xl font-black">{finalTotal.toFixed(2)} SAR</p>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* RIGHT PANEL — Cart + Payment */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className={cn(
+              "flex-1 flex flex-col bg-[#f8f9fb] transition-all duration-300",
+              mobilePosView === 'items' ? 'hidden lg:flex' : 'flex'
+            )}>
+              {/* Mobile Back Button */}
+              <div className="lg:hidden bg-white px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <button onClick={() => setMobilePosView('items')} className="flex items-center gap-2 text-gray-600 font-bold">
+                  <ArrowLeft size={18} />
+                  <span>{t('backToItems') || 'Add More Items'}</span>
+                </button>
+                <div className="text-right">
+                  <p className="text-[10px] text-gray-400 font-black uppercase">{t('total')}</p>
+                  <p className="text-lg font-black text-emerald-600">{finalTotal.toFixed(2)} SAR</p>
+                </div>
+              </div>
               {/* Cart header */}
               <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shrink-0">
                 <div className="flex items-center gap-2">
@@ -648,17 +695,17 @@ export function PosClient({
                         </button>
                         <p className="text-[13px] font-semibold text-gray-800 truncate flex-1 min-w-0">{item.name}</p>
                         {/* Qty */}
-                        <div className="flex items-center bg-gray-50 rounded-md border border-gray-200 h-7 shrink-0">
-                          <button onClick={() => setQty(item.itemId, item.quantity - 1)} className="w-6 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors rounded-s-md"><Minus size={10} strokeWidth={3} /></button>
-                          <input type="number" min="0" value={item.quantity === 0 ? '' : item.quantity} onChange={e => setQty(item.itemId, parseInt(e.target.value) || 0)} className="w-7 h-full text-center text-[11px] font-black tabular-nums bg-transparent border-none outline-none text-gray-900 p-0" />
-                          <button onClick={() => setQty(item.itemId, item.quantity + 1)} className="w-6 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors rounded-e-md"><Plus size={10} strokeWidth={3} /></button>
+                        <div className="flex items-center bg-gray-50 rounded-md border border-gray-200 h-8 shrink-0">
+                          <button onClick={() => setQty(item.itemId, item.quantity - 1)} className="w-7 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors rounded-s-md"><Minus size={10} strokeWidth={3} /></button>
+                          <input type="number" min="0" value={item.quantity === 0 ? '' : item.quantity} onChange={e => setQty(item.itemId, parseInt(e.target.value) || 0)} className="w-8 h-full text-center text-xs font-black tabular-nums bg-transparent border-none outline-none text-gray-900 p-0" />
+                          <button onClick={() => setQty(item.itemId, item.quantity + 1)} className="w-7 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors rounded-e-md"><Plus size={10} strokeWidth={3} /></button>
                         </div>
                         <span className="text-[10px] text-gray-400 font-bold shrink-0">×</span>
                         {/* Price */}
                         <div className="flex items-center bg-gray-50 rounded-md border border-gray-200 h-7 w-20 shrink-0 px-1.5 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
                           <input type="number" step="0.01" min="0" value={item.price === 0 ? '' : item.price} onChange={e => updatePrice(item.itemId, parseFloat(e.target.value) || 0)} className="w-full text-[11px] font-bold tabular-nums text-end bg-transparent border-none outline-none text-gray-900 h-full p-0" />
                         </div>
-                        <span className="text-[11px] font-bold text-gray-500 tabular-nums shrink-0 w-16 text-end">
+                        <span className="text-[11px] font-bold text-gray-500 tabular-nums shrink-0 w-12 sm:w-16 text-end">
                           {(item.quantity * item.price).toFixed(2)}
                         </span>
                       </div>
@@ -689,15 +736,15 @@ export function PosClient({
                 )}
 
                 {/* Payment method pill bar */}
-                <div className="flex gap-1 overflow-x-auto pb-0.5">
+                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                   {PAY_METHODS.map(({ mode, label, shortcut, icon: Icon, active }) => {
                     const isActive = payMode === mode
                     return (
                       <button key={mode} type="button" onClick={() => setPayMode(mode)}
                         className={cn('flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-all whitespace-nowrap shrink-0',
                           isActive ? active + ' border-current' : 'border-gray-200 text-gray-400 bg-gray-50 hover:bg-gray-100 hover:text-gray-600')}>
-                        <Icon size={12} />
-                        <span className="text-[10px] font-bold uppercase">{getPayMethodLabel(mode)}</span>
+                        <Icon size={isActive ? 14 : 12} className="shrink-0" />
+                        <span className="text-[11px] font-bold uppercase">{getPayMethodLabel(mode)}</span>
                       </button>
                     )
                   })}
