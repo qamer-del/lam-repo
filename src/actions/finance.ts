@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { startOfMonth, endOfMonth, subMonths, format, startOfYear } from 'date-fns'
+import { renderToBuffer } from '@react-pdf/renderer'
+import { FinanceReportDocument } from '@/components/finance-report-document'
+import React from 'react'
 
 export async function getFinanceDashboardData(startDate?: Date, endDate?: Date) {
   const session = await auth()
@@ -131,4 +134,23 @@ export async function getFinanceDashboardData(startDate?: Date, endDate?: Date) 
     recentPurchases: purchaseOrders.slice(0, 50),
     allTransactions: transactions.slice(0, 100)
   }
+}
+
+export async function generateFinanceReportAction(data: any, fromDate: string, toDate: string) {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN' && session?.user?.role !== 'OWNER') {
+    throw new Error("Unauthorized")
+  }
+
+  // Basic translation helper for PDF
+  const t = (k: string) => k
+
+  const doc = React.createElement(FinanceReportDocument, { 
+    data, 
+    dateRange: { from: new Date(fromDate), to: new Date(toDate) },
+    t
+  })
+
+  const buffer = await renderToBuffer(doc as any)
+  return buffer.toString('base64')
 }

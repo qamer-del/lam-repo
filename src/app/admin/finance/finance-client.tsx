@@ -15,12 +15,8 @@ import { Input } from '@/components/ui/input'
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table'
-import { getFinanceDashboardData } from '@/actions/finance'
-
-// We will import PDF components dynamically or use a helper to avoid SSR issues
-import dynamic from 'next/dynamic'
-const PDFDownloadLink = dynamic(() => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink), { ssr: false })
-const FinanceReportDocument = dynamic(() => import('@/components/finance-report-document').then(mod => mod.FinanceReportDocument), { ssr: false })
+import { getFinanceDashboardData, generateFinanceReportAction } from '@/actions/finance'
+import { toast } from 'sonner'
 
 interface FinanceClientProps {
   data: any
@@ -173,23 +169,36 @@ export default function FinanceClient({ data }: FinanceClientProps) {
             </div>
 
             {/* PDF Export Button */}
-            {isMounted && (
-              <PDFDownloadLink
-                document={<FinanceReportDocument data={currentData} dateRange={{ from: new Date(fromDate), to: new Date(toDate) }} t={t} />}
-                fileName={`Finance_Report_${fromDate}_to_${toDate}.pdf`}
-              >
-                {/* @ts-ignore */}
-                {({ loading }) => (
-                  <Button 
-                    disabled={loading || isPending}
-                    className="rounded-2xl h-11 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 font-black text-xs uppercase tracking-widest gap-2"
-                  >
-                    <Download size={16} />
-                    {loading ? '...' : 'PDF'}
-                  </Button>
-                )}
-              </PDFDownloadLink>
-            )}
+            <Button 
+              disabled={isPending}
+              onClick={async () => {
+                const toastId = toast.loading('Generating PDF Report...')
+                try {
+                  const base64 = await generateFinanceReportAction(currentData, fromDate, toDate)
+                  const byteCharacters = atob(base64)
+                  const byteNumbers = new Array(byteCharacters.length)
+                  for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i)
+                  }
+                  const byteArray = new Uint8Array(byteNumbers)
+                  const blob = new Blob([byteArray], { type: 'application/pdf' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `Finance_Report_${fromDate}_to_${toDate}.pdf`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                  toast.success('Report Generated', { id: toastId })
+                } catch (error) {
+                  console.error(error)
+                  toast.error('Failed to generate report', { id: toastId })
+                }
+              }}
+              className="rounded-2xl h-11 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 font-black text-xs uppercase tracking-widest gap-2"
+            >
+              <Download size={16} />
+              PDF
+            </Button>
           </div>
         </div>
       </div>
