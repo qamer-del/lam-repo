@@ -48,7 +48,7 @@ const MOVEMENT_LABELS: Record<string, string> = {
 
 interface InventoryItem {
   id: number; name: string; sku: string | null; category: InventoryCategory
-  unit: string; currentStock: number; reorderLevel: number; unitCost: number
+  unit: string; currentStock: number; warrantyReturnStock: number; damagedStock: number; reorderLevel: number; unitCost: number
   sellingPrice: number; isActive: boolean; createdAt: Date; updatedAt: Date
 }
 
@@ -314,6 +314,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                   <TableHead>Item</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Stock</TableHead>
+                  <TableHead>Returns</TableHead>
+                  <TableHead>Damaged</TableHead>
                   <TableHead>Reorder At</TableHead>
                   <TableHead>Unit Cost</TableHead>
                   <TableHead>Sell Price</TableHead>
@@ -324,7 +326,7 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
               </TableHeader>
               <TableBody>
                 {paginatedItems.length === 0 && (
-                  <TableRow><TableCell colSpan={9} className="text-center py-12 text-gray-400">{t('noItemsYet')}</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-12 text-gray-400">{t('noItemsYet')}</TableCell></TableRow>
                 )}
                 {paginatedItems.map(item => (
                   <TableRow key={item.id} className={`hover:bg-gray-50 dark:hover:bg-gray-800/50 transition ${item.currentStock <= 0 ? 'opacity-60' : ''}`}>
@@ -340,6 +342,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                       </span>
                     </TableCell>
                     <TableCell className="font-bold tabular-nums">{item.currentStock} <span className="text-xs text-gray-400">{item.unit}</span></TableCell>
+                    <TableCell className="font-bold tabular-nums text-orange-500">{item.warrantyReturnStock > 0 ? item.warrantyReturnStock : '—'}</TableCell>
+                    <TableCell className="font-bold tabular-nums text-red-500">{item.damagedStock > 0 ? item.damagedStock : '—'}</TableCell>
                     <TableCell className="text-sm text-gray-500 tabular-nums">{item.reorderLevel} {item.unit}</TableCell>
                     <TableCell className="tabular-nums font-medium">{item.unitCost.toFixed(2)}</TableCell>
                     <TableCell className="tabular-nums font-bold text-teal-600">{item.sellingPrice?.toFixed(2)}</TableCell>
@@ -386,9 +390,9 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                     <p className="text-[10px] text-gray-400 font-bold uppercase">Stock</p>
                     <p className="font-black text-gray-900 dark:text-white tabular-nums">{item.currentStock}</p>
                   </div>
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-2 text-center">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase">Cost</p>
-                    <p className="font-black text-gray-900 dark:text-white tabular-nums">{item.unitCost.toFixed(2)}</p>
+                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-2 text-center">
+                    <p className="text-[10px] text-orange-400 font-bold uppercase">Returns</p>
+                    <p className="font-black text-orange-600 dark:text-orange-400 tabular-nums">{item.warrantyReturnStock}</p>
                   </div>
                   <div className="bg-teal-50 dark:bg-teal-900/20 rounded-xl p-2 text-center border border-teal-100 dark:border-teal-900/30">
                     <p className="text-[10px] text-teal-600 font-bold uppercase">Sell</p>

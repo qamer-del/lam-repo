@@ -482,6 +482,21 @@ export const en = {
   netIncome: 'Net Income',
   financialStatus: 'Overall Financial Status',
   expenses: 'Expenses',
+
+  // Warranty & Supplier Return Keys
+  replacementHistory: 'Replacement History',
+  supplierReturn: 'Supplier Return',
+  warrantyReturns: 'Warranty Returns',
+  newSupplierCase: 'New Supplier Case',
+  replaced: 'Replaced',
+  repaired: 'Repaired',
+  refunded: 'Refunded',
+  rejected: 'Rejected',
+  sentToSupplier: 'Sent to Supplier',
+  warrantyReturnStock: 'Warranty Return Stock',
+  damagedStock: 'Damaged Stock',
+  supplierCases: 'Supplier Cases',
+  replacementN: 'Replacement #{number}',
 }
 
 export const ar = {
@@ -968,4 +983,19 @@ export const ar = {
   netIncome: 'صافي الدخل',
   financialStatus: 'الوضع المالي العام',
   expenses: 'المصروفات',
+
+  // Warranty & Supplier Return Keys
+  replacementHistory: 'سجل الاستبدال',
+  supplierReturn: 'إرجاع المورد',
+  warrantyReturns: 'مرتجعات الضمان',
+  newSupplierCase: 'حالة مورد جديدة',
+  replaced: 'مستبدل',
+  repaired: 'تم الإصلاح',
+  refunded: 'تم الاسترجاع',
+  rejected: 'مرفوض',
+  sentToSupplier: 'أرسل للمورد',
+  warrantyReturnStock: 'مخزون مرتجعات الضمان',
+  damagedStock: 'المخزون التالف',
+  supplierCases: 'حالات الموردين',
+  replacementN: 'استبدال #{number}',
 }

@@ -19,12 +19,23 @@ enum TransType {
   AGENT_PURCHASE
   AGENT_PAYMENT
   WARRANTY_REPLACEMENT
+  SUPPLIER_WARRANTY_REFUND
 }
 
 enum WarrantyStatus {
   ACTIVE
   EXPIRED
-  CLAIMED
+  CLAIMED // kept for backward-compat with old records
+}
+
+enum SupplierCaseStatus {
+  PENDING
+  SENT_TO_SUPPLIER
+  REPLACED
+  REPAIRED
+  REFUNDED
+  REJECTED
+  CLOSED
 }
 
 enum PayMethod {
@@ -56,6 +67,8 @@ enum MovementType {
   SALE_OUT
   ADJUSTMENT
   RETURN_IN
+  WARRANTY_RETURN_IN   // defective item returned by customer
+  WARRANTY_OUT         // replacement item given to customer
 }
 
 enum PurchaseStatus {
@@ -79,13 +92,15 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  records        Transaction[]   @relation("UserRecords")
-  settlements    Settlement[]    @relation("UserSettlements")
-  openedShifts   Shift[]         @relation("OpenedShifts")
-  closedShifts   Shift[]         @relation("ClosedShifts")
-  stockMovements StockMovement[]
-  purchaseOrders PurchaseOrder[]
-  staffProfile   Staff?
+  records               Transaction[]         @relation("UserRecords")
+  settlements           Settlement[]          @relation("UserSettlements")
+  openedShifts          Shift[]               @relation("OpenedShifts")
+  closedShifts          Shift[]               @relation("ClosedShifts")
+  stockMovements        StockMovement[]
+  purchaseOrders        PurchaseOrder[]
+  staffProfile          Staff?
+  warrantyReplacements  WarrantyReplacement[]
+  supplierCases         SupplierWarrantyCase[]
 }
 
 model Staff {
@@ -105,13 +120,14 @@ model Staff {
 }
 
 model Agent {
-  id              Int             @id @default(autoincrement())
+  id              Int                  @id @default(autoincrement())
   name            String
   companyName     String?
-  openingBalance  Float           @default(0)
-  isActive        Boolean         @default(true)
+  openingBalance  Float                @default(0)
+  isActive        Boolean              @default(true)
   transactions    Transaction[]
   purchaseOrders  PurchaseOrder[]
+  supplierCases   SupplierWarrantyCase[]
 }
 
 model Customer {
@@ -232,6 +248,8 @@ model InventoryItem {
   category         InventoryCategory @default(OTHER)
   unit             String            @default("pcs") // pcs, L, kg, roll, etc.
   currentStock     Float             @default(0)
+  warrantyReturnStock Float          @default(0) // defective items returned by customers
+  damagedStock     Float             @default(0) // supplier-rejected / permanently damaged
   reorderLevel     Float             @default(5)
   unitCost         Float             @default(0)
   costIncludesVat  Boolean           @default(false)
@@ -247,9 +265,12 @@ model InventoryItem {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
-  stockMovements     StockMovement[]
-  purchaseOrderItems PurchaseOrderItem[]
-  warranties         Warranty[]
+  stockMovements          StockMovement[]
+  purchaseOrderItems      PurchaseOrderItem[]
+  warranties              Warranty[]
+  replacementsGiven       WarrantyReplacement[] @relation("ReplacementItem")
+  replacementsDefective   WarrantyReplacement[] @relation("DefectiveItem")
+  supplierCaseItems       SupplierWarrantyCaseItem[]
 }
 
 model StockMovement {
@@ -314,14 +335,70 @@ model Warranty {
   saleDate        DateTime
   warrantyEndDate DateTime
   status          WarrantyStatus @default(ACTIVE)
-  claimedAt       DateTime?
-  claimNotes      String?
-  replacementTransactionId Int?  // link to WARRANTY_REPLACEMENT transaction
+  replacementCount Int           @default(0) // total replacements processed
+  claimedAt       DateTime?      // kept for backward-compat
+  claimNotes      String?        // kept for backward-compat
+  replacementTransactionId Int?  // kept for backward-compat
   createdAt       DateTime       @default(now())
+
+  replacements    WarrantyReplacement[]
 
   @@index([invoiceNumber])
   @@index([itemId])
   @@index([status])
+}
+
+// Tracks every individual replacement event
+model WarrantyReplacement {
+  id                    Int            @id @default(autoincrement())
+  warrantyId            Int
+  warranty              Warranty       @relation(fields: [warrantyId], references: [id])
+  replacementItemId     Int            // item given to customer (usually same as defective)
+  replacementItem       InventoryItem  @relation("ReplacementItem", fields: [replacementItemId], references: [id])
+  defectiveItemId       Int            // item returned by customer
+  defectiveItem         InventoryItem  @relation("DefectiveItem", fields: [defectiveItemId], references: [id])
+  quantity              Int            @default(1)
+  notes                 String?
+  recordedById          String?
+  recordedBy            User?          @relation(fields: [recordedById], references: [id])
+  transactionId         Int?           // link to WARRANTY_REPLACEMENT transaction
+  supplierCaseItemId    Int?           // set when included in a supplier batch
+  supplierCaseItem      SupplierWarrantyCaseItem? @relation(fields: [supplierCaseItemId], references: [id])
+  createdAt             DateTime       @default(now())
+
+  @@index([warrantyId])
+}
+
+// A batch of defective items sent to a supplier
+model SupplierWarrantyCase {
+  id              Int                      @id @default(autoincrement())
+  agentId         Int?                     // the supplier (using Agent model)
+  agent           Agent?                   @relation(fields: [agentId], references: [id])
+  referenceNumber String?
+  status          SupplierCaseStatus       @default(PENDING)
+  notes           String?
+  sentAt          DateTime?
+  resolvedAt      DateTime?
+  createdById     String?
+  createdBy       User?                    @relation(fields: [createdById], references: [id])
+  items           SupplierWarrantyCaseItem[]
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+}
+
+// Items within a supplier warranty batch
+model SupplierWarrantyCaseItem {
+  id             Int                  @id @default(autoincrement())
+  caseId         Int
+  case           SupplierWarrantyCase @relation(fields: [caseId], references: [id])
+  itemId         Int
+  item           InventoryItem        @relation(fields: [itemId], references: [id])
+  quantity       Int
+  resolutionType String?              // REPLACED | REPAIRED | REFUNDED | REJECTED
+  notes          String?
+  resolvedAt     DateTime?
+
+  replacements   WarrantyReplacement[]
 }
 
 model SystemSettings {

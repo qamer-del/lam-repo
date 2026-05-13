@@ -1,14 +1,11 @@
-'use client'
-
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import { format } from 'date-fns'
 
-// Register fonts for better look
-Font.register({
-  family: 'Helvetica-Bold',
-  src: 'https://fonts.gstatic.com/s/helveticaneue/v70/1Ptsg8zYS_SKggPNyCg4TYFq.ttf'
-})
+// NOTE: Use explicit built-in font family names for bold text.
+// Do NOT use fontWeight: 'bold' with fontFamily: 'Helvetica' — it crashes @react-pdf/textkit.
+// Built-in font families: Helvetica, Helvetica-Bold, Helvetica-Oblique,
+//   Times-Roman, Times-Bold, Courier, Courier-Bold
 
 const styles = StyleSheet.create({
   page: {
@@ -30,14 +27,14 @@ const styles = StyleSheet.create({
   reportTitle: {
     fontSize: 24,
     color: '#1e40af',
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
   },
   reportSubtitle: {
     fontSize: 10,
     color: '#64748b',
     marginTop: 4,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
   },
   metaContainer: {
     textAlign: 'right',
@@ -67,19 +64,19 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textTransform: 'uppercase',
     marginBottom: 5,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
   },
   cardValue: {
     fontSize: 14,
     color: '#0f172a',
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
   },
   section: {
     marginBottom: 30,
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     color: '#1e40af',
     marginBottom: 15,
     textTransform: 'uppercase',
@@ -89,10 +86,6 @@ const styles = StyleSheet.create({
   },
   table: {
     width: 'auto',
-    borderStyle: 'solid',
-    borderWidth: 0,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
   },
   tableRow: {
     flexDirection: 'row',
@@ -116,7 +109,7 @@ const styles = StyleSheet.create({
   },
   tableCellHeader: {
     fontSize: 9,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     color: '#475569',
     textTransform: 'uppercase',
   },
@@ -134,7 +127,7 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 8,
     color: '#94a3b8',
-  }
+  },
 })
 
 interface FinanceReportDocumentProps {
@@ -147,8 +140,10 @@ export const FinanceReportDocument = ({ data, dateRange, t }: FinanceReportDocum
   const { stats, methodBreakdown } = data
 
   const formatCurrency = (val: number) => {
-    return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' SAR'
+    return (val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' SAR'
   }
+
+  const totalRevenue = stats?.totalRevenue || 1 // avoid div/0 in percentage calc
 
   return (
     <Document>
@@ -160,30 +155,32 @@ export const FinanceReportDocument = ({ data, dateRange, t }: FinanceReportDocum
             <Text style={styles.reportSubtitle}>Lamaha Accounting & Payroll System</Text>
           </View>
           <View style={styles.metaContainer}>
-            <Text style={styles.metaText}>Generated: {format(new Date(), 'PPP p')}</Text>
-            <Text style={styles.metaText}>Period: {format(dateRange.from, 'dd MMM yyyy')} - {format(dateRange.to, 'dd MMM yyyy')}</Text>
+            <Text style={styles.metaText}>Generated: {format(new Date(), 'dd MMM yyyy')}</Text>
+            <Text style={styles.metaText}>
+              Period: {format(dateRange.from, 'dd MMM yyyy')} - {format(dateRange.to, 'dd MMM yyyy')}
+            </Text>
           </View>
         </View>
 
         {/* Summary Grid */}
         <View style={styles.summaryGrid}>
           <View style={styles.summaryCard}>
-            <Text style={styles.cardLabel}>{t('revenue')}</Text>
-            <Text style={styles.cardValue}>{formatCurrency(stats.totalRevenue)}</Text>
+            <Text style={styles.cardLabel}>Revenue</Text>
+            <Text style={styles.cardValue}>{formatCurrency(stats?.totalRevenue)}</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.cardLabel}>{t('cogs')}</Text>
-            <Text style={styles.cardValue}>{formatCurrency(stats.totalCogs)}</Text>
+            <Text style={styles.cardLabel}>COGS</Text>
+            <Text style={styles.cardValue}>{formatCurrency(stats?.totalCogs)}</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.cardLabel}>{t('operatingExpenses')}</Text>
-            <Text style={styles.cardValue}>{formatCurrency(stats.totalExpenses)}</Text>
+            <Text style={styles.cardLabel}>Expenses</Text>
+            <Text style={styles.cardValue}>{formatCurrency(stats?.totalExpenses)}</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={[styles.cardValue, { color: stats.netProfit >= 0 ? '#059669' : '#dc2626' }]}>
-              {formatCurrency(stats.netProfit)}
+            <Text style={[styles.cardValue, { color: (stats?.netProfit || 0) >= 0 ? '#059669' : '#dc2626' }]}>
+              {formatCurrency(stats?.netProfit)}
             </Text>
-            <Text style={styles.cardLabel}>{t('netProfit')}</Text>
+            <Text style={styles.cardLabel}>Net Profit</Text>
           </View>
         </View>
 
@@ -196,13 +193,13 @@ export const FinanceReportDocument = ({ data, dateRange, t }: FinanceReportDocum
               <View style={styles.tableCol}><Text style={styles.tableCellHeader}>Amount</Text></View>
               <View style={styles.tableCol}><Text style={styles.tableCellHeader}>Percentage</Text></View>
             </View>
-            {Object.entries(methodBreakdown).map(([method, amount]: [any, any]) => (
+            {Object.entries(methodBreakdown || {}).map(([method, amount]: [any, any]) => (
               <View key={method} style={styles.tableRow}>
-                <View style={styles.tableCol}><Text style={styles.tableCell}>{t(method.toLowerCase()) || method}</Text></View>
+                <View style={styles.tableCol}><Text style={styles.tableCell}>{method}</Text></View>
                 <View style={styles.tableCol}><Text style={styles.tableCell}>{formatCurrency(amount)}</Text></View>
                 <View style={styles.tableCol}>
                   <Text style={styles.tableCell}>
-                    {((amount / stats.totalRevenue) * 100).toFixed(1)}%
+                    {((amount / totalRevenue) * 100).toFixed(1)}%
                   </Text>
                 </View>
               </View>
@@ -220,16 +217,16 @@ export const FinanceReportDocument = ({ data, dateRange, t }: FinanceReportDocum
               <View style={styles.tableCol}><Text style={styles.tableCellHeader}>Type</Text></View>
               <View style={styles.tableCol}><Text style={styles.tableCellHeader}>Amount</Text></View>
             </View>
-            {data.allTransactions.slice(0, 15).map((tx: any) => (
+            {(data.allTransactions || []).slice(0, 15).map((tx: any) => (
               <View key={tx.id} style={styles.tableRow}>
                 <View style={styles.tableCol}><Text style={styles.tableCell}>{format(new Date(tx.createdAt), 'dd/MM/yyyy')}</Text></View>
-                <View style={[styles.tableCol, { flex: 2 }]}><Text style={styles.tableCell}>{tx.description || t('noDescription')}</Text></View>
+                <View style={[styles.tableCol, { flex: 2 }]}><Text style={styles.tableCell}>{tx.description || 'No description'}</Text></View>
                 <View style={styles.tableCol}><Text style={styles.tableCell}>{tx.type}</Text></View>
                 <View style={styles.tableCol}><Text style={styles.tableCell}>{formatCurrency(tx.amount)}</Text></View>
               </View>
             ))}
           </View>
-          {data.allTransactions.length > 15 && (
+          {(data.allTransactions || []).length > 15 && (
             <Text style={{ fontSize: 8, color: '#94a3b8', marginTop: 10 }}>
               * Only showing first 15 transactions in PDF summary.
             </Text>

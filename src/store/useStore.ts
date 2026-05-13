@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TransType = 'SALE' | 'RETURN' | 'EXPENSE' | 'ADVANCE' | 'SALARY_PAYMENT' | 'OWNER_WITHDRAWAL' | 'AGENT_PURCHASE' | 'AGENT_PAYMENT' | 'WARRANTY_REPLACEMENT'
+export type TransType = 'SALE' | 'RETURN' | 'EXPENSE' | 'ADVANCE' | 'SALARY_PAYMENT' | 'OWNER_WITHDRAWAL' | 'AGENT_PURCHASE' | 'AGENT_PAYMENT' | 'WARRANTY_REPLACEMENT' | 'SUPPLIER_WARRANTY_REFUND'
 export type PayMethod = 'CASH' | 'NETWORK' | 'TABBY' | 'TAMARA' | 'CREDIT'
 
 export interface Transaction {
@@ -77,10 +77,10 @@ export const useStore = create<VaultState>((set) => ({
     txs.forEach(tx => {
       const isNetworkLike = ['NETWORK', 'TABBY', 'TAMARA'].includes(tx.method)
       
-      if (tx.type === 'SALE') {
+      if (tx.type === 'SALE' || tx.type === 'SUPPLIER_WARRANTY_REFUND') {
         if (tx.method === 'CASH') {
           cashChange += tx.amount;
-          fuelFundChange += tx.amount;
+          if (tx.type === 'SALE') fuelFundChange += tx.amount;
         } else if (tx.method === 'NETWORK') {
           netChange += tx.amount;
         } else if (tx.method === 'TABBY') {
