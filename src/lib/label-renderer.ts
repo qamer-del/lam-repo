@@ -61,65 +61,62 @@ export async function generateLabelImageBase64(
 
   // Draw Barcode Helper
   const drawBarcodeBlock = async () => {
-    if (config.showBarcode && config.barcodeType !== 'QR' && item?.barcode) {
+    const bcValue = item?.barcode || item?.sku
+    if (config.showBarcode && config.barcodeType !== 'QR' && bcValue) {
       const barcodeH = mmToPx(config.barcodeHeight)
       const barcodeW = Math.min(contentW, contentW * 0.9)
       const barcodeX = config.textAlignment === 'center' ? (pxW - barcodeW) / 2 : ml
       const extraH = mmToPx(4) // 4mm extra for text underneath
       checkOverflow(currentY + barcodeH + extraH)
 
-      if (currentY + barcodeH + extraH <= pxH - mb) {
-        try {
-          const bcCanvas = document.createElement('canvas')
-          const mod = await import('jsbarcode')
-          const JsB = mod.default ?? mod
-          if (typeof JsB !== 'function') throw new Error('JsB not function')
-          
-          if (JsB && item.barcode) {
-            const format = config.barcodeType === 'EAN13' ? 'EAN13' : config.barcodeType === 'UPC' ? 'UPC' : 'CODE128'
-            try {
-              JsB(bcCanvas, item.barcode, {
-                format,
-                height: barcodeH,
-                displayValue: true,
-                fontSize: mmToPx(config.fontSizeLabel),
-                margin: 2,
-                background: '#ffffff',
-                lineColor: '#000000',
-                width: 2, // Slightly thicker for print
-              })
-            } catch (err) {
-              JsB(bcCanvas, item.barcode, {
-                format: 'CODE128',
-                height: barcodeH,
-                displayValue: true,
-                fontSize: mmToPx(config.fontSizeLabel),
-                margin: 2,
-                background: '#ffffff',
-                lineColor: '#000000',
-                width: 2,
-              })
-            }
-            
-            const imgUrl = bcCanvas.toDataURL('image/png')
-            const img = new Image()
-            await new Promise<void>((resolve) => {
-              img.onload = () => {
-                ctx.drawImage(img, barcodeX, currentY, barcodeW, barcodeH + extraH)
-                resolve()
-              }
-              img.src = imgUrl
+      try {
+        const bcCanvas = document.createElement('canvas')
+        const mod = await import('jsbarcode')
+        const JsB = mod.default ?? mod
+        if (typeof JsB !== 'function') throw new Error('JsB not function')
+        
+        if (JsB && bcValue) {
+          const format = config.barcodeType === 'EAN13' ? 'EAN13' : config.barcodeType === 'UPC' ? 'UPC' : 'CODE128'
+          try {
+            JsB(bcCanvas, bcValue, {
+              format,
+              height: barcodeH,
+              displayValue: true,
+              fontSize: mmToPx(config.fontSizeLabel),
+              margin: 2,
+              background: '#ffffff',
+              lineColor: '#000000',
+              width: 2, // Slightly thicker for print
             })
-            currentY += barcodeH + extraH + spacing
+          } catch (err) {
+            JsB(bcCanvas, bcValue, {
+              format: 'CODE128',
+              height: barcodeH,
+              displayValue: true,
+              fontSize: mmToPx(config.fontSizeLabel),
+              margin: 2,
+              background: '#ffffff',
+              lineColor: '#000000',
+              width: 2,
+            })
           }
-        } catch (err: any) {
-          // Fallback box for barcode
-          ctx.fillStyle = '#000000'
-          ctx.fillRect(barcodeX, currentY, barcodeW, barcodeH)
-          currentY += barcodeH + spacing
+          
+          const imgUrl = bcCanvas.toDataURL('image/png')
+          const img = new Image()
+          await new Promise<void>((resolve) => {
+            img.onload = () => {
+              ctx.drawImage(img, barcodeX, currentY, barcodeW, barcodeH + extraH)
+              resolve()
+            }
+            img.src = imgUrl
+          })
+          currentY += barcodeH + extraH + spacing
         }
-      } else {
-        hasOverflow = true
+      } catch (err: any) {
+        // Fallback box for barcode
+        ctx.fillStyle = '#000000'
+        ctx.fillRect(barcodeX, currentY, barcodeW, barcodeH)
+        currentY += barcodeH + spacing
       }
     }
   }
@@ -188,7 +185,8 @@ export async function generateLabelImageBase64(
   }
 
   // 9. QR Code
-  if (config.showQrCode && item?.barcode) {
+  const qrValue = item?.barcode || item?.sku
+  if (config.showQrCode && qrValue) {
     const qrSize = mmToPx(config.qrSize)
     const qrX = config.textAlignment === 'center' ? (pxW - qrSize) / 2 : ml
     checkOverflow(currentY + qrSize)
@@ -196,7 +194,7 @@ export async function generateLabelImageBase64(
     if (currentY + qrSize <= pxH - mb) {
       try {
         const QRCode = await import('qrcode')
-        const qrDataUrl = await QRCode.toDataURL(item.barcode, {
+        const qrDataUrl = await QRCode.toDataURL(qrValue, {
           width: Math.round(qrSize * 2),
           margin: 1,
         })

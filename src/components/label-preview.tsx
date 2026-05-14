@@ -75,70 +75,67 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
     }
 
     const drawBarcodeBlock = async () => {
-      if (config.showBarcode && config.barcodeType !== 'QR' && item?.barcode) {
+      const bcValue = item?.barcode || item?.sku
+      if (config.showBarcode && config.barcodeType !== 'QR' && bcValue) {
         const barcodeH = config.barcodeHeight * MM_TO_PX_AT_96DPI
         const barcodeW = Math.min(contentW, contentW * 0.9)
         const barcodeX = config.textAlignment === 'center' ? (pxW - barcodeW) / 2 : ml
         checkOverflow(currentY + barcodeH + 16)
 
-        if (currentY + barcodeH + 16 <= pxH - mb) {
-          try {
-            const bcCanvas = document.createElement('canvas')
-            const mod = await import('jsbarcode')
-            const JsB = mod.default ?? mod
-            if (typeof JsB !== 'function') throw new Error('JsB not function')
-            if (JsB && item.barcode) {
-              const format = config.barcodeType === 'EAN13' ? 'EAN13' : config.barcodeType === 'UPC' ? 'UPC' : 'CODE128'
-              try {
-                JsB(bcCanvas, item.barcode, {
-                  format,
-                  height: barcodeH,
-                  displayValue: true,
-                  fontSize: config.fontSizeLabel * MM_TO_PX_AT_96DPI,
-                  margin: 2,
-                  background: '#ffffff',
-                  lineColor: '#000000',
-                  width: 1.5,
-                })
-              } catch (err) {
-                // Fallback to CODE128
-                JsB(bcCanvas, item.barcode, {
-                  format: 'CODE128',
-                  height: barcodeH,
-                  displayValue: true,
-                  fontSize: config.fontSizeLabel * MM_TO_PX_AT_96DPI,
-                  margin: 2,
-                  background: '#ffffff',
-                  lineColor: '#000000',
-                  width: 1.5,
-                })
-              }
-              
-              const imgUrl = bcCanvas.toDataURL('image/png')
-              const img = new Image()
-              await new Promise<void>((resolve) => {
-                img.onload = () => {
-                  ctx.drawImage(img, barcodeX, currentY, barcodeW, barcodeH + 16)
-                  resolve()
-                }
-                img.src = imgUrl
+        try {
+          const bcCanvas = document.createElement('canvas')
+          const mod = await import('jsbarcode')
+          const JsB = mod.default ?? mod
+          if (typeof JsB !== 'function') throw new Error('JsB not function')
+          if (JsB && bcValue) {
+            const format = config.barcodeType === 'EAN13' ? 'EAN13' : config.barcodeType === 'UPC' ? 'UPC' : 'CODE128'
+            try {
+              JsB(bcCanvas, bcValue, {
+                format,
+                height: barcodeH,
+                displayValue: true,
+                fontSize: config.fontSizeLabel * MM_TO_PX_AT_96DPI,
+                margin: 2,
+                background: '#ffffff',
+                lineColor: '#000000',
+                width: 1.5,
               })
-              currentY += barcodeH + 18 + spacing
+            } catch (err) {
+              // Fallback to CODE128
+              JsB(bcCanvas, bcValue, {
+                format: 'CODE128',
+                height: barcodeH,
+                displayValue: true,
+                fontSize: config.fontSizeLabel * MM_TO_PX_AT_96DPI,
+                margin: 2,
+                background: '#ffffff',
+                lineColor: '#000000',
+                width: 1.5,
+              })
             }
-          } catch (err: any) {
-            // Fallback: draw placeholder with error message
-            ctx.fillStyle = '#fee2e2'
-            ctx.fillRect(barcodeX, currentY, barcodeW, barcodeH + 16)
-            ctx.fillStyle = '#b91c1c'
-            ctx.font = `600 8px Arial`
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'middle'
-            const msg = err?.message ? err.message.substring(0, 30) : 'BARCODE ERROR'
-            ctx.fillText(msg, pxW / 2, currentY + (barcodeH + 16) / 2)
+            
+            const imgUrl = bcCanvas.toDataURL('image/png')
+            const img = new Image()
+            await new Promise<void>((resolve) => {
+              img.onload = () => {
+                ctx.drawImage(img, barcodeX, currentY, barcodeW, barcodeH + 16)
+                resolve()
+              }
+              img.src = imgUrl
+            })
             currentY += barcodeH + 18 + spacing
           }
-        } else {
-          hasOverflow = true
+        } catch (err: any) {
+          // Fallback: draw placeholder with error message
+          ctx.fillStyle = '#fee2e2'
+          ctx.fillRect(barcodeX, currentY, barcodeW, barcodeH + 16)
+          ctx.fillStyle = '#b91c1c'
+          ctx.font = `600 8px Arial`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          const msg = err?.message ? err.message.substring(0, 30) : 'BARCODE ERROR'
+          ctx.fillText(msg, pxW / 2, currentY + (barcodeH + 16) / 2)
+          currentY += barcodeH + 18 + spacing
         }
       }
     }
@@ -229,7 +226,8 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
 
 
     // QR Code
-    if (config.showQrCode && item?.barcode) {
+    const qrValue = item?.barcode || item?.sku
+    if (config.showQrCode && qrValue) {
       const qrSize = config.qrSize * MM_TO_PX_AT_96DPI
       const qrX = config.textAlignment === 'center' ? (pxW - qrSize) / 2 : ml
       checkOverflow(currentY + qrSize)
@@ -237,7 +235,7 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
       if (currentY + qrSize <= pxH - mb) {
         try {
           const QRCode = await import('qrcode')
-          const qrDataUrl = await QRCode.toDataURL(item.barcode, {
+          const qrDataUrl = await QRCode.toDataURL(qrValue, {
             width: Math.round(qrSize * 2),
             margin: 1,
           })
@@ -265,6 +263,7 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
       }
     }
 
+    // Bottom Barcode
     if (config.barcodePosition !== 'top') {
       await drawBarcodeBlock()
     }

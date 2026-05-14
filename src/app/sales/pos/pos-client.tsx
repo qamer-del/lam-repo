@@ -10,6 +10,7 @@ import { createCustomer } from '@/actions/customers'
 import { format, addDays } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { BnplCheckoutModal } from '@/components/bnpl-checkout-modal'
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, Receipt, Banknote, Wifi,
   SplitSquareHorizontal, ShoppingBag, Users, Check, UserPlus, ArrowLeft,
@@ -130,6 +131,7 @@ export function PosClient({
   const [dueDate, setDueDate] = useState(() => format(addDays(new Date(), 30), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(false)
   const [pendingWarranties, setPendingWarranties] = useState<any[]>([])
+  const [bnplModal, setBnplModal] = useState<{ provider: 'TABBY' | 'TAMARA' } | null>(null)
   const amountRef = useRef<HTMLInputElement>(null)
 
   const baseTotal = totalOverride !== '' ? (parseFloat(totalOverride) || 0) : cartSubtotal
@@ -173,6 +175,12 @@ export function PosClient({
       toast.warning(t('creditCustomerRequired')); return
     }
     setLoading(true)
+    // ── BNPL: open checkout modal instead of direct sale ──────────────────
+    if (payMode === 'TABBY' || payMode === 'TAMARA') {
+      setLoading(false)
+      setBnplModal({ provider: payMode })
+      return
+    }
     try {
       const results = await recordDailySales({
         paymentMode: payMode, totalAmount: finalTotal,
@@ -294,6 +302,42 @@ export function PosClient({
 
   return (
     <>
+      {/* ── BNPL Checkout Modal ── */}
+      {bnplModal && (
+        <BnplCheckoutModal
+          provider={bnplModal.provider}
+          amount={finalTotal}
+          cart={cart.filter(c => c.quantity > 0).map(c => ({
+            itemId: c.itemId,
+            name: c.name,
+            quantity: c.quantity,
+            price: c.price,
+            unit: c.unit,
+          }))}
+          customerName={customerName || undefined}
+          customerId={customerId || undefined}
+          onSuccess={(invoiceNumber) => {
+            setBnplModal(null)
+            toast.success('Payment confirmed! Invoice created.')
+            router.refresh()
+            resetForm()
+            // Auto-print if printer connected
+            if (printerStatus === 'connected') {
+              printReceipt({
+                invoiceNumber,
+                createdAt: new Date(),
+                cashierName,
+                items: cart.filter(c => c.quantity > 0).map(ci => ({ name: ci.name, quantity: ci.quantity, price: ci.price, unit: ci.unit })),
+                totalAmount: finalTotal,
+                paymentMethod: bnplModal.provider,
+                customerName: customerName || undefined,
+              }).catch(() => {})
+            }
+          }}
+          onCancel={() => setBnplModal(null)}
+        />
+      )}
+
       {pendingWarranties.length > 0 && (
         <WarrantyNotification warranties={pendingWarranties} customerPhone={customerPhone || undefined} onDismiss={() => setPendingWarranties([])} />
       )}

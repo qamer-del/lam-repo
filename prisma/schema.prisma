@@ -101,6 +101,7 @@ model User {
   staffProfile          Staff?
   warrantyReplacements  WarrantyReplacement[]
   supplierCases         SupplierWarrantyCase[]
+  bnplSessions          BnplSession[]         @relation("UserBnplSessions")
 }
 
 model Staff {
@@ -142,6 +143,7 @@ model Customer {
 
   transactions Transaction[]
   warranties   Warranty[]
+  bnplSessions BnplSession[]
 }
 
 model Transaction {
@@ -223,6 +225,7 @@ model Shift {
   updatedAt       DateTime  @updatedAt
   
   transactions    Transaction[]
+  bnplSessions    BnplSession[]
 }
 
 model SalarySettlement {
@@ -433,3 +436,50 @@ model PrinterSettings {
   labelHeight  Float   @default(25)   // mm
   updatedAt    DateTime @updatedAt
 }
+
+// ── BNPL Payment Sessions (Tabby / Tamara) ─────────────────
+
+enum BnplStatus {
+  PENDING_PAYMENT
+  PAYMENT_LINK_SENT
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+enum BnplProvider {
+  TABBY
+  TAMARA
+}
+
+model BnplSession {
+  id                String      @id @default(cuid())
+  provider          BnplProvider
+  status            BnplStatus  @default(PENDING_PAYMENT)
+  amount            Float
+  currency          String      @default("SAR")
+  invoiceNumber     String      @unique
+  providerSessionId String?     // Provider's own session/order ID
+  checkoutUrl       String?     // The payment link shown to customer
+  customerPhone     String
+  customerName      String?
+  customerId        Int?
+  customer          Customer?   @relation(fields: [customerId], references: [id])
+  cartSnapshot      Json        // Snapshot of items at time of session creation
+  webhookPayload    Json?       // Raw webhook body for audit
+  expiresAt         DateTime
+  paidAt            DateTime?
+  failureReason     String?
+  recordedById      String?
+  recordedBy        User?       @relation("UserBnplSessions", fields: [recordedById], references: [id])
+  shiftId           Int?
+  shift             Shift?      @relation(fields: [shiftId], references: [id])
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([invoiceNumber])
+  @@index([status])
+  @@index([provider])
+}
+

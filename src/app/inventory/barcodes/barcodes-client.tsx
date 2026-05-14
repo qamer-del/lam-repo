@@ -228,11 +228,15 @@ export function BarcodesClient({
                   <span className="text-xs text-gray-500">{item.sku || 'No SKU'}</span>
                   {item.barcode ? (
                     <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">
-                      {item.barcodeType}
+                      {item.barcodeType || 'Barcode'}
+                    </span>
+                  ) : item.sku ? (
+                    <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">
+                      Using SKU
                     </span>
                   ) : (
                     <span className="text-[10px] bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full font-medium">
-                      No Barcode
+                      No Barcode or SKU
                     </span>
                   )}
                 </div>
@@ -278,17 +282,17 @@ export function BarcodesClient({
                   </div>
                   <button
                     onClick={handlePrintSingle}
-                    disabled={isPrinting || !selectedItem || !selectedItem.barcode}
+                    disabled={isPrinting || !selectedItem || (!selectedItem.barcode && !selectedItem.sku)}
                     className="flex-1 mt-5 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition"
                   >
                     <Printer size={18} />
                     {isPrinting ? 'Printing...' : 'Print Label'}
                   </button>
                 </div>
-                {!selectedItem?.barcode && (
+                {(!selectedItem?.barcode && !selectedItem?.sku) && (
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 p-3 rounded-lg flex items-start gap-2 text-sm mt-4">
                     <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                    <p>This item does not have a barcode assigned. Please edit the item in the Inventory tab to assign one.</p>
+                    <p>This item does not have a barcode or SKU assigned. Please edit the item in the Inventory tab to assign one before printing.</p>
                   </div>
                 )}
               </div>
