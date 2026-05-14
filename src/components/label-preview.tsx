@@ -101,7 +101,7 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
                   width: 1.5,
                 })
               } catch (err) {
-                // If format validation fails (e.g., wrong length for EAN13), fallback to CODE128
+                // Fallback to CODE128
                 JsB(bcCanvas, item.barcode, {
                   format: 'CODE128',
                   height: barcodeH,
@@ -114,7 +114,15 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
                 })
               }
               
-              ctx.drawImage(bcCanvas, barcodeX, currentY, barcodeW, barcodeH + 16)
+              const imgUrl = bcCanvas.toDataURL('image/png')
+              const img = new Image()
+              await new Promise<void>((resolve) => {
+                img.onload = () => {
+                  ctx.drawImage(img, barcodeX, currentY, barcodeW, barcodeH + 16)
+                  resolve()
+                }
+                img.src = imgUrl
+              })
               currentY += barcodeH + 18 + spacing
             }
           } catch (err: any) {

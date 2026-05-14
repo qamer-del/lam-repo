@@ -8,8 +8,9 @@
  */
 
 import type { LabelConfig, LabelData, BarcodeType } from '@/lib/barcode'
+import { generateLabelImageBase64 } from '@/lib/label-renderer'
 
-interface ZebraPrinterSettings {
+export interface ZebraPrinterSettings {
   printerName: string
   dpi: number
   darkness: number
@@ -218,17 +219,27 @@ export async function printZebraLabels(
     throw new Error('QZ Tray is not connected.')
   }
 
-  const printerConfig = qz.configs.create(settings.printerName)
+  // Create printer config with strict dimensions and density
+  const printerConfig = qz.configs.create(settings.printerName, {
+    size: { width: config.width, height: config.height },
+    units: 'mm',
+    density: settings.dpi,
+    margins: 0,
+    copies: 1, // We handle quantities by duplicating the image data
+  })
 
-  // Build combined ZPL for all items (one QZ Tray job)
-  let combinedZpl = ''
+  const printData = []
+  
+  // Generate high-resolution image for each item
   for (const { item, quantity } of items) {
-    combinedZpl += buildZPL(config, item, settings, quantity, copies)
+    const base64 = await generateLabelImageBase64(config, item, settings.dpi)
+    const totalQty = quantity * copies
+    
+    // Add the image to the print queue N times
+    for (let i = 0; i < totalQty; i++) {
+      printData.push({ type: 'image', format: 'base64', data: base64 })
+    }
   }
 
-  await qz.print(printerConfig, [
-    { type: 'raw', format: 'plain', data: combinedZpl },
-  ])
+  await qz.print(printerConfig, printData)
 }
-
-export type { ZebraPrinterSettings }
