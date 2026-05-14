@@ -281,6 +281,25 @@ export function LabelBuilder({ config, onChange }: LabelBuilderProps) {
               ))}
             </div>
           </div>
+          
+          <div className="space-y-1 pt-1">
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Barcode Position</label>
+            <div className="flex gap-1">
+              {(['top', 'bottom'] as const).map((pos) => (
+                <button
+                  key={pos}
+                  onClick={() => set('barcodePosition', pos)}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition capitalize ${
+                    config.barcodePosition === pos
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {pos}
+                </button>
+              ))}
+            </div>
+          </div>
         </Section>
       </div>
     </div>

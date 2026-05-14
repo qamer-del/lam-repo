@@ -90,6 +90,22 @@ export function buildZPL(
 
   let currentY = mt
 
+  const buildBarcodeBlock = () => {
+    let block = ''
+    if (config.showBarcode && item.barcode && config.barcodeType !== 'QR') {
+      const barcodeX = config.textAlignment === 'center'
+        ? Math.max(ml, Math.floor((labelWidthDots - contentWidth * 0.8) / 2))
+        : ml
+      block += zplBarcode(barcodeX, currentY, config.barcodeType, item.barcode, barcodeH)
+      currentY += barcodeH + 20 + spacing // +20 for barcode text below
+    }
+    return block
+  }
+
+  if (config.barcodePosition === 'top') {
+    zpl += buildBarcodeBlock()
+  }
+
   // Product name (English)
   if (config.showProductName && item.name) {
     zpl += `^FO${ml},${currentY}^CF0,${fontName}^FD${item.name}^FS\n`
@@ -102,11 +118,6 @@ export function buildZPL(
     currentY += fontName + spacing
   }
 
-  // Store name
-  if (config.showStoreName && config.storeName) {
-    zpl += `^FO${ml},${currentY}^CF0,${fontLabel}^FD${config.storeName}^FS\n`
-    currentY += fontLabel + spacing
-  }
 
   // SKU
   if (config.showSku && item.sku) {
@@ -114,15 +125,23 @@ export function buildZPL(
     currentY += fontLabel + spacing
   }
 
-  // Price
+  // Price & VAT
   if (config.showPrice && item.sellingPrice) {
-    zpl += `^FO${ml},${currentY}^CF0,${fontPrice}^FD${item.sellingPrice.toFixed(2)} SAR^FS\n`
+    if (config.showVatPrice) {
+      if (config.textAlignment === 'right' || config.showProductNameAr) {
+        zpl += `^FO${ml},${currentY}^CF0,${fontPrice}^FDالسعر يشمل الضريبة: ${item.sellingPrice.toFixed(2)}^FS\n`
+      } else {
+        zpl += `^FO${ml},${currentY}^CF0,${fontPrice}^FD${item.sellingPrice.toFixed(2)} SAR (Inc. VAT 15%)^FS\n`
+      }
+    } else {
+      zpl += `^FO${ml},${currentY}^CF0,${fontPrice}^FD${item.sellingPrice.toFixed(2)} SAR^FS\n`
+    }
     currentY += fontPrice + spacing
   }
 
-  // VAT-inclusive price (same as selling price — already VAT inclusive)
-  if (config.showVatPrice && item.sellingPrice) {
-    zpl += `^FO${ml},${currentY}^CF0,${fontLabel}^FDInc. VAT 15%^FS\n`
+  // Store name
+  if (config.showStoreName && config.storeName) {
+    zpl += `^FO${ml},${currentY}^CF0,${fontLabel}^FD${config.storeName}^FS\n`
     currentY += fontLabel + spacing
   }
 
@@ -145,13 +164,9 @@ export function buildZPL(
     currentY += fontLabel + spacing
   }
 
-  // Barcode
-  if (config.showBarcode && item.barcode && config.barcodeType !== 'QR') {
-    const barcodeX = config.textAlignment === 'center'
-      ? Math.max(ml, Math.floor((labelWidthDots - contentWidth * 0.8) / 2))
-      : ml
-    zpl += zplBarcode(barcodeX, currentY, config.barcodeType, item.barcode, barcodeH)
-    currentY += barcodeH + 20 + spacing // +20 for barcode text below
+  // Barcode (Bottom)
+  if (config.barcodePosition !== 'top') {
+    zpl += buildBarcodeBlock()
   }
 
   // QR Code

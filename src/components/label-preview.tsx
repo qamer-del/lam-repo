@@ -15,17 +15,7 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
-  const [jsBarcode, setJsBarcode] = useState<any>(null)
   const [overflow, setOverflow] = useState(false)
-
-  // Load JsBarcode once and cache on window
-  useEffect(() => {
-    import('jsbarcode').then((mod) => {
-      const lib = mod.default ?? mod
-      ;(window as any).__JsBarcode = lib
-      setJsBarcode(lib)
-    })
-  }, [])
 
   const drawLabel = useCallback(async () => {
     const canvas = canvasRef.current
@@ -84,6 +74,71 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
       currentY += fontSize + spacing
     }
 
+    const drawBarcodeBlock = async () => {
+      if (config.showBarcode && config.barcodeType !== 'QR' && item?.barcode) {
+        const barcodeH = config.barcodeHeight * MM_TO_PX_AT_96DPI
+        const barcodeW = Math.min(contentW, contentW * 0.9)
+        const barcodeX = config.textAlignment === 'center' ? (pxW - barcodeW) / 2 : ml
+        checkOverflow(currentY + barcodeH + 16)
+
+        if (currentY + barcodeH + 16 <= pxH - mb) {
+          try {
+            const bcCanvas = document.createElement('canvas')
+            const mod = await import('jsbarcode')
+            const JsB = mod.default ?? mod
+            if (typeof JsB !== 'function') throw new Error('JsB not function')
+            if (JsB && item.barcode) {
+              const format = config.barcodeType === 'EAN13' ? 'EAN13' : config.barcodeType === 'UPC' ? 'UPC' : 'CODE128'
+              try {
+                JsB(bcCanvas, item.barcode, {
+                  format,
+                  height: barcodeH,
+                  displayValue: true,
+                  fontSize: config.fontSizeLabel * MM_TO_PX_AT_96DPI,
+                  margin: 2,
+                  background: '#ffffff',
+                  lineColor: '#000000',
+                  width: 1.5,
+                })
+              } catch (err) {
+                // If format validation fails (e.g., wrong length for EAN13), fallback to CODE128
+                JsB(bcCanvas, item.barcode, {
+                  format: 'CODE128',
+                  height: barcodeH,
+                  displayValue: true,
+                  fontSize: config.fontSizeLabel * MM_TO_PX_AT_96DPI,
+                  margin: 2,
+                  background: '#ffffff',
+                  lineColor: '#000000',
+                  width: 1.5,
+                })
+              }
+              
+              ctx.drawImage(bcCanvas, barcodeX, currentY, barcodeW, barcodeH + 16)
+              currentY += barcodeH + 18 + spacing
+            }
+          } catch (err: any) {
+            // Fallback: draw placeholder with error message
+            ctx.fillStyle = '#fee2e2'
+            ctx.fillRect(barcodeX, currentY, barcodeW, barcodeH + 16)
+            ctx.fillStyle = '#b91c1c'
+            ctx.font = `600 8px Arial`
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            const msg = err?.message ? err.message.substring(0, 30) : 'BARCODE ERROR'
+            ctx.fillText(msg, pxW / 2, currentY + (barcodeH + 16) / 2)
+            currentY += barcodeH + 18 + spacing
+          }
+        } else {
+          hasOverflow = true
+        }
+      }
+    }
+
+    if (config.barcodePosition === 'top') {
+      await drawBarcodeBlock()
+    }
+
     // Product name (EN)
     if (config.showProductName && item?.name) {
       const fontSize = config.fontSizeName * MM_TO_PX_AT_96DPI
@@ -103,11 +158,6 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
       currentY += fontSize + spacing
     }
 
-    // Store name
-    if (config.showStoreName && config.storeName) {
-      const fontSize = config.fontSizeLabel * MM_TO_PX_AT_96DPI
-      drawText(config.storeName, fontSize, false, '#6b7280')
-    }
 
     // SKU
     if (config.showSku && item?.sku) {
@@ -115,16 +165,25 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
       drawText(`SKU: ${item.sku}`, fontSize, false, '#9ca3af')
     }
 
-    // Price
+    // VAT note & Price
     if (config.showPrice && item?.sellingPrice) {
       const fontSize = config.fontSizePrice * MM_TO_PX_AT_96DPI
-      drawText(`${item.sellingPrice.toFixed(2)} SAR`, fontSize, true, '#059669')
+      
+      if (config.showVatPrice) {
+        if (config.textAlignment === 'right' || config.showProductNameAr) {
+           drawText(`السعر يشمل الضريبة: ${item.sellingPrice.toFixed(2)}`, fontSize, true, '#059669')
+        } else {
+           drawText(`${item.sellingPrice.toFixed(2)} SAR (Inc. VAT 15%)`, fontSize, true, '#059669')
+        }
+      } else {
+        drawText(`${item.sellingPrice.toFixed(2)} SAR`, fontSize, true, '#059669')
+      }
     }
 
-    // VAT note
-    if (config.showVatPrice && item?.sellingPrice) {
+    // Store name
+    if (config.showStoreName && config.storeName) {
       const fontSize = config.fontSizeLabel * MM_TO_PX_AT_96DPI
-      drawText('Inc. VAT 15%', fontSize, false, '#6b7280')
+      drawText(config.storeName, fontSize, false, '#6b7280')
     }
 
     // Warranty badge
@@ -160,47 +219,6 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
       drawText(config.customText2, config.fontSizeLabel * MM_TO_PX_AT_96DPI)
     }
 
-    // Barcode
-    if (config.showBarcode && config.barcodeType !== 'QR' && item?.barcode) {
-      const barcodeH = config.barcodeHeight * MM_TO_PX_AT_96DPI
-      const barcodeW = Math.min(contentW, contentW * 0.9)
-      const barcodeX = config.textAlignment === 'center' ? (pxW - barcodeW) / 2 : ml
-      checkOverflow(currentY + barcodeH + 16)
-
-      if (currentY + barcodeH + 16 <= pxH - mb) {
-        try {
-          const bcCanvas = document.createElement('canvas')
-          const JsB = (window as any).__JsBarcode
-          if (JsB && item.barcode) {
-            const format = config.barcodeType === 'EAN13' ? 'EAN13' : config.barcodeType === 'UPC' ? 'UPC' : 'CODE128'
-            JsB(bcCanvas, item.barcode, {
-              format,
-              height: barcodeH,
-              displayValue: true,
-              fontSize: config.fontSizeLabel * MM_TO_PX_AT_96DPI,
-              margin: 2,
-              background: '#ffffff',
-              lineColor: '#000000',
-              width: 1.5,
-            })
-            ctx.drawImage(bcCanvas, barcodeX, currentY, barcodeW, barcodeH + 16)
-            currentY += barcodeH + 18 + spacing
-          }
-        } catch {
-          // Fallback: draw placeholder
-          ctx.fillStyle = '#e5e7eb'
-          ctx.fillRect(barcodeX, currentY, barcodeW, barcodeH)
-          ctx.fillStyle = '#9ca3af'
-          ctx.font = `400 8px Arial`
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          ctx.fillText('[ BARCODE ]', pxW / 2, currentY + barcodeH / 2)
-          currentY += barcodeH + spacing
-        }
-      } else {
-        hasOverflow = true
-      }
-    }
 
     // QR Code
     if (config.showQrCode && item?.barcode) {
@@ -239,6 +257,10 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
       }
     }
 
+    if (config.barcodePosition !== 'top') {
+      await drawBarcodeBlock()
+    }
+
     // Margin guides (subtle dotted lines)
     ctx.strokeStyle = 'rgba(59,130,246,0.2)'
     ctx.lineWidth = 0.5
@@ -247,7 +269,7 @@ export function LabelPreview({ config, item, className = '' }: LabelPreviewProps
     ctx.setLineDash([])
 
     setOverflow(hasOverflow)
-  }, [config, item, jsBarcode])
+  }, [config, item])
 
   // Recalculate scale when container or label size changes
   useEffect(() => {

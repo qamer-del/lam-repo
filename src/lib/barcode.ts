@@ -52,6 +52,7 @@ export interface LabelConfig {
   // Barcode
   barcodeType: BarcodeType
   textAlignment: 'left' | 'center' | 'right'
+  barcodePosition?: 'top' | 'bottom'
 }
 
 export interface LabelData {
@@ -98,11 +99,24 @@ export const DEFAULT_LABEL_CONFIG: LabelConfig = {
 
   barcodeType: 'CODE128',
   textAlignment: 'center',
+  barcodePosition: 'bottom',
 }
 
 // ─── Label Presets ────────────────────────────────────────────────────────────
 
 export const LABEL_PRESETS: { key: string; name: string; nameAr: string; config: Partial<LabelConfig> }[] = [
+  {
+    key: 'lamaha_standard',
+    name: 'Lamaha Standard (AR)',
+    nameAr: 'ملصق لمعة المعتمد',
+    config: {
+      width: 50, height: 25,
+      showProductName: false, showProductNameAr: true, showBarcode: true, showPrice: true,
+      showSku: false, showQrCode: false, showStoreName: true, showVatPrice: true,
+      fontSizeName: 8, fontSizePrice: 8, fontSizeLabel: 7, barcodeHeight: 8,
+      barcodePosition: 'top', textAlignment: 'right', storeName: 'مؤسسة لمعة الدرة'
+    },
+  },
   {
     key: 'small_price',
     name: 'Small Price Label',
@@ -208,36 +222,7 @@ export async function generateBarcodeSvg(
   }
 }
 
-/**
- * Generate barcode data URL directly from a canvas element
- * Preferred method for preview — synchronous after JsBarcode is loaded
- */
-export function renderBarcodeToCanvas(
-  canvas: HTMLCanvasElement,
-  type: BarcodeType,
-  value: string,
-  height = 40,
-  displayValue = true
-): boolean {
-  try {
-    // Dynamic import not possible synchronously — use pre-loaded JsBarcode
-    const JsBarcodeLib = (window as any).__JsBarcode
-    if (!JsBarcodeLib || !value) return false
-    const format = type === 'EAN13' ? 'EAN13' : type === 'UPC' ? 'UPC' : 'CODE128'
-    JsBarcodeLib(canvas, value, {
-      format,
-      height,
-      displayValue,
-      fontSize: 10,
-      margin: 2,
-      background: '#ffffff',
-      lineColor: '#000000',
-    })
-    return true
-  } catch {
-    return false
-  }
-}
+
 
 /**
  * Generate QR code as data URL
