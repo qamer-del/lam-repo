@@ -31,6 +31,7 @@ interface InventoryItem {
   id: number; name: string; sku: string | null; unit: string
   currentStock: number; sellingPrice: number; reorderLevel: number
   hasWarranty?: boolean; warrantyDuration?: number | null; warrantyUnit?: string | null
+  barcode?: string | null; barcodeType?: string | null
 }
 interface CartItem { itemId: number; name: string; unit: string; quantity: number; price: number }
 interface CustomerOption { id: number; name: string; phone: string | null }
@@ -95,7 +96,8 @@ export function PosClient({
     ? inventoryItems
     : inventoryItems.filter(i =>
         i.name.toLowerCase().includes(search.toLowerCase()) ||
-        (i.sku?.toLowerCase().includes(search.toLowerCase()))
+        (i.sku?.toLowerCase().includes(search.toLowerCase())) ||
+        (i.barcode?.toLowerCase().includes(search.toLowerCase()))
       )
 
   const [cart, setCart] = useState<CartItem[]>([])
@@ -674,7 +676,33 @@ export function PosClient({
                     onKeyDown={e => {
                       if (e.key === 'ArrowDown') { e.preventDefault(); setFocusedIdx(i => Math.min(i + 1, filteredItems.length - 1)) }
                       if (e.key === 'ArrowUp') { e.preventDefault(); setFocusedIdx(i => Math.max(i - 1, -1)) }
-                      if (e.key === 'Enter' && focusedIdx >= 0) { e.preventDefault(); addToCart(filteredItems[focusedIdx]) }
+                      if (e.key === 'Enter') { 
+                        e.preventDefault()
+                        if (focusedIdx >= 0 && filteredItems[focusedIdx]) {
+                          if (filteredItems[focusedIdx].currentStock > 0) {
+                            addToCart(filteredItems[focusedIdx])
+                            setSearch(''); setFocusedIdx(-1);
+                          }
+                        } else if (search.trim()) {
+                          const s = search.trim().toLowerCase()
+                          // 1. Exact Barcode Match
+                          const barcodeMatch = inventoryItems.find(i => i.barcode?.toLowerCase() === s)
+                          // 2. Exact SKU Match
+                          const skuMatch = inventoryItems.find(i => i.sku?.toLowerCase() === s)
+                          
+                          const match = barcodeMatch || skuMatch
+                          if (match && match.currentStock > 0) {
+                            addToCart(match)
+                            setSearch(''); setFocusedIdx(-1);
+                          } else if (filteredItems.length === 1 && filteredItems[0].currentStock > 0) {
+                            addToCart(filteredItems[0])
+                            setSearch(''); setFocusedIdx(-1);
+                          } else {
+                            toast.error('Barcode not found or item out of stock')
+                            setSearch('') // Clear search so cashier can scan again
+                          }
+                        }
+                      }
                     }}
                     className="w-full h-9 ps-8 pe-7 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/15 text-sm font-medium placeholder-gray-400 transition-all"
                   />

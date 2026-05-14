@@ -497,6 +497,7 @@ export const en = {
   damagedStock: 'Damaged Stock',
   supplierCases: 'Supplier Cases',
   replacementN: 'Replacement #{number}',
+  barcodeLabels: 'Barcode & Labels',
 }
 
 export const ar = {
@@ -998,4 +999,5 @@ export const ar = {
   damagedStock: 'المخزون التالف',
   supplierCases: 'حالات الموردين',
   replacementN: 'استبدال #{number}',
+  barcodeLabels: 'الباركود والملصقات',
 }

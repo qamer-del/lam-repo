@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Package, Check, ShieldCheck, ShieldOff } from 'lucide-react'
+import { Plus, Package, Check, ShieldCheck, ShieldOff, Wand2, Tag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -28,6 +28,7 @@ import { InventoryCategory } from '@prisma/client'
 import { toast } from 'sonner'
 import { useStore, Transaction } from '@/store/useStore'
 import { getDashboardData } from '@/actions/transactions'
+import { generateRandomBarcode, type BarcodeType } from '@/lib/barcode'
 
 const CATEGORIES: { value: InventoryCategory; label: string }[] = [
   { value: 'POLISH', label: 'Polish' },
@@ -53,6 +54,8 @@ interface EditItem {
   hasWarranty?: boolean
   warrantyDuration?: number | null
   warrantyUnit?: string | null
+  barcode?: string | null
+  barcodeType?: string | null
 }
 
 interface Props {
@@ -82,6 +85,9 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
   const [hasWarranty, setHasWarranty] = useState(editItem?.hasWarranty ?? false)
   const [warrantyDuration, setWarrantyDuration] = useState(String(editItem?.warrantyDuration ?? 12))
   const [warrantyUnit, setWarrantyUnit] = useState(editItem?.warrantyUnit ?? 'months')
+  // Barcode
+  const [barcode, setBarcode] = useState(editItem?.barcode ?? '')
+  const [barcodeType, setBarcodeType] = useState<BarcodeType>((editItem?.barcodeType as BarcodeType) ?? 'CODE128')
 
   const handleClose = (v: boolean) => {
     setOpen(v)
@@ -102,6 +108,8 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
           hasWarranty,
           warrantyDuration: hasWarranty ? (parseInt(warrantyDuration) || null) : null,
           warrantyUnit: hasWarranty ? warrantyUnit : null,
+          barcode: barcode || null,
+          barcodeType: barcode ? barcodeType : null,
         })
       } else {
         await createInventoryItem({
@@ -114,6 +122,8 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
           hasWarranty,
           warrantyDuration: hasWarranty ? (parseInt(warrantyDuration) || undefined) : undefined,
           warrantyUnit: hasWarranty ? warrantyUnit : undefined,
+          barcode: barcode || undefined,
+          barcodeType: barcode ? barcodeType : undefined,
         })
       }
       toast.success(isEdit ? 'Item Updated' : 'Item Created', {
@@ -298,6 +308,50 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
                   />
                 </div>
               )}
+
+              {/* ── Barcode Section ── */}
+              <div className="p-5 bg-gray-50/50 dark:bg-gray-900/30 rounded-[1.5rem] border border-gray-100 dark:border-gray-800/50 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Tag className="w-4 h-4 text-gray-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Barcode</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-2 space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Barcode Value</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={barcode}
+                        onChange={e => setBarcode(e.target.value)}
+                        placeholder="Scan or type barcode..."
+                        className="h-11 rounded-xl border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 font-mono text-sm"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setBarcode(generateRandomBarcode(barcodeType))}
+                        className="h-11 px-3 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 text-blue-600 dark:text-blue-400"
+                        title="Auto-generate Barcode"
+                      >
+                        <Wand2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Type</Label>
+                    <Select value={barcodeType} onValueChange={(v) => { if (v) setBarcodeType(v as BarcodeType) }}>
+                      <SelectTrigger className="h-11 rounded-xl border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl p-1">
+                        <SelectItem value="CODE128" className="rounded-lg py-2 font-medium">CODE128</SelectItem>
+                        <SelectItem value="EAN13" className="rounded-lg py-2 font-medium">EAN-13</SelectItem>
+                        <SelectItem value="UPC" className="rounded-lg py-2 font-medium">UPC</SelectItem>
+                        <SelectItem value="QR" className="rounded-lg py-2 font-medium">QR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
 
               {/* ── Warranty Section ── */}
               <div className={`rounded-[1.5rem] border-2 transition-all duration-300 overflow-hidden ${

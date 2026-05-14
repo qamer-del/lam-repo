@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { 
   Package, ShoppingCart, ArrowLeftRight, AlertTriangle, TrendingUp, 
-  Box, SlidersHorizontal, Pencil, Power,
+  Box, SlidersHorizontal, Pencil, Power, Tag,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -186,11 +186,14 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
     (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
-  const tabs: { key: Tab; label: string; icon: any }[] = [
+  const tabs: { key: string; label: string; icon: any }[] = [
     { key: 'items', label: t('items'), icon: Package },
     { key: 'purchases', label: t('purchases'), icon: ShoppingCart },
     { key: 'movements', label: t('movements'), icon: ArrowLeftRight },
   ]
+  if (isAdmin || isOwner) {
+    tabs.push({ key: 'barcodes', label: t('barcodeLabels') || 'Barcode & Labels', icon: Tag })
+  }
 
   // Pagination Logic for Items
   const totalItemPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE)
@@ -272,7 +275,13 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
           {tabs.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
+              onClick={() => {
+                if (key === 'barcodes') {
+                  window.location.href = '/inventory/barcodes'
+                } else {
+                  setTab(key as Tab)
+                }
+              }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 sm:flex-none justify-center ${
                 tab === key
                   ? 'bg-white dark:bg-gray-900 text-teal-600 dark:text-teal-400 shadow-sm'

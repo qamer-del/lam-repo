@@ -262,6 +262,9 @@ model InventoryItem {
   warrantyDuration Int?              // e.g. 12
   warrantyUnit     String?           // "months" | "days"
   // warrantyType is always "replacement" — fixed for this system
+  // ── Barcode config ────────────────────────────────────────
+  barcode          String?           @unique // barcode value (CODE128 / EAN13 / UPC)
+  barcodeType      String?           @default("CODE128") // CODE128 | EAN13 | UPC | QR
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -405,4 +408,28 @@ model SystemSettings {
   id                         Int      @id @default(1)
   enableDenominationCounting Boolean  @default(true)
   updatedAt                  DateTime @updatedAt
+}
+
+// ── Barcode & Label Management ──────────────────────────────
+
+// Saved label template configurations
+model LabelTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  config    Json     // Serialized LabelConfig object
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Zebra printer settings (singleton: id=1)
+model PrinterSettings {
+  id           Int     @id @default(1)
+  printerName  String  @default("ZDesigner GK420t")
+  dpi          Int     @default(203)
+  darkness     Int     @default(15)   // 0-30
+  printSpeed   Int     @default(4)    // 2-6 ips
+  labelWidth   Float   @default(50)   // mm
+  labelHeight  Float   @default(25)   // mm
+  updatedAt    DateTime @updatedAt
 }

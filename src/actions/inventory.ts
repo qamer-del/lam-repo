@@ -47,6 +47,7 @@ export async function getAllInventoryItemsForSelect() {
     select: {
       id: true, name: true, unit: true, currentStock: true,
       category: true, sellingPrice: true, sku: true,
+      barcode: true, barcodeType: true,
       hasWarranty: true, warrantyDuration: true, warrantyUnit: true,
     },
     orderBy: { name: 'asc' },
@@ -66,6 +67,8 @@ export async function createInventoryItem(data: {
   hasWarranty?: boolean
   warrantyDuration?: number
   warrantyUnit?: string
+  barcode?: string
+  barcodeType?: string
 }) {
   console.log('[createInventoryItem] Starting...', data.name)
   const session = await requireAdminOrAbove()
@@ -86,6 +89,8 @@ export async function createInventoryItem(data: {
       hasWarranty: data.hasWarranty ?? false,
       warrantyDuration: data.hasWarranty ? (data.warrantyDuration ?? null) : null,
       warrantyUnit: data.hasWarranty ? (data.warrantyUnit ?? null) : null,
+      barcode: data.barcode || null,
+      barcodeType: data.barcode ? (data.barcodeType || 'CODE128') : null,
     },
   })
 
@@ -180,6 +185,8 @@ export async function updateInventoryItem(
     hasWarranty?: boolean
     warrantyDuration?: number | null
     warrantyUnit?: string | null
+    barcode?: string | null
+    barcodeType?: string | null
   }
 ) {
   await requireAdminOrAbove()
