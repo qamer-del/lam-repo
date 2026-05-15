@@ -221,20 +221,28 @@ export function BnplCheckoutModal({
         customerId,
         cart,
       })
+
+      if (!result.ok) {
+        // Handle structured error (BNPL declined or other server error)
+        const errMsg = result.error || 'Unknown error'
+        if (errMsg.startsWith('BNPL_DECLINED:')) {
+          const code = errMsg.replace('BNPL_DECLINED:', '').trim()
+          setDeclineCode(code)
+          setStep('declined')
+        } else {
+          toast.error(`Failed to send payment link: ${errMsg}`)
+        }
+        return
+      }
+
       setSessionId(result.sessionId)
       setInvoiceNumber(result.invoiceNumber)
       setStatus('PAYMENT_LINK_SENT')
       setElapsed(0)
       setStep('waiting')
     } catch (err: any) {
-      // Check for structured BNPL decline errors
-      if (err.message?.startsWith('BNPL_DECLINED:')) {
-        const code = err.message.replace('BNPL_DECLINED:', '').trim()
-        setDeclineCode(code)
-        setStep('declined')
-      } else {
-        toast.error(`Failed to send payment link: ${err.message}`)
-      }
+      // Fallback for unexpected errors
+      toast.error(`Unexpected error: ${err.message}`)
     } finally {
       setLoading(false)
     }

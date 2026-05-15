@@ -122,14 +122,16 @@ export function MobileTopBar() {
         <div className="flex items-center gap-2">
           <PrinterStatus />
           <button
+            type="button"
             onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
-            className="px-3 py-1.5 text-[10px] font-bold rounded-full bg-gray-100 dark:bg-gray-800 border border-transparent active:border-blue-500 transition"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-800 border border-transparent active:border-blue-500 transition font-black text-[10px] uppercase tracking-[0.1em]"
           >
             {locale === 'ar' ? 'EN' : 'AR'}
           </button>
           <button
+            type="button"
             onClick={() => signOut({ callbackUrl: '/login' })}
-            className="p-1.5 text-red-500 active:bg-red-50 dark:active:bg-red-900/20 rounded-full transition"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all shadow-sm active:scale-95 border border-red-100/50 dark:border-red-900/30"
           >
             <LogOut size={18} />
           </button>

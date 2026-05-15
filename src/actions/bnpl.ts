@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
+import { randomUUID } from 'crypto'
 import { getOrCreateActiveShift } from '@/actions/transactions'
 import { createWarrantyRecordsForSale } from '@/actions/warranty'
 
@@ -256,28 +257,32 @@ export async function createBnplSession(input: CreateBnplSessionInput) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const activeShift = await getOrCreateActiveShift()
-  const invoiceNumber = `BNPL-${Date.now()}`
+  // Use UUID suffix to guarantee uniqueness even on rapid retries
+  const invoiceNumber = `BNPL-${Date.now()}-${randomUUID().slice(0, 8)}`
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 min
 
-  // Create DB record first (PENDING)
-  const bnplSession = await prisma.bnplSession.create({
-    data: {
-      provider: input.provider,
-      status: 'PENDING_PAYMENT',
-      amount: input.amount,
-      invoiceNumber,
-      customerPhone: input.customerPhone,
-      customerName: input.customerName,
-      customerId: input.customerId,
-      cartSnapshot: input.cart as any,
-      expiresAt,
-      recordedById: session.user.id,
-      shiftId: activeShift.id,
-    },
-  })
+  let bnplSessionId: string | null = null
 
-  // Call provider API
   try {
+    // Create DB record first (PENDING)
+    const bnplSession = await prisma.bnplSession.create({
+      data: {
+        provider: input.provider,
+        status: 'PENDING_PAYMENT',
+        amount: input.amount,
+        invoiceNumber,
+        customerPhone: input.customerPhone,
+        customerName: input.customerName,
+        customerId: input.customerId,
+        cartSnapshot: input.cart as any,
+        expiresAt,
+        recordedById: session.user.id,
+        shiftId: activeShift.id,
+      },
+    })
+    bnplSessionId = bnplSession.id
+
+    // Call provider API
     const sessionData =
       input.provider === 'TABBY'
         ? await createTabbySession({
@@ -299,26 +304,27 @@ export async function createBnplSession(input: CreateBnplSessionInput) {
             appUrl,
           })
 
-    // Update session with provider ID — no checkout URL needed (SMS is sent by provider)
+    // Update session with provider ID — SMS sent by provider
     await prisma.bnplSession.update({
-      where: { id: bnplSession.id },
+      where: { id: bnplSessionId! },
       data: {
         providerSessionId: sessionData.sessionId,
         status: 'PAYMENT_LINK_SENT',
       },
     })
 
-    return {
-      sessionId: bnplSession.id,
-      invoiceNumber,
-    }
+    return { ok: true as const, sessionId: bnplSessionId!, invoiceNumber }
   } catch (err: any) {
-    // Mark as failed and rethrow
-    await prisma.bnplSession.update({
-      where: { id: bnplSession.id },
-      data: { status: 'FAILED', failureReason: err.message },
-    })
-    throw err
+    // Mark session as failed in DB
+    if (bnplSessionId) {
+      await prisma.bnplSession.update({
+        where: { id: bnplSessionId },
+        data: { status: 'FAILED', failureReason: err.message },
+      }).catch(() => {})
+    }
+    // Return structured error — never throw from server actions (Next.js strips messages)
+    console.error('[BNPL] createBnplSession failed:', err.message)
+    return { ok: false as const, error: err.message as string }
   }
 }
 
