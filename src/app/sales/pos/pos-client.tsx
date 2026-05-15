@@ -11,6 +11,7 @@ import { format, addDays } from 'date-fns'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { BnplCheckoutModal } from '@/components/bnpl-checkout-modal'
+import { BnplPendingPanel } from '@/components/bnpl-pending-panel'
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, Receipt, Banknote, Wifi,
   SplitSquareHorizontal, ShoppingBag, Users, Check, UserPlus, ArrowLeft,
@@ -41,6 +42,7 @@ interface PosClientProps {
   inventoryItems: InventoryItem[]
   customers: CustomerOption[]
   cashierName: string
+  userRole?: string
   hasUnsettled: boolean
   unsettledCash: number; unsettledNetwork: number; unsettledTabby: number; unsettledTamara: number
   allTodaySales: any[]
@@ -58,7 +60,7 @@ const PAY_METHODS: { mode: PayMode; label: string; shortcut: string; icon: any; 
 ]
 
 export function PosClient({
-  inventoryItems, customers: initialCustomers, cashierName,
+  inventoryItems, customers: initialCustomers, cashierName, userRole,
   hasUnsettled, unsettledCash, unsettledNetwork, unsettledTabby, unsettledTamara,
   allTodaySales, unpaidCreditSales, activeShift
 }: PosClientProps) {
@@ -703,6 +705,26 @@ export function PosClient({
         {/* ── POS TAB ── */}
         {activeTab === 'pos' && (
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+            {/* ── Pending BNPL Recovery Panel — survives page refresh ── */}
+            <div className="lg:hidden absolute top-0 left-0 right-0 z-20">
+              <BnplPendingPanel
+                userRole={userRole}
+                onPaymentConfirmed={(invoiceNumber) => {
+                  toast.success(`Payment confirmed — ${invoiceNumber}`)
+                  router.refresh()
+                }}
+              />
+            </div>
+            <div className="hidden lg:block absolute top-0 left-[400px] right-0 z-20">
+              <BnplPendingPanel
+                userRole={userRole}
+                onPaymentConfirmed={(invoiceNumber) => {
+                  toast.success(`Payment confirmed — ${invoiceNumber}`)
+                  router.refresh()
+                }}
+              />
+            </div>
 
             {/* LEFT PANEL — Product Browser */}
             <div className={cn(

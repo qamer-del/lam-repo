@@ -518,3 +518,39 @@ export async function retryBnplSession(sessionId: string) {
     throw err
   }
 }
+
+// ── Admin-only: Manually confirm a BNPL payment ───────────────────────────────
+// Last-resort escape hatch. Only SUPER_ADMIN / OWNER / ADMIN allowed.
+// Cashiers are intentionally excluded to prevent fraud.
+
+export async function manuallyConfirmBnplPayment(sessionId: string) {
+  const session = await auth()
+  const role = session?.user?.role
+  const userId = session?.user?.id
+  if (!['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(role || '')) {
+    return { ok: false as const, error: 'UNAUTHORIZED' }
+  }
+
+  const bnplSession = await prisma.bnplSession.findUnique({
+    where: { id: sessionId },
+    select: { id: true, status: true, invoiceNumber: true, provider: true },
+  })
+
+  if (!bnplSession) return { ok: false as const, error: 'Session not found' }
+  if (bnplSession.status === 'PAID') return { ok: true as const, alreadyPaid: true }
+  if (bnplSession.status === 'CANCELLED' || bnplSession.status === 'FAILED') {
+    return { ok: false as const, error: 'Session already cancelled or failed' }
+  }
+
+  try {
+    await finalizeBnplPayment({
+      invoiceNumber: bnplSession.invoiceNumber,
+      webhookPayload: { source: 'MANUAL_CONFIRM', confirmedBy: userId, role },
+    })
+    console.log(`[BNPL] Manual confirm by ${role} (${userId}) for session ${sessionId}`)
+    return { ok: true as const, alreadyPaid: false }
+  } catch (err: any) {
+    console.error('[BNPL] Manual confirm failed:', err.message)
+    return { ok: false as const, error: err.message }
+  }
+}

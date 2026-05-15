@@ -10,13 +10,18 @@ export async function POST(req: NextRequest) {
 
   // Verify HMAC-SHA256 signature if provided
   if (signature && notificationKey) {
-    const expected = crypto
-      .createHmac('sha256', notificationKey)
-      .update(rawBody)
-      .digest('hex')
-    if (!crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expected, 'hex'))) {
-      console.error('[Tamara Webhook] Invalid signature')
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    try {
+      const expected = crypto
+        .createHmac('sha256', notificationKey)
+        .update(rawBody)
+        .digest('hex')
+      if (!crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expected, 'hex'))) {
+        console.error('[Tamara Webhook] Invalid signature')
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+      }
+    } catch {
+      // Buffer length mismatch — signature format mismatch, reject
+      return NextResponse.json({ error: 'Signature verification failed' }, { status: 401 })
     }
   }
 
@@ -27,40 +32,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  console.log('[Tamara Webhook] Received:', JSON.stringify(payload).slice(0, 300))
+  console.log('[Tamara Webhook] Received:', JSON.stringify(payload).slice(0, 500))
 
-  const eventType = payload?.event_type || payload?.status
-  const orderReferenceId = payload?.order_reference_id || payload?.data?.order_reference_id
+  // Tamara wraps events differently per type — cover all known shapes
+  const eventType =
+    payload?.event_type ||
+    payload?.status ||
+    payload?.data?.status ||
+    payload?.data?.event_type
+
+  // order_reference_id can appear at multiple levels depending on Tamara version
+  const orderReferenceId =
+    payload?.order_reference_id ||
+    payload?.data?.order_reference_id ||
+    payload?.data?.order?.order_reference_id ||
+    payload?.order?.order_reference_id ||
+    payload?.order?.reference_id
 
   if (!orderReferenceId) {
+    console.warn('[Tamara Webhook] No order_reference_id found in payload')
     return NextResponse.json({ received: true }, { status: 200 })
   }
 
+  // Provider order_id for cross-reference
+  const providerOrderId =
+    payload?.order_id ||
+    payload?.data?.order_id ||
+    payload?.data?.order?.order_id
+
+  console.log(`[Tamara Webhook] Event: ${eventType} | Ref: ${orderReferenceId}`)
+
   try {
-    if (eventType === 'order_approved' || eventType === 'payment_captured') {
+    const PAID_EVENTS = ['order_approved', 'approved', 'payment_captured', 'captured', 'fully_captured']
+    const FAILED_EVENTS = ['order_declined', 'declined', 'order_expired', 'expired', 'order_canceled', 'canceled']
+
+    if (PAID_EVENTS.includes(eventType)) {
       await finalizeBnplPayment({
         invoiceNumber: orderReferenceId,
-        providerPaymentId: payload?.order_id || payload?.data?.order_id,
+        providerPaymentId: providerOrderId,
         webhookPayload: payload,
       })
-    } else if (
-      eventType === 'order_declined' ||
-      eventType === 'order_expired' ||
-      eventType === 'order_canceled'
-    ) {
+      console.log(`[Tamara Webhook] Finalized payment for ${orderReferenceId}`)
+    } else if (FAILED_EVENTS.includes(eventType)) {
+      const newStatus = eventType.includes('expired') ? 'EXPIRED'
+        : eventType.includes('canceled') ? 'CANCELLED'
+        : 'FAILED'
       await prisma.bnplSession.updateMany({
         where: { invoiceNumber: orderReferenceId, status: { notIn: ['PAID'] } },
         data: {
-          status:
-            eventType === 'order_expired'
-              ? 'EXPIRED'
-              : eventType === 'order_canceled'
-                ? 'CANCELLED'
-                : 'FAILED',
+          status: newStatus as any,
           failureReason: `Tamara event: ${eventType}`,
           webhookPayload: payload as any,
         },
       })
+      console.log(`[Tamara Webhook] Marked ${orderReferenceId} as ${newStatus}`)
+    } else {
+      console.log(`[Tamara Webhook] Unhandled event type: ${eventType} — ignoring`)
     }
   } catch (err: any) {
     console.error('[Tamara Webhook] Processing error:', err.message)

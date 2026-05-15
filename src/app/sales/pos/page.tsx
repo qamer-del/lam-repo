@@ -90,6 +90,7 @@ export default async function PosPage() {
       inventoryItems={inventoryItems}
       customers={customers}
       cashierName={session?.user?.name || 'Cashier'}
+      userRole={role || undefined}
       hasUnsettled={hasUnsettled}
       unsettledCash={unsettledCash}
       unsettledNetwork={unsettledNetwork}
