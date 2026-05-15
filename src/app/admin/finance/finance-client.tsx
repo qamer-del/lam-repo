@@ -109,21 +109,21 @@ export default function FinanceClient({ data }: FinanceClientProps) {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Header Section */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
-            <div className="p-2.5 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20 text-white">
-              <BarChart3 size={24} />
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
+            <div className="p-2 sm:p-2.5 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/20 text-white">
+              <BarChart3 size={20} className="sm:w-6 sm:h-6" />
             </div>
             {t('accountingHub')}
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">{t('financialStatus')}</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">{t('financialStatus')}</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
           {/* Date Filters */}
-          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full sm:w-auto">
-            <div className="flex items-center gap-2 px-2 border-r border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full sm:w-auto overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2 px-2 border-r border-gray-100 dark:border-gray-700 shrink-0">
               <Calendar size={14} className="text-gray-400" />
               <input 
                 type="date" 
@@ -132,7 +132,7 @@ export default function FinanceClient({ data }: FinanceClientProps) {
                 className="bg-transparent border-none text-[10px] font-black uppercase focus:ring-0 text-gray-600 dark:text-gray-300 outline-none"
               />
             </div>
-            <div className="flex items-center gap-2 px-2">
+            <div className="flex items-center gap-2 px-2 shrink-0">
               <input 
                 type="date" 
                 value={toDate}
@@ -144,20 +144,20 @@ export default function FinanceClient({ data }: FinanceClientProps) {
               size="sm" 
               onClick={handleFetch}
               disabled={isPending}
-              className="rounded-xl h-8 px-3 bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20"
+              className="rounded-xl h-8 px-3 bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 shrink-0"
             >
               <RefreshCw size={14} className={cn(isPending && "animate-spin")} />
             </Button>
           </div>
           
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 sm:flex-none">
+          <div className="flex items-center gap-2 w-full sm:w-auto overflow-hidden">
+            <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 sm:flex-none overflow-x-auto no-scrollbar">
               {(['overview', 'expenses', 'purchases', 'transactions'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => handleTabChange(tab)}
                   className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                    "px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0",
                     activeTab === tab 
                       ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" 
                       : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -194,10 +194,10 @@ export default function FinanceClient({ data }: FinanceClientProps) {
                   toast.error('Failed to generate report', { id: toastId })
                 }
               }}
-              className="rounded-2xl h-11 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 font-black text-xs uppercase tracking-widest gap-2"
+              className="rounded-2xl h-10 sm:h-11 px-3 sm:px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 font-black text-[10px] sm:text-xs uppercase tracking-widest gap-2 shrink-0"
             >
-              <Download size={16} />
-              PDF
+              <Download size={14} className="sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">PDF</span>
             </Button>
           </div>
         </div>

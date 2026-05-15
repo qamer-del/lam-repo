@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useMemo } from 'react'
 import { 
   LayoutDashboard, Users, Receipt, Settings, LogOut, 
-  Briefcase, Package, UserCheck, Shield, MoreHorizontal, Search, BarChart3
+  Briefcase, Package, UserCheck, Shield, MoreHorizontal, Search, BarChart3, CreditCard
 } from 'lucide-react'
 import { useLanguage } from '@/providers/language-provider'
 import { signOut } from 'next-auth/react'
@@ -29,6 +29,7 @@ const navItems = [
   { href: '/agents', icon: Briefcase, labelKey: 'agents' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Agents / Representatives' },
   { href: '/inventory', icon: Package, labelKey: 'inventory' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Inventory' },
   { href: '/admin/finance', icon: BarChart3, labelKey: 'finance' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Finance' },
+  { href: '/admin/bnpl', icon: CreditCard, labelKey: 'tabby' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'BNPL Sessions' },
   { href: '/warranty', icon: Shield, labelKey: 'warranty' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER', 'CASHIER'], labelFallback: 'Warranty' },
   { href: '/admin/settings', icon: Settings, labelKey: 'settings' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN'], labelFallback: 'System Settings' },
 ]

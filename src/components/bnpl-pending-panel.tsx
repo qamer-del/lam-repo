@@ -219,9 +219,10 @@ export function BnplPendingPanel({ shiftId, userRole, onPaymentConfirmed }: Bnpl
                   <button
                     type="button"
                     onClick={() => handleDismiss(s.id)}
+                    title="Hide from this screen only. The session stays active and the sale will still be recorded automatically when the customer pays."
                     className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-400 text-[10px] font-bold hover:bg-gray-100 transition-colors"
                   >
-                    Dismiss
+                    Hide from view · إخفاء
                   </button>
                 </div>
 
