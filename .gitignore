@@ -41,3 +41,23 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# dev-only scripts & logs (never deploy these)
+server.log
+fix-pos.js
+fix-pos2.js
+fix-pos3.js
+patch.js
+patch-locales.js
+update-fonts.js
+update-translations.js
+update-translations-staff.js
+test.js
+test-prisma.js
+test-prisma.ts
+test_verification.js
+seed-items.ts
+scratch/
+
+# Vercel output
+.vercel/output
