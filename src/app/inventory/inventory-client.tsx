@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  Package, ShoppingCart, ArrowLeftRight, AlertTriangle, TrendingUp, 
+import {
+  Package, ShoppingCart, ArrowLeftRight, AlertTriangle, TrendingUp,
   Box, SlidersHorizontal, Pencil, Power, Tag,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react'
@@ -82,14 +82,14 @@ function StockBadge({ item }: { item: InventoryItem }) {
   return <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">In Stock</span>
 }
 
-function Pagination({ 
-  currentPage, 
-  totalPages, 
-  startIndex, 
-  endIndex, 
-  totalItems, 
-  onPageChange 
-}: { 
+function Pagination({
+  currentPage,
+  totalPages,
+  startIndex,
+  endIndex,
+  totalItems,
+  onPageChange
+}: {
   currentPage: number
   totalPages: number
   startIndex: number
@@ -102,7 +102,7 @@ function Pagination({
       <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
         Showing <span className="font-bold text-gray-900 dark:text-white">{startIndex + 1}</span> to <span className="font-bold text-gray-900 dark:text-white">{endIndex}</span> of <span className="font-bold text-gray-900 dark:text-white">{totalItems}</span> records
       </div>
-      
+
       <div className="flex items-center gap-1">
         <Button
           variant="outline"
@@ -122,7 +122,7 @@ function Pagination({
         >
           <ChevronLeft size={14} />
         </Button>
-        
+
         <div className="flex items-center gap-1 px-2">
           <span className="text-xs font-bold text-teal-600 dark:text-teal-400">{currentPage}</span>
           <span className="text-xs text-gray-400">/</span>
@@ -181,8 +181,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
     router.refresh()
   }
 
-  const filteredItems = initialItems.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredItems = initialItems.filter(item =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
@@ -198,7 +198,7 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
   // Pagination Logic for Items
   const totalItemPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE)
   const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
-  
+
   // Pagination Logic for Purchases
   const totalPurchasePages = Math.ceil(initialPurchases.length / ITEMS_PER_PAGE)
   const paginatedPurchases = initialPurchases.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
@@ -282,18 +282,17 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                   setTab(key as Tab)
                 }
               }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 sm:flex-none justify-center ${
-                tab === key
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 sm:flex-none justify-center ${tab === key
                   ? 'bg-white dark:bg-gray-900 text-teal-600 dark:text-teal-400 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
+                }`}
             >
               <Icon size={15} />
               {label}
             </button>
           ))}
         </div>
-        
+
         {tab === 'items' && (
           <div className="relative w-full sm:w-72">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -323,7 +322,7 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                   <TableHead>Item</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Stock</TableHead>
-                  <TableHead>Returns</TableHead>
+                  <TableHead>ReturnsA</TableHead>
                   <TableHead>Damaged</TableHead>
                   <TableHead>Reorder At</TableHead>
                   <TableHead>Unit Cost</TableHead>
@@ -568,9 +567,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                           {MOVEMENT_LABELS[m.type]}
                         </span>
                         {m.type === 'RETURN_IN' && (
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold w-fit ${
-                            m.isRestocked ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
-                          }`}>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold w-fit ${m.isRestocked ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
+                            }`}>
                             {m.isRestocked ? '↑ Restocked' : '✕ Not restocked'}
                           </span>
                         )}
@@ -604,9 +602,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${MOVEMENT_COLORS[m.type]}`}>{MOVEMENT_LABELS[m.type]}</span>
                     {m.type === 'RETURN_IN' && (
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                        m.isRestocked ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
-                      }`}>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${m.isRestocked ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
+                        }`}>
                         {m.isRestocked ? '↑ Restocked' : '✕ Not restocked'}
                       </span>
                     )}
