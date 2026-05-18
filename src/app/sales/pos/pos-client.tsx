@@ -416,10 +416,8 @@ export function PosClient({
 
             {/* Mobile — command center bottom sheet */}
             <Sheet>
-              <SheetTrigger asChild>
-                <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.07] border border-white/10 text-slate-300 hover:bg-white/[0.13] active:scale-90 transition-all">
-                  <Menu size={18} />
-                </button>
+              <SheetTrigger className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.07] border border-white/10 text-slate-300 hover:bg-white/[0.13] active:scale-90 transition-all">
+                <Menu size={18} />
               </SheetTrigger>
 
               {/* Bottom Sheet: "Command Center" */}
