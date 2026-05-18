@@ -754,7 +754,7 @@ export function PosClient({
 
             {/* LEFT PANEL — Product Browser */}
             <div className={cn(
-              "w-full lg:w-[400px] lg:shrink-0 flex flex-col bg-white lg:border-e border-gray-200 transition-all duration-300",
+              "w-full lg:w-[400px] lg:shrink-0 flex-1 min-h-0 flex flex-col bg-white lg:border-e border-gray-200 transition-all duration-300",
               mobilePosView === 'cart' ? 'hidden lg:flex' : 'flex'
             )}>
               {/* Search */}
@@ -896,7 +896,7 @@ export function PosClient({
 
             {/* RIGHT PANEL — Cart + Payment */}
             <div className={cn(
-              "flex-1 flex flex-col bg-[#f8f9fb] transition-all duration-300",
+              "flex-1 min-h-0 flex flex-col bg-[#f8f9fb] transition-all duration-300",
               mobilePosView === 'items' ? 'hidden lg:flex' : 'flex'
             )}>
               {/* Mobile Back Button */}
