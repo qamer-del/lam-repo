@@ -348,107 +348,166 @@ export function PosClient({
       <div className="fixed top-0 bottom-24 left-0 right-0 lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-[60] lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* ── HEADER ── */}
-        <header className="h-[64px] lg:h-[72px] bg-white/90 backdrop-blur-md border-b border-gray-200 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 shadow-sm gap-2">
-          
-          {/* LEFT: Branding & Shift Info */}
-          <div className="flex items-center gap-2.5 shrink-0 w-[40px] lg:w-auto">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
-              <Receipt size={20} className="text-white" />
+        <header className="h-16 bg-white border-b border-gray-100 px-4 flex items-center justify-between shrink-0 z-20 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+
+          {/* LEFT: Logo + Cashier Info */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+              <Receipt size={17} className="text-white" />
             </div>
-            <div className="hidden lg:block leading-tight">
-              <p className="text-xs font-black text-gray-800">{cashierName}</p>
-              {activeShift && <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Shift #{activeShift.id}</p>}
+            <div className="leading-tight hidden sm:block">
+              <p className="text-[11px] font-black text-gray-900 tracking-wide">{cashierName}</p>
+              {activeShift
+                ? <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-widest">Active · Shift #{activeShift.id}</p>
+                : <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">No Active Shift</p>
+              }
             </div>
           </div>
 
-          {/* CENTER: Generous Pill Tabs */}
-          <div className="flex-1 flex justify-center min-w-0 overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-1.5 sm:gap-2 bg-gray-50/80 p-1 rounded-2xl border border-gray-100 shrink-0">
-              {([['pos', t('pos'), ShoppingCart], ['sales', t('activity'), History], ['credit', t('credit'), CreditCard]] as const).map(([tab, label, Icon]) => (
-                <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={cn('flex items-center justify-center gap-1.5 h-10 px-3 sm:px-5 rounded-xl text-[11px] sm:text-xs font-black transition-all border',
-                    activeTab === tab 
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                      : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900'
-                  )}>
-                  <Icon size={16} className={activeTab === tab ? 'text-white' : 'text-gray-400'} />
-                  <span className="tracking-wide whitespace-nowrap">{label}</span>
-                  {tab === 'credit' && unpaidCreditSales.length > 0 && (
-                    <span className={cn("text-[9px] font-black rounded-full min-w-[16px] h-[16px] flex items-center justify-center -ms-0.5",
-                      activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'bg-rose-500 text-white shadow-sm'
-                    )}>{unpaidCreditSales.length}</span>
-                  )}
-                </button>
-              ))}
-            </div>
+          {/* CENTER: Tabs — perfectly centered */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-100/80 p-[5px] rounded-[14px]">
+            {([
+              ['pos',    t('pos')      || 'POS',      ShoppingCart],
+              ['sales',  t('activity') || 'Activity',  History],
+              ['credit', t('credit')   || 'Credit',    CreditCard],
+            ] as const).map(([tab, label, Icon]) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  'relative flex items-center gap-2 h-[36px] px-4 rounded-[10px] text-[12px] font-bold transition-all duration-200 whitespace-nowrap',
+                  activeTab === tab
+                    ? 'bg-white text-gray-900 shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
+                )}
+              >
+                <Icon size={15} className={activeTab === tab ? 'text-blue-600' : 'text-gray-400'} />
+                {label}
+                {tab === 'credit' && unpaidCreditSales.length > 0 && (
+                  <span className="absolute -top-1 -end-1 min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-black shadow">
+                    {unpaidCreditSales.length}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
 
-          {/* RIGHT: Actions & Hamburger */}
-          <div className="flex items-center justify-end gap-2 shrink-0 w-[40px] lg:w-auto">
-            {/* Desktop Actions */}
+          {/* RIGHT: Desktop actions + Mobile hamburger */}
+          <div className="flex items-center gap-2 shrink-0">
+
+            {/* Desktop-only action bar */}
             <div className="hidden lg:flex items-center gap-2">
-              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocale(locale === 'ar' ? 'en' : 'ar'); }}
-                className="h-10 px-3 flex items-center justify-center rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all font-black text-xs uppercase tracking-widest text-gray-600 shadow-sm">
+              {/* Language */}
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocale(locale === 'ar' ? 'en' : 'ar'); }}
+                className="h-9 px-3 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all text-[11px] font-black uppercase tracking-widest text-gray-600"
+              >
                 {locale === 'ar' ? 'EN' : 'AR'}
               </button>
-              <div className="flex items-center gap-1.5 text-[10px] font-bold px-3 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              {/* Printer */}
+              <div className="h-9 px-3 flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-[11px] font-bold">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 {t('printer')}
               </div>
-              <CloseShiftBtn triggerClassName="h-10 px-4 rounded-xl text-xs font-black border-gray-200 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm" />
-              <button type="button" disabled={isLoggingOut}
-                onClick={async (e) => { e.preventDefault(); e.stopPropagation(); setIsLoggingOut(true); try { const { signOut } = await import('next-auth/react'); await signOut({ callbackUrl: '/login' }); } catch (err) { setIsLoggingOut(false); } }}
-                className="h-10 px-4 rounded-xl text-xs font-black border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-50">
-                {isLoggingOut ? <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin me-1.5" /> : <LogOut size={16} className="me-1.5" />}
+              {/* Close Shift */}
+              <CloseShiftBtn
+                triggerClassName="h-9 px-4 rounded-xl text-[11px] font-bold border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 flex items-center gap-2 shadow-sm"
+                triggerIcon={<History size={15} />}
+              />
+              {/* Logout */}
+              <button
+                type="button"
+                disabled={isLoggingOut}
+                onClick={async (e) => { e.preventDefault(); e.stopPropagation(); setIsLoggingOut(true); try { const { signOut } = await import('next-auth/react'); await signOut({ callbackUrl: '/login' }); } catch { setIsLoggingOut(false); } }}
+                className="h-9 px-4 rounded-xl text-[11px] font-bold border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-2 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+              >
+                {isLoggingOut ? <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" /> : <LogOut size={15} />}
                 {t('logout') || 'Logout'}
               </button>
             </div>
 
-            {/* Mobile Hamburger Menu */}
+            {/* Mobile hamburger */}
             <Sheet>
               <SheetTrigger asChild>
-                <button className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 active:scale-95 transition-all shadow-sm">
-                  <Menu size={20} />
+                <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 active:scale-95 transition-all">
+                  <Menu size={18} />
                 </button>
               </SheetTrigger>
-              <SheetContent side={isRTL ? 'right' : 'left'} className="w-[85vw] max-w-[320px] p-6 flex flex-col gap-6 bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 z-[120]">
-                <SheetHeader className="text-left space-y-1">
-                  <SheetTitle className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-inner">
+              <SheetContent
+                side={isRTL ? 'right' : 'left'}
+                className="w-[300px] max-w-[85vw] p-0 flex flex-col bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 z-[120]"
+              >
+                {/* Sheet Header */}
+                <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+                  <SheetTitle className="sr-only">POS Menu</SheetTitle>
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
                       <Receipt size={20} className="text-white" />
                     </div>
-                    {cashierName}
-                  </SheetTitle>
-                  {activeShift && <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider ps-[52px]">Shift #{activeShift.id}</p>}
-                </SheetHeader>
+                    <div>
+                      <p className="text-sm font-black text-gray-900 dark:text-white">{cashierName}</p>
+                      {activeShift
+                        ? <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Active · Shift #{activeShift.id}</p>
+                        : <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No Active Shift</p>
+                      }
+                    </div>
+                  </div>
+                </div>
 
-                <div className="flex flex-col gap-3 mt-4">
-                  {/* Language */}
-                  <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocale(locale === 'ar' ? 'en' : 'ar'); }}
-                    className="h-14 px-4 flex items-center justify-between rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 transition-all font-black text-sm text-gray-700 dark:text-gray-200 shadow-sm">
-                    <div className="flex items-center gap-3"><Globe size={20} className="text-gray-400" /> {t('language') || 'Language'}</div>
-                    <span className="text-blue-600 uppercase tracking-widest">{locale === 'ar' ? 'EN' : 'AR'}</span>
+                {/* Sheet Menu Items */}
+                <div className="flex-1 p-4 flex flex-col gap-2">
+                  {/* Language switch */}
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocale(locale === 'ar' ? 'en' : 'ar'); }}
+                    className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all text-sm font-bold text-gray-700 dark:text-gray-200 active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Globe size={16} className="text-blue-600 dark:text-blue-400" />
+                      </div>
+                      {t('language') || 'Language'}
+                    </div>
+                    <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">{locale === 'ar' ? 'EN →' : 'AR →'}</span>
                   </button>
 
-                  {/* Printer */}
-                  <div className="h-14 px-4 flex items-center justify-between rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 font-black text-sm text-emerald-700 dark:text-emerald-400 shadow-sm">
-                    <div className="flex items-center gap-3"><Printer size={20} /> {t('printer')}</div>
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  {/* Printer status */}
+                  <div className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                        <Printer size={16} className="text-emerald-600" />
+                      </div>
+                      {t('printer')}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Ready
+                    </div>
                   </div>
 
-                  <div className="h-px bg-gray-100 dark:bg-gray-800 my-2" />
+                  <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
 
                   {/* Close Shift */}
-                  <CloseShiftBtn 
-                    triggerClassName="h-14 px-4 w-full rounded-2xl text-sm font-black border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 flex items-center justify-start shadow-sm gap-3"
-                    triggerIcon={<History size={20} className="text-gray-400" />}
+                  <CloseShiftBtn
+                    triggerClassName="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all text-sm font-bold text-gray-700 dark:text-gray-200 active:scale-[0.98]"
+                    triggerIcon={
+                      <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                        <History size={16} className="text-amber-600 dark:text-amber-400" />
+                      </div>
+                    }
                   />
-                  
+
                   {/* Logout */}
-                  <button type="button" disabled={isLoggingOut}
-                    onClick={async (e) => { e.preventDefault(); e.stopPropagation(); setIsLoggingOut(true); try { const { signOut } = await import('next-auth/react'); await signOut({ callbackUrl: '/login' }); } catch (err) { setIsLoggingOut(false); } }}
-                    className="h-14 px-4 w-full rounded-2xl text-sm font-black border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 flex items-center justify-start shadow-sm transition-all active:scale-95 disabled:opacity-50 gap-3">
-                    {isLoggingOut ? <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" /> : <LogOut size={20} />}
+                  <button
+                    type="button"
+                    disabled={isLoggingOut}
+                    onClick={async (e) => { e.preventDefault(); e.stopPropagation(); setIsLoggingOut(true); try { const { signOut } = await import('next-auth/react'); await signOut({ callbackUrl: '/login' }); } catch { setIsLoggingOut(false); } }}
+                    className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all text-sm font-bold text-red-600 dark:text-red-400 active:scale-[0.98] disabled:opacity-50"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
+                      {isLoggingOut
+                        ? <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                        : <LogOut size={16} className="text-red-600 dark:text-red-400" />}
+                    </div>
                     {t('logout') || 'Logout'}
                   </button>
                 </div>
