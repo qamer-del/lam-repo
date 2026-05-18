@@ -127,6 +127,7 @@ async function setupSecurity(qzInstance: any) {
       fetch('/api/print/sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ message: toSign }),
       })
         .then(r => r.json())
