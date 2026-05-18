@@ -61,3 +61,5 @@ scratch/
 
 # Vercel output
 .vercel/output
+
+.vercel

@@ -15,7 +15,7 @@ import { PdfReportButton } from './pdf-report-button'
 import { editAdvance } from '@/actions/transactions'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent } from '@/components/ui/card'
-import { User, DollarSign, Calendar, CheckCircle2, AlertCircle, Wallet, Landmark } from 'lucide-react'
+import { User, DollarSign, Calendar, CheckCircle2, AlertCircle, Wallet, Landmark, Clock } from 'lucide-react'
 import { SalarySettlementModal } from './salary-settlement-modal'
 import { SettleAllSalaries } from './settle-all-salaries'
 import { SalarySettlementPdfButton } from './salary-settlement-pdf-button'
@@ -23,6 +23,7 @@ import { Printer, History, FileWarning } from 'lucide-react'
 import { getStaffOverdueCredits } from '@/actions/staff'
 import { EditStaffModal } from './edit-staff-modal'
 import { MoreVertical } from 'lucide-react'
+import { AbsenceRecordModal } from './absence-record-modal'
 
 type SalarySettlement = {
   id: number
@@ -30,10 +31,20 @@ type SalarySettlement = {
   year: number
   baseSalary: number
   advancesTally: number
+  absenceHours?: number
+  absenceDeduction?: number
   netPaid: number
   method: string
   paidAt: Date
   transactions: Transaction[]
+}
+
+type AbsenceRecord = {
+  id: number
+  hours: number
+  reason: string | null
+  createdAt: Date
+  recordedBy?: { name: string } | null
 }
 
 type Staff = {
@@ -43,10 +54,12 @@ type Staff = {
   overtimeAllowance?: number
   transportAllowance?: number
   otherAllowance?: number
+  monthlyHours?: number
   isActive: boolean
   idNumber?: string
   nationality?: string
   salarySettlements?: SalarySettlement[]
+  absenceRecords?: AbsenceRecord[]
 }
 
 type Transaction = {
@@ -136,8 +149,16 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
   const totalStaffTotalDebt = selectedAdvances + selectedDeductions
 
   const selectedStaff = staff.find(s => Number(s.id) === Number(selected))
+
+  // ── Absence / hourly calculations ───────────────────────────────────────────
+  const monthlyHours = selectedStaff?.monthlyHours || 208
+  const hourlyRate = selectedStaff ? selectedStaff.baseSalary / monthlyHours : 0
+  const absenceRecords = selectedStaff?.absenceRecords || []
+  const totalAbsenceHours = absenceRecords.reduce((s, r) => s + r.hours, 0)
+  const absenceDeduction = totalAbsenceHours * hourlyRate
+
   const selectedTotalSalary = selectedStaff ? (selectedStaff.baseSalary + (selectedStaff.overtimeAllowance || 0) + (selectedStaff.transportAllowance || 0) + (selectedStaff.otherAllowance || 0)) : 0
-  const netSalary = selectedStaff ? selectedTotalSalary - totalStaffTotalDebt : 0
+  const netSalary = selectedStaff ? selectedTotalSalary - absenceDeduction - totalStaffTotalDebt : 0
 
   const staffSummary = staff.map(s => {
     const sTxs = transactions.filter(tx => {
@@ -148,13 +169,18 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
     const deductions = sTxs.filter(tx => tx.type === 'EXPENSE').reduce((sum, tx) => sum + tx.amount, 0)
     
     const totalSal = s.baseSalary + (s.overtimeAllowance || 0) + (s.transportAllowance || 0) + (s.otherAllowance || 0)
-    const netSalary = totalSal - advances - deductions
+    const sHourlyRate = s.baseSalary / (s.monthlyHours || 208)
+    const sAbsenceHours = (s.absenceRecords || []).reduce((sum, r) => sum + r.hours, 0)
+    const sAbsenceDeduction = sAbsenceHours * sHourlyRate
+    const netSalary = totalSal - sAbsenceDeduction - advances - deductions
 
     return {
       ...s,
       totalSalary: totalSal,
       advances,
       deductions,
+      absenceHours: sAbsenceHours,
+      absenceDeduction: sAbsenceDeduction,
       netSalary
     }
   })
@@ -280,6 +306,30 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
               </div>
             </div>
 
+            {/* Absence Deduction Card */}
+            <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-rose-100 dark:border-rose-900/30 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
+              <div className="relative flex flex-col items-center text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 mb-2">
+                  <Clock size={24} />
+                </div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Absence Deduction</p>
+                <p className="text-3xl font-black text-rose-600 tabular-nums">
+                  {absenceDeduction.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+                <div className="mt-2 flex flex-col gap-1 w-full max-w-[180px]">
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Absent Hours:</span>
+                    <span className="text-[10px] font-bold text-rose-600">{totalAbsenceHours.toFixed(1)} hrs</span>
+                  </div>
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Hourly Rate:</span>
+                    <span className="text-[10px] font-bold text-gray-900 dark:text-gray-200">{hourlyRate.toFixed(2)} SAR</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="relative overflow-hidden bg-white dark:bg-gray-900 border border-red-100 dark:border-red-900/30 rounded-3xl p-6 shadow-sm group hover:shadow-xl transition-all duration-500">
               <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700" />
               <div className="relative flex flex-col items-center text-center space-y-2">
@@ -310,11 +360,24 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
             </div>
             
             {canModify && (
-              <div className="sm:col-span-2 lg:col-span-4 flex justify-center pt-2">
+              <div className="sm:col-span-2 lg:col-span-4 flex justify-center pt-2 gap-3 flex-wrap">
+                {isAdmin && (
+                  <AbsenceRecordModal
+                    staffId={selected!}
+                    staffName={selectedStaff.name}
+                    hourlyRate={hourlyRate}
+                    month={currentMonth + 1}
+                    year={currentYear}
+                    existingRecords={absenceRecords}
+                    onRefresh={onRefresh}
+                  />
+                )}
                 <SalarySettlementModal 
                   staff={selectedStaff}
                   advances={staffTxs}
                   totalAdvances={totalStaffTotalDebt}
+                  absenceHours={totalAbsenceHours}
+                  absenceDeduction={absenceDeduction}
                   netPaid={netSalary}
                 />
               </div>

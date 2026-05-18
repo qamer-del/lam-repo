@@ -30,6 +30,7 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
   const [overtime, setOvertime] = useState('')
   const [transport, setTransport] = useState('')
   const [other, setOther] = useState('')
+  const [monthlyHoursInput, setMonthlyHoursInput] = useState('208')
   const [idNumber, setIdNumber] = useState('')
   const [nationality, setNationality] = useState('')
   const [userId, setUserId] = useState<string>('none')
@@ -57,6 +58,7 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
         overtimeAllowance: overtimeAllow,
         transportAllowance: transAllow,
         otherAllowance: otherAllow,
+        monthlyHours: parseFloat(monthlyHoursInput) || 208,
         idNumber,
         nationality,
         userId: userId === 'none' ? undefined : userId
@@ -70,6 +72,7 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
       setOvertime('')
       setTransport('')
       setOther('')
+      setMonthlyHoursInput('208')
       setIdNumber('')
       setNationality('')
       setUserId('none')
@@ -215,6 +218,21 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
                       placeholder="0.00"
                     />
                   </div>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label htmlFor="monthlyHours" className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Monthly Working Hours</Label>
+                  <Input
+                    id="monthlyHours"
+                    type="number"
+                    step="1"
+                    min="1"
+                    value={monthlyHoursInput}
+                    onChange={(e) => setMonthlyHoursInput(e.target.value)}
+                    className="h-10 rounded-lg bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800 tabular-nums"
+                    placeholder="208"
+                  />
+                  <p className="text-[10px] text-gray-400">Used to calculate hourly rate for absence deductions. Default: 208 hrs (8h × 26 days)</p>
                 </div>
 
                 <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">

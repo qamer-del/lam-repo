@@ -5,13 +5,21 @@ import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 
 export async function getStaffList() {
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+
   return prisma.staff.findMany({
     where: { isActive: true },
-    include: { 
+    include: {
       transactions: true,
       salarySettlements: {
         orderBy: { paidAt: 'desc' },
         include: { transactions: true }
+      },
+      absenceRecords: {
+        where: { month, year },
+        orderBy: { createdAt: 'desc' },
       }
     },
     orderBy: { name: 'asc' }
@@ -24,6 +32,7 @@ export async function addStaff(data: {
   overtimeAllowance?: number;
   transportAllowance?: number;
   otherAllowance?: number;
+  monthlyHours?: number;
   idNumber?: string;
   nationality?: string;
   userId?: string;
@@ -40,6 +49,7 @@ export async function addStaff(data: {
       overtimeAllowance: data.overtimeAllowance || 0,
       transportAllowance: data.transportAllowance || 0,
       otherAllowance: data.otherAllowance || 0,
+      monthlyHours: data.monthlyHours || 208,
       idNumber: data.idNumber,
       nationality: data.nationality,
       userId: data.userId || null,
@@ -79,7 +89,7 @@ export async function getStaffOverdueCredits(staffId: number) {
       recordedById: staff.userId,
       OR: [
         { dueDate: { lt: new Date() } },
-        { dueDate: null } // Handle older invoices created before we added the dueDate field
+        { dueDate: null }
       ]
     },
     include: { linkedBy: { select: { amount: true } } }
@@ -103,12 +113,14 @@ export async function getStaffOverdueCredits(staffId: number) {
     invoices: unpaidInvoices
   }
 }
+
 export async function updateStaff(id: number, data: { 
   name: string; 
   baseSalary: number;
   overtimeAllowance?: number;
   transportAllowance?: number;
   otherAllowance?: number;
+  monthlyHours?: number;
   idNumber?: string;
   nationality?: string;
   userId?: string;
@@ -126,6 +138,7 @@ export async function updateStaff(id: number, data: {
       overtimeAllowance: data.overtimeAllowance || 0,
       transportAllowance: data.transportAllowance || 0,
       otherAllowance: data.otherAllowance || 0,
+      monthlyHours: data.monthlyHours || 208,
       idNumber: data.idNumber,
       nationality: data.nationality,
       userId: data.userId === 'none' ? null : (data.userId || null),
@@ -134,4 +147,52 @@ export async function updateStaff(id: number, data: {
   revalidatePath('/staff')
   revalidatePath('/')
   return staff
+}
+
+// ── Absence Record Actions ──────────────────────────────────────────────────
+
+export async function addAbsenceRecord(data: {
+  staffId: number
+  month: number
+  year: number
+  hours: number
+  reason?: string
+}) {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
+    throw new Error("Unauthorized")
+  }
+
+  if (data.hours <= 0) throw new Error("Hours must be greater than 0")
+
+  const record = await prisma.absenceRecord.create({
+    data: {
+      staffId: data.staffId,
+      month: data.month,
+      year: data.year,
+      hours: data.hours,
+      reason: data.reason || null,
+      recordedById: session.user.id,
+    }
+  })
+  revalidatePath('/staff')
+  return record
+}
+
+export async function deleteAbsenceRecord(id: number) {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
+    throw new Error("Unauthorized")
+  }
+
+  await prisma.absenceRecord.delete({ where: { id } })
+  revalidatePath('/staff')
+}
+
+export async function getAbsenceRecords(staffId: number, month: number, year: number) {
+  return prisma.absenceRecord.findMany({
+    where: { staffId, month, year },
+    include: { recordedBy: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
 }

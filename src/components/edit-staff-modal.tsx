@@ -29,6 +29,7 @@ interface EditStaffModalProps {
     overtimeAllowance?: number
     transportAllowance?: number
     otherAllowance?: number
+    monthlyHours?: number
     idNumber?: string
     nationality?: string
     userId?: string | null
@@ -45,6 +46,7 @@ export function EditStaffModal({ staff, onUpdated }: EditStaffModalProps) {
   const [overtime, setOvertime] = useState((staff.overtimeAllowance || 0).toString())
   const [transport, setTransport] = useState((staff.transportAllowance || 0).toString())
   const [other, setOther] = useState((staff.otherAllowance || 0).toString())
+  const [monthlyHoursInput, setMonthlyHoursInput] = useState((staff.monthlyHours || 208).toString())
   const [idNumber, setIdNumber] = useState(staff.idNumber || '')
   const [nationality, setNationality] = useState(staff.nationality || '')
   const [userId, setUserId] = useState<string>(staff.userId || 'none')
@@ -72,6 +74,7 @@ export function EditStaffModal({ staff, onUpdated }: EditStaffModalProps) {
         overtimeAllowance: overtimeAllow,
         transportAllowance: transAllow,
         otherAllowance: otherAllow,
+        monthlyHours: parseFloat(monthlyHoursInput) || 208,
         idNumber,
         nationality,
         userId: userId === 'none' ? undefined : userId
@@ -222,6 +225,21 @@ export function EditStaffModal({ staff, onUpdated }: EditStaffModalProps) {
                       placeholder="0.00"
                     />
                   </div>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label htmlFor={`monthlyHours-${staff.id}`} className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Monthly Working Hours</Label>
+                  <Input
+                    id={`monthlyHours-${staff.id}`}
+                    type="number"
+                    step="1"
+                    min="1"
+                    value={monthlyHoursInput}
+                    onChange={(e) => setMonthlyHoursInput(e.target.value)}
+                    className="h-10 rounded-lg bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800 tabular-nums"
+                    placeholder="208"
+                  />
+                  <p className="text-[10px] text-gray-400">Used to calculate hourly rate for absence deductions. Default: 208 hrs (8h × 26 days)</p>
                 </div>
 
                 <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">

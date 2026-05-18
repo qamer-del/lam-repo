@@ -102,6 +102,7 @@ model User {
   warrantyReplacements  WarrantyReplacement[]
   supplierCases         SupplierWarrantyCase[]
   bnplSessions          BnplSession[]         @relation("UserBnplSessions")
+  absenceRecords        AbsenceRecord[]       @relation("AbsenceRecordedBy")
 }
 
 model Staff {
@@ -113,11 +114,13 @@ model Staff {
   overtimeAllowance Float              @default(0)
   transportAllowance Float             @default(0)
   otherAllowance    Float              @default(0)
+  monthlyHours      Float              @default(208) // Expected working hours per month
   isActive          Boolean            @default(true)
   userId            String?            @unique
   user              User?              @relation(fields: [userId], references: [id])
   transactions      Transaction[]
   salarySettlements SalarySettlement[]
+  absenceRecords    AbsenceRecord[]
 }
 
 model Agent {
@@ -229,17 +232,32 @@ model Shift {
 }
 
 model SalarySettlement {
-  id            Int           @id @default(autoincrement())
-  staffId       Int
-  staff         Staff         @relation(fields: [staffId], references: [id])
-  month         Int
-  year          Int
-  baseSalary    Float
-  advancesTally Float
-  netPaid       Float
-  method        PayMethod     @default(CASH)
-  paidAt        DateTime      @default(now())
-  transactions  Transaction[]
+  id                Int           @id @default(autoincrement())
+  staffId           Int
+  staff             Staff         @relation(fields: [staffId], references: [id])
+  month             Int
+  year              Int
+  baseSalary        Float
+  advancesTally     Float
+  absenceHours      Float         @default(0)
+  absenceDeduction  Float         @default(0)
+  netPaid           Float
+  method            PayMethod     @default(CASH)
+  paidAt            DateTime      @default(now())
+  transactions      Transaction[]
+}
+
+model AbsenceRecord {
+  id           Int      @id @default(autoincrement())
+  staffId      Int
+  staff        Staff    @relation(fields: [staffId], references: [id])
+  month        Int
+  year         Int
+  hours        Float
+  reason       String?
+  createdAt    DateTime @default(now())
+  recordedById String?
+  recordedBy   User?    @relation("AbsenceRecordedBy", fields: [recordedById], references: [id])
 }
 
 // ── Inventory ──────────────────────────────────────────────

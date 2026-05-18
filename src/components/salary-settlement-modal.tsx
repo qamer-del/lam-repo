@@ -26,6 +26,8 @@ export function SalarySettlementModal({
   staff, 
   advances, 
   totalAdvances, 
+  absenceHours,
+  absenceDeduction,
   netPaid 
 }: { 
   staff: { 
@@ -38,6 +40,8 @@ export function SalarySettlementModal({
   },
   advances: any[],
   totalAdvances: number,
+  absenceHours?: number,
+  absenceDeduction?: number,
   netPaid: number
 }) {
   const { t } = useLanguage()
@@ -68,7 +72,9 @@ export function SalarySettlementModal({
         month: now.getMonth() + 1,
         year: now.getFullYear(),
         method,
-        deductOverdueCredit
+        deductOverdueCredit,
+        absenceHours: absenceHours || 0,
+        absenceDeduction: absenceDeduction || 0,
       })
       setSettledData(res)
       toast.success('Salary Settled', {
@@ -147,6 +153,12 @@ export function SalarySettlementModal({
                     <span className="text-gray-500 font-bold uppercase text-[10px]">{t('advancesDeducted') || 'Advances Deducted'}</span>
                     <span className="font-bold text-red-500">- {totalAdvances.toFixed(2)}</span>
                   </div>
+                  {(absenceDeduction || 0) > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400 font-bold uppercase">Absence ({(absenceHours || 0).toFixed(1)} hrs)</span>
+                      <span className="font-bold text-rose-500">- {(absenceDeduction || 0).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="pt-2 border-t border-gray-200 dark:border-gray-800 flex justify-between">
                     <span className="text-emerald-600 font-black uppercase text-xs">{t('netSalary')}</span>
                     <span className="text-xl font-black text-emerald-600">

@@ -451,7 +451,7 @@ export async function recordRefund(data: {
   })
 }
 
-export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK', deductOverdueCredit?: boolean }) {
+export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK', deductOverdueCredit?: boolean, absenceHours?: number, absenceDeduction?: number }) {
   const session = await auth()
   if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN' && session?.user?.role !== 'OWNER') {
     throw new Error("Unauthorized")
@@ -501,9 +501,11 @@ export async function settleSalary(data: { staffId: number, month: number, year:
   }
 
   const finalAdvancesTally = totalAdvances + totalOverdueRemaining
-  // Calculate total salary (base + allowances)
+  // Calculate total salary (base + allowances) — always full month
   const totalSalary = staff.baseSalary + (staff.overtimeAllowance || 0) + (staff.transportAllowance || 0) + (staff.otherAllowance || 0)
-  const netPaid = totalSalary - finalAdvancesTally
+  const absenceDeduction = data.absenceDeduction || 0
+  const absenceHours = data.absenceHours || 0
+  const netPaid = totalSalary - absenceDeduction - finalAdvancesTally
 
   // 2. Create SalarySettlement record
   const salarySettlement = await prisma.salarySettlement.create({
@@ -511,8 +513,10 @@ export async function settleSalary(data: { staffId: number, month: number, year:
       staffId: data.staffId,
       month: data.month,
       year: data.year,
-      baseSalary: totalSalary, // Saving the total calculated salary instead of just baseSalary for accuracy in reports
+      baseSalary: totalSalary,
       advancesTally: finalAdvancesTally,
+      absenceHours: absenceHours,
+      absenceDeduction: absenceDeduction,
       netPaid: netPaid,
       method: data.method,
       transactions: {
