@@ -85,11 +85,11 @@ export function SettleCashBtn({ triggerClassName, children, open: externalOpen, 
       })
       
       // Update store for real-time dashboard sync
-      const { setVaultData } = useStore.getState()
-      setVaultData({
+      const storeState = useStore.getState()
+      storeState.setVaultData({
         cashInDrawer: 0, // Reset cash in drawer after settlement
-        transactions: [], // Transactions are usually cleared or moved to history
-        recentSettlements: [settlement, ...useStore.getState().recentSettlements]
+        transactions: storeState.transactions.filter(t => t.method !== 'CASH'), // Only clear CASH transactions
+        recentSettlements: [settlement, ...storeState.recentSettlements]
       })
 
       setIsOpen(false)

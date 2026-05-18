@@ -725,7 +725,9 @@ export async function createSettlement(actualCashCounted: number) {
       totalNetworkVolume: networkVolume,
       performedById: session.user.id,
       transactions: {
-        connect: unsettled.map((t: UnsettledTx) => ({ id: t.id }))
+        connect: unsettled
+          .filter((t: UnsettledTx) => t.method === 'CASH')
+          .map((t: UnsettledTx) => ({ id: t.id }))
       }
     },
     include: {
