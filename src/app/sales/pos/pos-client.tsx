@@ -460,7 +460,7 @@ export function PosClient({
                       <Globe size={20} className="text-blue-400" />
                     </div>
                     <div className="relative">
-                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('language') || 'Language'}</p>
+                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Language</p>
                       <p className="text-white text-[18px] font-black leading-tight">{locale === 'ar' ? 'EN' : 'AR'}</p>
                     </div>
                     <div className="absolute bottom-3 end-3 text-blue-500/50 text-[10px] font-black">→</div>
