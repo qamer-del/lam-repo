@@ -345,53 +345,51 @@ export function PosClient({
         <WarrantyNotification warranties={pendingWarranties} customerPhone={customerPhone || undefined} onDismiss={() => setPendingWarranties([])} />
       )}
 
-      <div className="fixed top-[65px] bottom-24 left-0 right-0 lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-40 lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="fixed top-0 bottom-24 left-0 right-0 lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-[60] lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* ── HEADER ── */}
-        <header className="min-h-14 py-1 sm:py-0 bg-white border-b border-gray-200 px-2 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
-              <Receipt size={18} className="text-white" />
-            </div>
-            <div className="leading-none hidden sm:block">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">{t('pointOfSale')}</p>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-black text-gray-800 leading-none">{cashierName}</p>
-                {activeShift && (
-                  <>
-                    <div className="w-1 h-1 rounded-full bg-gray-300" />
-                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Shift #{activeShift.id}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 flex justify-center min-w-0">
-            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto no-scrollbar max-w-full">
-            {([['pos', t('pos'), ShoppingCart], ['sales', t('activity'), History], ['credit', t('credit'), CreditCard]] as const).map(([tab, label, Icon]) => (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={cn('flex-1 sm:flex-none flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-1.5 rounded-lg text-[9px] sm:text-[11px] font-black transition-all whitespace-nowrap',
-                  activeTab === tab ? 'bg-white text-blue-600 shadow-md scale-105' : 'text-gray-500 hover:text-gray-700')}>
-                <Icon size={16} className="shrink-0" />
-                <span className="leading-none">{label}</span>
-                {tab === 'credit' && unpaidCreditSales.length > 0 && (
-                  <span className="bg-amber-500 text-white text-[9px] font-black rounded-full min-w-[16px] h-[16px] flex items-center justify-center">{unpaidCreditSales.length}</span>
-                )}
-              </button>
-            ))}
-            </div>
-          </div>
-
+        <header className="min-h-12 bg-white/90 backdrop-blur-md border-b border-gray-200 px-3 flex items-center justify-between shrink-0 z-20 gap-3 shadow-sm">
+          {/* LEFT: Branding & Shift Info */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden lg:flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
+              <Receipt size={16} className="text-white" />
+            </div>
+            <div className="hidden sm:block leading-tight">
+              <p className="text-[11px] font-black text-gray-800">{cashierName}</p>
+              {activeShift && <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Shift #{activeShift.id}</p>}
+            </div>
+          </div>
+
+          {/* CENTER: Sleek Segmented Tabs */}
+          <div className="flex-1 flex justify-center max-w-sm">
+            <div className="flex items-center bg-gray-100/80 p-1 rounded-xl w-full">
+              {([['pos', t('pos'), ShoppingCart], ['sales', t('activity'), History], ['credit', t('credit'), CreditCard]] as const).map(([tab, label, Icon]) => (
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all whitespace-nowrap',
+                    activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+                  <Icon size={14} className={activeTab === tab ? 'text-blue-600' : ''} />
+                  <span className="hidden sm:inline-block">{label}</span>
+                  {tab === 'credit' && unpaidCreditSales.length > 0 && (
+                    <span className="bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[14px] h-[14px] flex items-center justify-center -ms-0.5">{unpaidCreditSales.length}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* RIGHT: Actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Minimal Printer Indicator */}
+            <div className="hidden lg:flex items-center gap-1.5 text-[10px] font-bold px-2 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               {t('printer')}
             </div>
+
             <CloseShiftBtn
-              triggerClassName="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl text-[11px] font-black border bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center shadow-sm"
-              triggerIcon={<History size={18} className="sm:hidden" />}
+              triggerClassName="h-8 w-8 sm:h-8 sm:w-auto sm:px-3 rounded-lg text-[11px] font-bold border-gray-200 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm p-0"
+              triggerIcon={<History size={14} className="sm:hidden text-gray-500" />}
             />
+            
             <button
               type="button"
               disabled={isLoggingOut}
@@ -407,13 +405,13 @@ export function PosClient({
                   setIsLoggingOut(false);
                 }
               }}
-              className="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl text-[11px] font-black border bg-red-50 border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-50"
+              className="h-8 w-8 sm:h-8 sm:w-auto sm:px-3 rounded-lg text-[11px] font-bold border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-50 p-0"
               title={t('logout') || 'Logout'}
             >
               {isLoggingOut ? (
-                <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin sm:me-1.5" />
+                <div className="w-3.5 h-3.5 border-2 border-red-600 border-t-transparent rounded-full animate-spin sm:me-1.5" />
               ) : (
-                <LogOut size={18} className="sm:me-1.5" />
+                <LogOut size={14} className="sm:me-1.5" />
               )}
               <span className="hidden sm:inline">{t('logout') || 'Logout'}</span>
             </button>
