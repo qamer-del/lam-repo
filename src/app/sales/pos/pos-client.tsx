@@ -348,72 +348,25 @@ export function PosClient({
       <div className="fixed top-0 bottom-24 left-0 right-0 lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-[60] lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* ── HEADER ── */}
-        <header className="bg-white/90 backdrop-blur-md border-b border-gray-200 px-3 py-2.5 lg:py-0 lg:min-h-[72px] flex flex-wrap lg:flex-nowrap items-center justify-between shrink-0 z-20 gap-y-3 gap-x-4 shadow-sm">
-          {/* LEFT: Branding & Shift Info */}
-          <div className="flex items-center gap-2.5 shrink-0 w-auto">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
-              <Receipt size={20} className="text-white" />
-            </div>
-            <div className="leading-tight">
-              <p className="text-xs font-black text-gray-800">{cashierName}</p>
-              {activeShift && <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Shift #{activeShift.id}</p>}
-            </div>
-          </div>
-
-          {/* RIGHT: Actions (Shows on right of top row on mobile, far right on desktop) */}
-          <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0 lg:order-3 flex-1 lg:flex-none">
-            {/* Language Switch */}
-            <button
-              onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
-              className="h-10 px-3 flex items-center justify-center rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all font-black text-xs uppercase tracking-widest text-gray-600 shadow-sm"
-            >
-              {locale === 'ar' ? 'EN' : 'AR'}
-            </button>
-
-            {/* Minimal Printer Indicator */}
-            <div className="hidden lg:flex items-center gap-1.5 text-[10px] font-bold px-3 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {t('printer')}
-            </div>
-
-            <CloseShiftBtn
-              triggerClassName="h-10 w-10 sm:w-auto sm:px-4 rounded-xl text-xs font-black border-gray-200 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm p-0 sm:p-auto"
-              triggerIcon={<History size={16} className="sm:hidden text-gray-500" />}
-            />
+        <header className="min-h-[72px] bg-white/90 backdrop-blur-md border-b border-gray-200 px-3 flex items-center shrink-0 z-20 shadow-sm overflow-x-auto no-scrollbar">
+          <div className="flex items-center justify-between w-full min-w-max gap-6">
             
-            <button
-              type="button"
-              disabled={isLoggingOut}
-              onClick={async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsLoggingOut(true);
-                try {
-                  const { signOut } = await import('next-auth/react');
-                  await signOut({ callbackUrl: '/login' });
-                } catch (err) {
-                  console.error('Logout error:', err);
-                  setIsLoggingOut(false);
-                }
-              }}
-              className="h-10 w-10 sm:w-auto sm:px-4 rounded-xl text-xs font-black border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-50 p-0 sm:p-auto"
-              title={t('logout') || 'Logout'}
-            >
-              {isLoggingOut ? (
-                <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin sm:me-1.5" />
-              ) : (
-                <LogOut size={16} className="sm:me-1.5" />
-              )}
-              <span className="hidden sm:inline">{t('logout') || 'Logout'}</span>
-            </button>
-          </div>
+            {/* LEFT: Branding & Shift Info */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
+                <Receipt size={20} className="text-white" />
+              </div>
+              <div className="leading-tight">
+                <p className="text-xs font-black text-gray-800">{cashierName}</p>
+                {activeShift && <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Shift #{activeShift.id}</p>}
+              </div>
+            </div>
 
-          {/* CENTER: Generous Pill Tabs (Drops to second row on mobile) */}
-          <div className="flex-1 flex justify-center min-w-0 w-full lg:w-auto lg:order-2 order-last overflow-x-auto no-scrollbar pb-1 lg:pb-0">
-            <div className="flex items-center gap-1.5 sm:gap-2 bg-gray-50/80 p-1 rounded-2xl border border-gray-100 w-full sm:w-auto justify-between sm:justify-start">
+            {/* CENTER: Generous Pill Tabs */}
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-gray-50/80 p-1 rounded-2xl border border-gray-100 shrink-0">
               {([['pos', t('pos'), ShoppingCart], ['sales', t('activity'), History], ['credit', t('credit'), CreditCard]] as const).map(([tab, label, Icon]) => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={cn('flex items-center justify-center gap-1.5 sm:gap-2 h-10 px-3 sm:px-5 rounded-xl text-[11px] sm:text-xs font-black transition-all border flex-1 sm:flex-none',
+                  className={cn('flex items-center justify-center gap-1.5 sm:gap-2 h-10 px-3 sm:px-5 rounded-xl text-[11px] sm:text-xs font-black transition-all border',
                     activeTab === tab 
                       ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/30' 
                       : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900'
@@ -427,6 +380,54 @@ export function PosClient({
                   )}
                 </button>
               ))}
+            </div>
+
+            {/* RIGHT: Actions */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Language Switch */}
+              <button
+                onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
+                className="h-10 px-3 flex items-center justify-center rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all font-black text-xs uppercase tracking-widest text-gray-600 shadow-sm"
+              >
+                {locale === 'ar' ? 'EN' : 'AR'}
+              </button>
+
+              {/* Minimal Printer Indicator */}
+              <div className="hidden lg:flex items-center gap-1.5 text-[10px] font-bold px-3 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {t('printer')}
+              </div>
+
+              <CloseShiftBtn
+                triggerClassName="h-10 w-10 sm:w-auto sm:px-4 rounded-xl text-xs font-black border-gray-200 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm p-0 sm:p-auto"
+                triggerIcon={<History size={16} className="sm:hidden text-gray-500" />}
+              />
+              
+              <button
+                type="button"
+                disabled={isLoggingOut}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsLoggingOut(true);
+                  try {
+                    const { signOut } = await import('next-auth/react');
+                    await signOut({ callbackUrl: '/login' });
+                  } catch (err) {
+                    console.error('Logout error:', err);
+                    setIsLoggingOut(false);
+                  }
+                }}
+                className="h-10 w-10 sm:w-auto sm:px-4 rounded-xl text-xs font-black border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-50 p-0 sm:p-auto"
+                title={t('logout') || 'Logout'}
+              >
+                {isLoggingOut ? (
+                  <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin sm:me-1.5" />
+                ) : (
+                  <LogOut size={16} className="sm:me-1.5" />
+                )}
+                <span className="hidden sm:inline">{t('logout') || 'Logout'}</span>
+              </button>
             </div>
           </div>
         </header>
