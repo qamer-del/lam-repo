@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * receipt-template.ts
  * Full type system for the dynamic receipt template system.
