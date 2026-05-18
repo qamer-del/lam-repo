@@ -348,181 +348,183 @@ export function PosClient({
       <div className="fixed top-0 bottom-24 left-0 right-0 lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-[60] lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* ── HEADER ── */}
-        <header className="h-16 lg:h-[72px] bg-[#0f1729] px-4 flex items-center justify-between shrink-0 z-20" style={{boxShadow:'0 2px 20px rgba(0,0,0,0.35)'}}>
+        {/* 3-column grid ensures tabs are always perfectly centered with zero overlap */}
+        <header className="h-16 lg:h-[72px] bg-[#0f1729] px-3 sm:px-4 grid grid-cols-[auto_1fr_auto] items-center gap-3 shrink-0 z-20" style={{boxShadow:'0 2px 24px rgba(0,0,0,0.4)'}}>
 
-          {/* LEFT: Avatar + Cashier identity */}
-          <div className="flex items-center gap-3 shrink-0">
-            {/* Avatar circle with initial */}
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-[13px] font-black shadow-lg shadow-blue-900/50 shrink-0 ring-2 ring-white/10">
+          {/* COL 1 LEFT: Avatar + identity */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-[13px] font-black shadow-lg ring-2 ring-white/10 shrink-0">
               {cashierName?.[0]?.toUpperCase() ?? 'C'}
             </div>
-            <div className="hidden sm:flex flex-col leading-none">
-              <span className="text-white text-[12px] font-bold tracking-wide">{cashierName}</span>
+            <div className="hidden sm:flex flex-col leading-none min-w-0">
+              <span className="text-white text-[12px] font-bold truncate">{cashierName}</span>
               {activeShift
-                ? <span className="text-emerald-400 text-[10px] font-semibold tracking-widest uppercase mt-0.5">● Shift #{activeShift.id}</span>
-                : <span className="text-slate-500 text-[10px] font-semibold tracking-widest uppercase mt-0.5">No Shift</span>
+                ? <span className="text-emerald-400 text-[10px] font-semibold tracking-wider uppercase mt-0.5">Shift #{activeShift.id}</span>
+                : <span className="text-slate-600 text-[10px] tracking-wider uppercase mt-0.5">No Shift</span>
               }
             </div>
           </div>
 
-          {/* CENTER: Glowing pill tabs */}
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-white/5 border border-white/8 rounded-2xl p-1">
-            {([
-              ['pos',    t('pos')      || 'POS',      ShoppingCart],
-              ['sales',  t('activity') || 'Activity',  History],
-              ['credit', t('credit')   || 'Credit',    CreditCard],
-            ] as const).map(([tab, label, Icon]) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  'relative flex items-center gap-2 h-[38px] px-4 sm:px-5 rounded-xl text-[12px] font-bold transition-all duration-200 whitespace-nowrap',
-                  activeTab === tab
-                    ? 'bg-blue-600 text-white shadow-[0_0_16px_rgba(59,130,246,0.6)]'
-                    : 'text-slate-400 hover:text-white hover:bg-white/8'
-                )}
-              >
-                <Icon size={14} className={activeTab === tab ? 'text-white' : 'text-slate-500'} />
-                <span>{label}</span>
-                {tab === 'credit' && unpaidCreditSales.length > 0 && (
-                  <span className="absolute -top-1.5 -end-1.5 min-w-[18px] h-[18px] px-0.5 flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-black shadow-lg shadow-rose-500/50 ring-2 ring-[#0f1729]">
-                    {unpaidCreditSales.length}
-                  </span>
-                )}
-              </button>
-            ))}
+          {/* COL 2 CENTER: Tabs — always perfectly centered in their column */}
+          <div className="flex items-center justify-center">
+            <div className="flex items-center gap-0.5 bg-white/[0.06] rounded-[18px] p-[5px] border border-white/[0.08]">
+              {([
+                ['pos',    t('pos')      || 'POS',      ShoppingCart],
+                ['sales',  t('activity') || 'Activity',  History],
+                ['credit', t('credit')   || 'Credit',    CreditCard],
+              ] as const).map(([tab, label, Icon]) => (
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    'relative flex items-center gap-1.5 h-[34px] px-3 sm:px-4 rounded-[13px] text-[11px] sm:text-[12px] font-bold transition-all duration-200 whitespace-nowrap',
+                    activeTab === tab
+                      ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(59,130,246,0.55)]'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.07]'
+                  )}>
+                  <Icon size={13} />
+                  <span>{label}</span>
+                  {tab === 'credit' && unpaidCreditSales.length > 0 && (
+                    <span className="absolute -top-1.5 -end-1.5 min-w-[17px] h-[17px] px-0.5 flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-black ring-2 ring-[#0f1729]">
+                      {unpaidCreditSales.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* RIGHT: Desktop bar + Mobile menu */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* COL 3 RIGHT: Desktop actions / Mobile command button */}
+          <div className="flex items-center justify-end gap-2">
 
-            {/* Desktop actions */}
+            {/* Desktop — compact pill row */}
             <div className="hidden lg:flex items-center gap-2">
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocale(locale === 'ar' ? 'en' : 'ar'); }}
-                className="h-9 px-3.5 rounded-xl bg-white/8 border border-white/10 hover:bg-white/15 transition-all text-[11px] font-black uppercase tracking-widest text-slate-300"
-              >
+              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocale(locale === 'ar' ? 'en' : 'ar'); }}
+                className="h-9 px-3.5 rounded-xl bg-white/[0.07] border border-white/10 hover:bg-white/[0.12] transition-all text-[11px] font-black uppercase tracking-widest text-slate-300">
                 {locale === 'ar' ? 'EN' : 'AR'}
               </button>
               <div className="h-9 px-3 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 {t('printer')}
               </div>
-              <CloseShiftBtn
-                triggerClassName="h-9 px-4 rounded-xl bg-white/8 border border-white/10 hover:bg-white/15 transition-all text-[11px] font-bold text-slate-300 flex items-center gap-2"
-                triggerIcon={<History size={14} />}
-              />
-              <button
-                type="button"
-                disabled={isLoggingOut}
+              <CloseShiftBtn triggerClassName="h-9 px-4 rounded-xl bg-white/[0.07] border border-white/10 hover:bg-white/[0.12] transition-all text-[11px] font-bold text-slate-300 flex items-center gap-2" triggerIcon={<History size={14} />} />
+              <button type="button" disabled={isLoggingOut}
                 onClick={async (e) => { e.preventDefault(); e.stopPropagation(); setIsLoggingOut(true); try { const { signOut } = await import('next-auth/react'); await signOut({ callbackUrl: '/login' }); } catch { setIsLoggingOut(false); } }}
-                className="h-9 px-4 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all text-[11px] font-bold text-red-400 flex items-center gap-2 disabled:opacity-40"
-              >
+                className="h-9 px-4 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all text-[11px] font-bold text-red-400 flex items-center gap-2 disabled:opacity-40">
                 {isLoggingOut ? <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /> : <LogOut size={14} />}
                 {t('logout') || 'Logout'}
               </button>
             </div>
 
-            {/* Mobile menu button */}
+            {/* Mobile — command center bottom sheet */}
             <Sheet>
               <SheetTrigger asChild>
-                <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-white/8 border border-white/10 text-slate-300 hover:bg-white/15 active:scale-95 transition-all">
+                <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-white/[0.07] border border-white/10 text-slate-300 hover:bg-white/[0.13] active:scale-90 transition-all">
                   <Menu size={18} />
                 </button>
               </SheetTrigger>
 
-              <SheetContent
-                side={isRTL ? 'right' : 'left'}
-                className="w-[290px] max-w-[88vw] p-0 flex flex-col border-0 z-[120]"
-                style={{background:'linear-gradient(180deg,#0f1729 0%,#111827 100%)'}}
-              >
-                <SheetTitle className="sr-only">POS Menu</SheetTitle>
+              {/* Bottom Sheet: "Command Center" */}
+              <SheetContent className="z-[120] p-0 border-0 rounded-t-[2rem] overflow-hidden" style={{background:'#0b1120', maxHeight:'90vh'}}>
+                <SheetTitle className="sr-only">Command Center</SheetTitle>
 
-                {/* Sheet top: identity card */}
-                <div className="px-6 py-8 border-b border-white/8">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xl font-black shadow-2xl shadow-blue-900/50 ring-2 ring-white/10 shrink-0">
-                      {cashierName?.[0]?.toUpperCase() ?? 'C'}
-                    </div>
-                    <div>
-                      <p className="text-white text-sm font-black">{cashierName}</p>
-                      {activeShift
-                        ? <p className="text-emerald-400 text-[11px] font-semibold mt-0.5">● Active · Shift #{activeShift.id}</p>
-                        : <p className="text-slate-500 text-[11px] font-semibold mt-0.5">No Active Shift</p>
-                      }
-                    </div>
+                {/* Pull indicator already rendered by SheetContent */}
+
+                {/* Identity strip */}
+                <div className="px-6 pt-2 pb-5 flex items-center gap-4 border-b border-white/[0.07]">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-lg font-black shadow-xl ring-2 ring-white/10 shrink-0">
+                    {cashierName?.[0]?.toUpperCase() ?? 'C'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-[15px] font-black truncate">{cashierName}</p>
+                    {activeShift
+                      ? <p className="text-emerald-400 text-[11px] font-semibold mt-0.5">● Active session · Shift #{activeShift.id}</p>
+                      : <p className="text-slate-500 text-[11px] mt-0.5">No active shift</p>
+                    }
+                  </div>
+                  {/* Live clock dot */}
+                  <div className="shrink-0 flex flex-col items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                    <span className="text-emerald-500 text-[9px] font-black uppercase tracking-wider">Live</span>
                   </div>
                 </div>
 
-                {/* Sheet items */}
-                <div className="flex-1 px-4 py-5 flex flex-col gap-2">
-                  
-                  {/* Language */}
+                {/* Action tiles — 2×2 grid */}
+                <div className="p-4 grid grid-cols-2 gap-3">
+
+                  {/* Language tile */}
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocale(locale === 'ar' ? 'en' : 'ar'); }}
-                    className="group flex items-center justify-between px-4 py-4 rounded-2xl bg-white/5 border border-white/8 hover:bg-white/10 hover:border-white/15 transition-all active:scale-[0.98]"
+                    className="group relative flex flex-col items-start gap-3 p-4 rounded-2xl bg-white/[0.05] border border-white/[0.08] hover:border-blue-500/40 hover:bg-blue-500/[0.08] active:scale-95 transition-all overflow-hidden"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0">
-                        <Globe size={17} className="text-blue-400" />
-                      </div>
-                      <span className="text-slate-200 text-sm font-semibold">{t('language') || 'Language'}</span>
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center relative">
+                      <Globe size={20} className="text-blue-400" />
                     </div>
-                    <span className="text-[11px] font-black text-blue-400 tracking-widest uppercase bg-blue-500/10 px-2 py-1 rounded-lg">
-                      {locale === 'ar' ? 'EN' : 'AR'}
-                    </span>
+                    <div className="relative">
+                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('language') || 'Language'}</p>
+                      <p className="text-white text-[18px] font-black leading-tight">{locale === 'ar' ? 'EN' : 'AR'}</p>
+                    </div>
+                    <div className="absolute bottom-3 end-3 text-blue-500/50 text-[10px] font-black">→</div>
                   </button>
 
-                  {/* Printer */}
-                  <div className="flex items-center justify-between px-4 py-4 rounded-2xl bg-white/5 border border-white/8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-                        <Printer size={17} className="text-emerald-400" />
-                      </div>
-                      <span className="text-slate-200 text-sm font-semibold">{t('printer')}</span>
+                  {/* Printer status tile */}
+                  <div className="relative flex flex-col items-start gap-3 p-4 rounded-2xl bg-white/[0.05] border border-emerald-500/20 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent" />
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center relative">
+                      <Printer size={20} className="text-emerald-400" />
                     </div>
-                    <div className="flex items-center gap-2 text-emerald-400 text-[11px] font-black tracking-widest uppercase bg-emerald-500/10 px-2 py-1 rounded-lg">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Ready
+                    <div className="relative">
+                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('printer')}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                        <p className="text-emerald-400 text-[13px] font-black">Ready</p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="h-px bg-white/8 my-1" />
-
-                  {/* Close Shift */}
+                  {/* Close Shift tile */}
                   <CloseShiftBtn
-                    triggerClassName="group flex items-center gap-3 px-4 py-4 w-full rounded-2xl bg-white/5 border border-white/8 hover:bg-white/10 hover:border-white/15 transition-all active:scale-[0.98] text-sm font-semibold text-slate-200"
+                    triggerClassName="group relative flex flex-col items-start gap-3 p-4 rounded-2xl bg-white/[0.05] border border-white/[0.08] hover:border-amber-500/40 hover:bg-amber-500/[0.08] active:scale-95 transition-all overflow-hidden text-start"
                     triggerIcon={
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
-                        <History size={17} className="text-amber-400" />
-                      </div>
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center relative shrink-0">
+                          <History size={20} className="text-amber-400" />
+                        </div>
+                        <div className="relative">
+                          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Close Shift</p>
+                          <p className="text-white text-[13px] font-black">End Session</p>
+                        </div>
+                      </>
                     }
                   />
 
-                  {/* Logout */}
+                  {/* Logout tile */}
                   <button
                     type="button"
                     disabled={isLoggingOut}
                     onClick={async (e) => { e.preventDefault(); e.stopPropagation(); setIsLoggingOut(true); try { const { signOut } = await import('next-auth/react'); await signOut({ callbackUrl: '/login' }); } catch { setIsLoggingOut(false); } }}
-                    className="flex items-center gap-3 px-4 py-4 w-full rounded-2xl bg-red-500/10 border border-red-500/15 hover:bg-red-500/20 hover:border-red-500/25 transition-all active:scale-[0.98] disabled:opacity-40 text-sm font-semibold text-red-400"
+                    className="group relative flex flex-col items-start gap-3 p-4 rounded-2xl bg-white/[0.05] border border-white/[0.08] hover:border-red-500/40 hover:bg-red-500/[0.08] active:scale-95 transition-all overflow-hidden disabled:opacity-40 text-start"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
+                    <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center relative">
                       {isLoggingOut
-                        ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                        : <LogOut size={17} className="text-red-400" />}
+                        ? <div className="w-5 h-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                        : <LogOut size={20} className="text-red-400" />}
                     </div>
-                    {t('logout') || 'Logout'}
+                    <div className="relative">
+                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('logout') || 'Logout'}</p>
+                      <p className="text-white text-[13px] font-black">Sign Out</p>
+                    </div>
                   </button>
                 </div>
 
-                {/* Sheet footer */}
-                <div className="px-6 py-4 border-t border-white/8">
-                  <p className="text-slate-600 text-[10px] font-medium text-center uppercase tracking-widest">Lamaha POS Terminal</p>
-                </div>
+                {/* Bottom safe-area spacing */}
+                <div className="h-4" />
               </SheetContent>
             </Sheet>
           </div>
         </header>
+
 
 
         {/* Shortcuts bar */}
