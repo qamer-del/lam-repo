@@ -389,8 +389,27 @@ export function PosClient({
             </div>
             <CloseShiftBtn
               triggerClassName="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl text-[11px] font-black border bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center shadow-sm"
-              triggerIcon={<LogOut size={18} className="sm:hidden" />}
+              triggerIcon={<History size={18} className="sm:hidden" />}
             />
+            <button
+              type="button"
+              disabled={expandedLoading}
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try {
+                  const { signOut } = await import('next-auth/react');
+                  await signOut({ callbackUrl: '/login' });
+                } catch (err) {
+                  console.error('Logout error:', err);
+                }
+              }}
+              className="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl text-[11px] font-black border bg-red-50 border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95"
+              title={t('logout') || 'Logout'}
+            >
+              <LogOut size={18} className="sm:me-1.5" />
+              <span className="hidden sm:inline">{t('logout') || 'Logout'}</span>
+            </button>
           </div>
         </header>
 
