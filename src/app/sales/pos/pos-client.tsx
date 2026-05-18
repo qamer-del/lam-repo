@@ -348,24 +348,25 @@ export function PosClient({
       <div className="fixed top-0 bottom-24 left-0 right-0 lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-[60] lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* ── HEADER ── */}
-        <header className="h-16 bg-white border-b border-gray-100 px-4 flex items-center justify-between shrink-0 z-20 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+        <header className="h-16 lg:h-[72px] bg-[#0f1729] px-4 flex items-center justify-between shrink-0 z-20" style={{boxShadow:'0 2px 20px rgba(0,0,0,0.35)'}}>
 
-          {/* LEFT: Logo + Cashier Info */}
+          {/* LEFT: Avatar + Cashier identity */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
-              <Receipt size={17} className="text-white" />
+            {/* Avatar circle with initial */}
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-[13px] font-black shadow-lg shadow-blue-900/50 shrink-0 ring-2 ring-white/10">
+              {cashierName?.[0]?.toUpperCase() ?? 'C'}
             </div>
-            <div className="leading-tight hidden sm:block">
-              <p className="text-[11px] font-black text-gray-900 tracking-wide">{cashierName}</p>
+            <div className="hidden sm:flex flex-col leading-none">
+              <span className="text-white text-[12px] font-bold tracking-wide">{cashierName}</span>
               {activeShift
-                ? <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-widest">Active · Shift #{activeShift.id}</p>
-                : <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">No Active Shift</p>
+                ? <span className="text-emerald-400 text-[10px] font-semibold tracking-widest uppercase mt-0.5">● Shift #{activeShift.id}</span>
+                : <span className="text-slate-500 text-[10px] font-semibold tracking-widest uppercase mt-0.5">No Shift</span>
               }
             </div>
           </div>
 
-          {/* CENTER: Tabs — perfectly centered */}
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-100/80 p-[5px] rounded-[14px]">
+          {/* CENTER: Glowing pill tabs */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-white/5 border border-white/8 rounded-2xl p-1">
             {([
               ['pos',    t('pos')      || 'POS',      ShoppingCart],
               ['sales',  t('activity') || 'Activity',  History],
@@ -375,16 +376,16 @@ export function PosClient({
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  'relative flex items-center gap-2 h-[36px] px-4 rounded-[10px] text-[12px] font-bold transition-all duration-200 whitespace-nowrap',
+                  'relative flex items-center gap-2 h-[38px] px-4 sm:px-5 rounded-xl text-[12px] font-bold transition-all duration-200 whitespace-nowrap',
                   activeTab === tab
-                    ? 'bg-white text-gray-900 shadow-[0_1px_4px_rgba(0,0,0,0.12)]'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-white/60'
+                    ? 'bg-blue-600 text-white shadow-[0_0_16px_rgba(59,130,246,0.6)]'
+                    : 'text-slate-400 hover:text-white hover:bg-white/8'
                 )}
               >
-                <Icon size={15} className={activeTab === tab ? 'text-blue-600' : 'text-gray-400'} />
-                {label}
+                <Icon size={14} className={activeTab === tab ? 'text-white' : 'text-slate-500'} />
+                <span>{label}</span>
                 {tab === 'credit' && unpaidCreditSales.length > 0 && (
-                  <span className="absolute -top-1 -end-1 min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-black shadow">
+                  <span className="absolute -top-1.5 -end-1.5 min-w-[18px] h-[18px] px-0.5 flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-black shadow-lg shadow-rose-500/50 ring-2 ring-[#0f1729]">
                     {unpaidCreditSales.length}
                   </span>
                 )}
@@ -392,106 +393,108 @@ export function PosClient({
             ))}
           </div>
 
-          {/* RIGHT: Desktop actions + Mobile hamburger */}
+          {/* RIGHT: Desktop bar + Mobile menu */}
           <div className="flex items-center gap-2 shrink-0">
 
-            {/* Desktop-only action bar */}
+            {/* Desktop actions */}
             <div className="hidden lg:flex items-center gap-2">
-              {/* Language */}
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocale(locale === 'ar' ? 'en' : 'ar'); }}
-                className="h-9 px-3 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all text-[11px] font-black uppercase tracking-widest text-gray-600"
+                className="h-9 px-3.5 rounded-xl bg-white/8 border border-white/10 hover:bg-white/15 transition-all text-[11px] font-black uppercase tracking-widest text-slate-300"
               >
                 {locale === 'ar' ? 'EN' : 'AR'}
               </button>
-              {/* Printer */}
-              <div className="h-9 px-3 flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-[11px] font-bold">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="h-9 px-3 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 {t('printer')}
               </div>
-              {/* Close Shift */}
               <CloseShiftBtn
-                triggerClassName="h-9 px-4 rounded-xl text-[11px] font-bold border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 flex items-center gap-2 shadow-sm"
-                triggerIcon={<History size={15} />}
+                triggerClassName="h-9 px-4 rounded-xl bg-white/8 border border-white/10 hover:bg-white/15 transition-all text-[11px] font-bold text-slate-300 flex items-center gap-2"
+                triggerIcon={<History size={14} />}
               />
-              {/* Logout */}
               <button
                 type="button"
                 disabled={isLoggingOut}
                 onClick={async (e) => { e.preventDefault(); e.stopPropagation(); setIsLoggingOut(true); try { const { signOut } = await import('next-auth/react'); await signOut({ callbackUrl: '/login' }); } catch { setIsLoggingOut(false); } }}
-                className="h-9 px-4 rounded-xl text-[11px] font-bold border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 flex items-center gap-2 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                className="h-9 px-4 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all text-[11px] font-bold text-red-400 flex items-center gap-2 disabled:opacity-40"
               >
-                {isLoggingOut ? <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" /> : <LogOut size={15} />}
+                {isLoggingOut ? <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /> : <LogOut size={14} />}
                 {t('logout') || 'Logout'}
               </button>
             </div>
 
-            {/* Mobile hamburger */}
+            {/* Mobile menu button */}
             <Sheet>
               <SheetTrigger asChild>
-                <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 active:scale-95 transition-all">
+                <button className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-white/8 border border-white/10 text-slate-300 hover:bg-white/15 active:scale-95 transition-all">
                   <Menu size={18} />
                 </button>
               </SheetTrigger>
+
               <SheetContent
                 side={isRTL ? 'right' : 'left'}
-                className="w-[300px] max-w-[85vw] p-0 flex flex-col bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800 z-[120]"
+                className="w-[290px] max-w-[88vw] p-0 flex flex-col border-0 z-[120]"
+                style={{background:'linear-gradient(180deg,#0f1729 0%,#111827 100%)'}}
               >
-                {/* Sheet Header */}
-                <div className="p-6 border-b border-gray-100 dark:border-gray-800">
-                  <SheetTitle className="sr-only">POS Menu</SheetTitle>
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                      <Receipt size={20} className="text-white" />
+                <SheetTitle className="sr-only">POS Menu</SheetTitle>
+
+                {/* Sheet top: identity card */}
+                <div className="px-6 py-8 border-b border-white/8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-xl font-black shadow-2xl shadow-blue-900/50 ring-2 ring-white/10 shrink-0">
+                      {cashierName?.[0]?.toUpperCase() ?? 'C'}
                     </div>
                     <div>
-                      <p className="text-sm font-black text-gray-900 dark:text-white">{cashierName}</p>
+                      <p className="text-white text-sm font-black">{cashierName}</p>
                       {activeShift
-                        ? <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Active · Shift #{activeShift.id}</p>
-                        : <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No Active Shift</p>
+                        ? <p className="text-emerald-400 text-[11px] font-semibold mt-0.5">● Active · Shift #{activeShift.id}</p>
+                        : <p className="text-slate-500 text-[11px] font-semibold mt-0.5">No Active Shift</p>
                       }
                     </div>
                   </div>
                 </div>
 
-                {/* Sheet Menu Items */}
-                <div className="flex-1 p-4 flex flex-col gap-2">
-                  {/* Language switch */}
+                {/* Sheet items */}
+                <div className="flex-1 px-4 py-5 flex flex-col gap-2">
+                  
+                  {/* Language */}
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocale(locale === 'ar' ? 'en' : 'ar'); }}
-                    className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all text-sm font-bold text-gray-700 dark:text-gray-200 active:scale-[0.98]"
+                    className="group flex items-center justify-between px-4 py-4 rounded-2xl bg-white/5 border border-white/8 hover:bg-white/10 hover:border-white/15 transition-all active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                        <Globe size={16} className="text-blue-600 dark:text-blue-400" />
+                      <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0">
+                        <Globe size={17} className="text-blue-400" />
                       </div>
-                      {t('language') || 'Language'}
+                      <span className="text-slate-200 text-sm font-semibold">{t('language') || 'Language'}</span>
                     </div>
-                    <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest">{locale === 'ar' ? 'EN →' : 'AR →'}</span>
+                    <span className="text-[11px] font-black text-blue-400 tracking-widest uppercase bg-blue-500/10 px-2 py-1 rounded-lg">
+                      {locale === 'ar' ? 'EN' : 'AR'}
+                    </span>
                   </button>
 
-                  {/* Printer status */}
-                  <div className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                  {/* Printer */}
+                  <div className="flex items-center justify-between px-4 py-4 rounded-2xl bg-white/5 border border-white/8">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                        <Printer size={16} className="text-emerald-600" />
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+                        <Printer size={17} className="text-emerald-400" />
                       </div>
-                      {t('printer')}
+                      <span className="text-slate-200 text-sm font-semibold">{t('printer')}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <div className="flex items-center gap-2 text-emerald-400 text-[11px] font-black tracking-widest uppercase bg-emerald-500/10 px-2 py-1 rounded-lg">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       Ready
                     </div>
                   </div>
 
-                  <div className="h-px bg-gray-100 dark:bg-gray-800 my-1" />
+                  <div className="h-px bg-white/8 my-1" />
 
                   {/* Close Shift */}
                   <CloseShiftBtn
-                    triggerClassName="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all text-sm font-bold text-gray-700 dark:text-gray-200 active:scale-[0.98]"
+                    triggerClassName="group flex items-center gap-3 px-4 py-4 w-full rounded-2xl bg-white/5 border border-white/8 hover:bg-white/10 hover:border-white/15 transition-all active:scale-[0.98] text-sm font-semibold text-slate-200"
                     triggerIcon={
-                      <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                        <History size={16} className="text-amber-600 dark:text-amber-400" />
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
+                        <History size={17} className="text-amber-400" />
                       </div>
                     }
                   />
@@ -501,20 +504,26 @@ export function PosClient({
                     type="button"
                     disabled={isLoggingOut}
                     onClick={async (e) => { e.preventDefault(); e.stopPropagation(); setIsLoggingOut(true); try { const { signOut } = await import('next-auth/react'); await signOut({ callbackUrl: '/login' }); } catch { setIsLoggingOut(false); } }}
-                    className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all text-sm font-bold text-red-600 dark:text-red-400 active:scale-[0.98] disabled:opacity-50"
+                    className="flex items-center gap-3 px-4 py-4 w-full rounded-2xl bg-red-500/10 border border-red-500/15 hover:bg-red-500/20 hover:border-red-500/25 transition-all active:scale-[0.98] disabled:opacity-40 text-sm font-semibold text-red-400"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
                       {isLoggingOut
-                        ? <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                        : <LogOut size={16} className="text-red-600 dark:text-red-400" />}
+                        ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                        : <LogOut size={17} className="text-red-400" />}
                     </div>
                     {t('logout') || 'Logout'}
                   </button>
+                </div>
+
+                {/* Sheet footer */}
+                <div className="px-6 py-4 border-t border-white/8">
+                  <p className="text-slate-600 text-[10px] font-medium text-center uppercase tracking-widest">Lamaha POS Terminal</p>
                 </div>
               </SheetContent>
             </Sheet>
           </div>
         </header>
+
 
         {/* Shortcuts bar */}
         {showShortcuts && (
