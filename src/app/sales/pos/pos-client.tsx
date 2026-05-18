@@ -87,6 +87,7 @@ export function PosClient({
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null)
   const [expandedDetails, setExpandedDetails] = useState<any>(null)
   const [expandedLoading, setExpandedLoading] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [mobilePosView, setMobilePosView] = useState<'items' | 'cart'>('items')
   const [collapsedShifts, setCollapsedShifts] = useState<number[]>([])
 
@@ -393,21 +394,27 @@ export function PosClient({
             />
             <button
               type="button"
-              disabled={expandedLoading}
+              disabled={isLoggingOut}
               onClick={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                setIsLoggingOut(true);
                 try {
                   const { signOut } = await import('next-auth/react');
                   await signOut({ callbackUrl: '/login' });
                 } catch (err) {
                   console.error('Logout error:', err);
+                  setIsLoggingOut(false);
                 }
               }}
-              className="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl text-[11px] font-black border bg-red-50 border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95"
+              className="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl text-[11px] font-black border bg-red-50 border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-50"
               title={t('logout') || 'Logout'}
             >
-              <LogOut size={18} className="sm:me-1.5" />
+              {isLoggingOut ? (
+                <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin sm:me-1.5" />
+              ) : (
+                <LogOut size={18} className="sm:me-1.5" />
+              )}
               <span className="hidden sm:inline">{t('logout') || 'Logout'}</span>
             </button>
           </div>
