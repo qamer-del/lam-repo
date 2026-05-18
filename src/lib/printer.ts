@@ -50,6 +50,35 @@ let connectionStatus: PrinterStatus = 'disconnected'
 let statusListeners: ((s: PrinterStatus) => void)[] = []
 let securityReady = false   // setupSecurity must only run once per session
 
+// ─── Per-device printer selection (persisted in localStorage) ─────────────────
+const STORAGE_KEY = 'qz_selected_printer'
+
+export function getSelectedPrinter(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(STORAGE_KEY)
+}
+
+export function setSelectedPrinter(name: string | null): void {
+  if (typeof window === 'undefined') return
+  if (name) {
+    localStorage.setItem(STORAGE_KEY, name)
+  } else {
+    localStorage.removeItem(STORAGE_KEY)
+  }
+}
+
+// ─── List all printers available in QZ Tray ───────────────────────────────────
+export async function listPrinters(): Promise<string[]> {
+  const qzInstance = await loadQZ()
+  if (!qzInstance.websocket.isActive()) return []
+  try {
+    const all: string[] = await qzInstance.printers.find()
+    return all.filter(Boolean).sort((a, b) => a.localeCompare(b))
+  } catch {
+    return []
+  }
+}
+
 function setStatus(s: PrinterStatus) {
   connectionStatus = s
   statusListeners.forEach(fn => fn(s))
@@ -142,11 +171,27 @@ export function isPrinterConnected(): boolean {
   return connectionStatus === 'connected'
 }
 
-// ─── Get printer name (auto-detect or env fallback) ────────────────────────────
+// ─── Get printer name ────────────────────────────────────────────────────────
+// Priority order:
+//   1. User-selected printer stored in localStorage (per device)
+//   2. NEXT_PUBLIC_PRINTER_NAME env var (if customised away from the default)
+//   3. Auto-detect first Epson/thermal printer (existing behaviour)
+//   4. First available printer
+//   5. Hard-coded fallback
 async function getPrinterName(qzInstance: any): Promise<string> {
+  // 1. User's explicit device-level selection
+  const stored = getSelectedPrinter()
+  if (stored) {
+    console.log(`[Printer] Using selected printer: "${stored}"`)
+    return stored
+  }
+
   const envName = process.env.NEXT_PUBLIC_PRINTER_NAME
+
+  // 2. Env var override (only when it differs from the generic placeholder)
   if (envName && envName !== 'EPSON TM-T88V') return envName
 
+  // 3 & 4. Auto-detect — unchanged Epson-first logic
   try {
     const allPrinters: string[] = await qzInstance.printers.find()
     const keywords = ['epson', 'tm-t', 'tm-u', 'tm-m', 'receipt', 'thermal', 'pos']
@@ -158,6 +203,7 @@ async function getPrinterName(qzInstance: any): Promise<string> {
     // QZ Tray might not support listing — fall back silently
   }
 
+  // 5. Hard-coded fallback
   return envName || 'EPSON TM-T88V'
 }
 

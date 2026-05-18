@@ -8,6 +8,9 @@ import {
   onStatusChange,
   printReceipt,
   openCashDrawer,
+  listPrinters,
+  getSelectedPrinter,
+  setSelectedPrinter,
   type PrinterStatus,
   type ReceiptData,
 } from '@/lib/printer'
@@ -16,9 +19,13 @@ import { toast } from 'sonner'
 interface PrinterContextValue {
   status: PrinterStatus
   isPrinting: boolean
+  availablePrinters: string[]
+  selectedPrinter: string | null
   print: (data: ReceiptData) => Promise<void>
   openDrawer: () => Promise<void>
   reconnect: () => Promise<void>
+  selectPrinter: (name: string | null) => void
+  refreshPrinters: () => Promise<void>
 }
 
 const PrinterContext = createContext<PrinterContextValue | null>(null)
@@ -26,18 +33,34 @@ const PrinterContext = createContext<PrinterContextValue | null>(null)
 export function PrinterProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<PrinterStatus>('disconnected')
   const [isPrinting, setIsPrinting] = useState(false)
+  const [availablePrinters, setAvailablePrinters] = useState<string[]>([])
+  const [selectedPrinter, setSelectedPrinterState] = useState<string | null>(
+    () => (typeof window !== 'undefined' ? getSelectedPrinter() : null)
+  )
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
+
+  const refreshPrinters = useCallback(async () => {
+    const list = await listPrinters()
+    if (mountedRef.current) setAvailablePrinters(list)
+  }, [])
 
   const connect = useCallback(async () => {
     try {
       await connectPrinter()
+      // Fetch printer list once connected
+      await refreshPrinters()
     } catch {
       // Silently retry — QZ Tray might not be running yet
       if (mountedRef.current) {
         retryTimerRef.current = setTimeout(connect, 8000)
       }
     }
+  }, [refreshPrinters])
+
+  const selectPrinter = useCallback((name: string | null) => {
+    setSelectedPrinter(name)
+    setSelectedPrinterState(name)
   }, [])
 
   useEffect(() => {
@@ -49,7 +72,12 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       setStatus(s)
       // Auto-retry after disconnect/error
       if (s === 'disconnected' || s === 'error') {
+        setAvailablePrinters([])
         retryTimerRef.current = setTimeout(connect, 8000)
+      }
+      // Re-fetch printer list on reconnect
+      if (s === 'connected') {
+        refreshPrinters()
       }
     })
 
@@ -62,7 +90,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
       disconnectPrinter().catch(() => {})
     }
-  }, [connect])
+  }, [connect, refreshPrinters])
 
   const print = useCallback(async (data: ReceiptData) => {
     if (isPrinting) return
@@ -96,7 +124,12 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   }, [connect])
 
   return (
-    <PrinterContext.Provider value={{ status, isPrinting, print, openDrawer, reconnect }}>
+    <PrinterContext.Provider value={{
+      status, isPrinting,
+      availablePrinters, selectedPrinter,
+      print, openDrawer, reconnect,
+      selectPrinter, refreshPrinters,
+    }}>
       {children}
     </PrinterContext.Provider>
   )
