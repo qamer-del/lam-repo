@@ -37,6 +37,7 @@ const navItems = [
 export function Sidebar({ role }: { role?: string }) {
   const pathname = usePathname()
   const { t, locale, setLocale } = useLanguage()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   return (
     <aside className="hidden md:flex flex-col w-64 min-h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-sm">
@@ -98,11 +99,23 @@ export function Sidebar({ role }: { role?: string }) {
             {locale === 'ar' ? 'EN' : 'AR'}
           </button>
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all shadow-sm active:scale-95 border border-red-100/50 dark:border-red-900/30"
+            type="button"
+            disabled={isLoggingOut}
+            onClick={async (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsLoggingOut(true)
+              try {
+                await signOut({ callbackUrl: '/login' })
+              } catch (err) {
+                console.error('Logout error:', err)
+                setIsLoggingOut(false)
+              }
+            }}
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all shadow-sm active:scale-95 border border-red-100/50 dark:border-red-900/30 disabled:opacity-50"
             title={t('logout')}
           >
-            <LogOut size={18} />
+            {isLoggingOut ? <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" /> : <LogOut size={18} />}
           </button>
         </div>
       </div>
@@ -112,6 +125,7 @@ export function Sidebar({ role }: { role?: string }) {
 
 export function MobileTopBar() {
   const { t, locale, setLocale } = useLanguage()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   return (
     <header className="md:hidden sticky top-0 z-50 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
@@ -131,10 +145,21 @@ export function MobileTopBar() {
           </button>
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all shadow-sm active:scale-95 border border-red-100/50 dark:border-red-900/30"
+            disabled={isLoggingOut}
+            onClick={async (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsLoggingOut(true)
+              try {
+                await signOut({ callbackUrl: '/login' })
+              } catch (err) {
+                console.error('Logout error:', err)
+                setIsLoggingOut(false)
+              }
+            }}
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all shadow-sm active:scale-95 border border-red-100/50 dark:border-red-900/30 disabled:opacity-50"
           >
-            <LogOut size={18} />
+            {isLoggingOut ? <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" /> : <LogOut size={18} />}
           </button>
         </div>
       </div>
