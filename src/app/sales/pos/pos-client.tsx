@@ -345,7 +345,7 @@ export function PosClient({
         <WarrantyNotification warranties={pendingWarranties} customerPhone={customerPhone || undefined} onDismiss={() => setPendingWarranties([])} />
       )}
 
-      <div className="fixed inset-0 lg:relative lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-[100] lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="fixed top-[65px] bottom-24 left-0 right-0 lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-40 lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* ── HEADER ── */}
         <header className="min-h-14 py-1 sm:py-0 bg-white border-b border-gray-200 px-2 sm:px-4 flex items-center justify-between shrink-0 z-20 gap-2">
