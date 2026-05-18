@@ -8,7 +8,15 @@
  *   - HTML-based receipt rendering (supports Arabic item names via Windows fonts)
  *   - Auto paper cut  (raw ESC/POS appended after HTML page)
  *   - Cash drawer control (raw ESC/POS)
+ *
+ * Template integration:
+ *   printReceipt() accepts an optional ReceiptTemplateConfig. When provided,
+ *   the HTML is built by receipt-renderer.ts (the new template layer) and the
+ *   paper size comes from the template. When absent, the original hardcoded
+ *   Epson path is used unchanged — full backward compatibility guaranteed.
  */
+
+import type { ReceiptTemplateConfig } from '@/lib/receipt-template'
 
 // ─── ESC/POS Command Constants ─────────────────────────────────────────────────
 // Only raw hardware commands are needed — text formatting is handled by HTML/CSS.
@@ -383,11 +391,30 @@ ${qrHtml}
 </html>`
 }
 
+// ─── Paper size → mm width map (used when template config is present) ──────────
+const TEMPLATE_PAPER_WIDTHS: Record<string, number> = {
+  '80mm': 80,
+  '58mm': 58,
+  'A4':   210,
+}
+const TEMPLATE_PAPER_HEIGHTS: Record<string, number | null> = {
+  '80mm': null,
+  '58mm': null,
+  'A4':   297,
+}
+
 // ─── Print receipt ──────────────────────────────────────────────────────────────
 // Uses exactly 2 qz.print() calls to minimise QZ Tray security prompts:
 //   Call 1 (pixel) — HTML receipt rendered as bitmap (Arabic-safe)
 //   Call 2 (raw)   — cash drawer kick (if CASH/SPLIT) + paper cut in one job
-export async function printReceipt(data: ReceiptData): Promise<void> {
+//
+// When templateConfig is provided, the HTML is built by receipt-renderer.ts
+// and paper size comes from the template. Otherwise, the original hardcoded
+// Epson path runs unchanged.
+export async function printReceipt(
+  data: ReceiptData,
+  templateConfig?: ReceiptTemplateConfig,
+): Promise<void> {
   const qzInstance = await loadQZ()
 
   if (!qzInstance.websocket.isActive()) {
@@ -396,29 +423,42 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
 
   const printerName = await getPrinterName(qzInstance)
   const rawConfig = qzInstance.configs.create(printerName)
-  // size tells QZ Tray the paper dimensions so the HTML viewport matches the
-  // printable area. height:null means unlimited (continuous roll).
+
+  // ── Determine paper size ────────────────────────────────────────────────────
+  const paperSize = templateConfig?.paperSize ?? '80mm'
+  const paperWidthMm  = TEMPLATE_PAPER_WIDTHS[paperSize]  ?? 80
+  const paperHeightMm = TEMPLATE_PAPER_HEIGHTS[paperSize] ?? null
+
   const pixelConfig = qzInstance.configs.create(printerName, {
     colorType: 'blackwhite',
     copies: 1,
     units: 'mm',
-    size: { width: 80, height: null },
+    size: { width: paperWidthMm, height: paperHeightMm },
   })
 
-  // Generate ZATCA QR (falls back to null gracefully if qrcode lib fails)
-  const { generateZatcaQrDataUrl, calcVat15 } = await import('@/lib/zatca-qr')
-  const { vat } = calcVat15(data.totalAmount)
-  const qrDataUrl = await generateZatcaQrDataUrl({
-    sellerName: STORE_NAME + ' ' + STORE_SUB,
-    vatNumber: STORE_VAT_NO,
-    invoiceDate: new Date(data.createdAt),
-    totalWithVat: data.totalAmount,
-    vatAmount: vat,
-  })
+  // ── Build receipt HTML ──────────────────────────────────────────────────────
+  let receiptHtml: string
+  if (templateConfig) {
+    // Template path — use the new configurable renderer
+    const { renderReceiptHtml } = await import('@/lib/receipt-renderer')
+    receiptHtml = await renderReceiptHtml(data, templateConfig)
+  } else {
+    // Original Epson path — hardcoded, unchanged
+    const { generateZatcaQrDataUrl, calcVat15 } = await import('@/lib/zatca-qr')
+    const { vat } = calcVat15(data.totalAmount)
+    const qrDataUrl = await generateZatcaQrDataUrl({
+      sellerName: STORE_NAME + ' ' + STORE_SUB,
+      vatNumber: STORE_VAT_NO,
+      invoiceDate: new Date(data.createdAt),
+      totalWithVat: data.totalAmount,
+      vatAmount: vat,
+    })
+    receiptHtml = buildReceiptHtml(data, qrDataUrl)
+  }
 
   // Call 1: HTML receipt as bitmap
   await qzInstance.print(pixelConfig, [
-    { type: 'pixel', format: 'html', flavor: 'plain', data: buildReceiptHtml(data, qrDataUrl) },
+    { type: 'pixel', format: 'html', flavor: 'plain', data: receiptHtml },
   ])
 
   // Call 2: hardware — cash drawer (if CASH/SPLIT) + paper cut in one raw job

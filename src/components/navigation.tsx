@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useMemo } from 'react'
 import { 
   LayoutDashboard, Users, Receipt, Settings, LogOut, 
-  Briefcase, Package, UserCheck, Shield, MoreHorizontal, Search, BarChart3, CreditCard
+  Briefcase, Package, UserCheck, Shield, MoreHorizontal, Search, BarChart3, CreditCard, LayoutTemplate
 } from 'lucide-react'
 import { useLanguage } from '@/providers/language-provider'
 import { signOut } from 'next-auth/react'
@@ -31,6 +31,7 @@ const navItems = [
   { href: '/admin/finance', icon: BarChart3, labelKey: 'finance' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'Finance' },
   { href: '/admin/bnpl', icon: CreditCard, labelKey: 'tabby' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'], labelFallback: 'BNPL Sessions' },
   { href: '/warranty', icon: Shield, labelKey: 'warranty' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN', 'OWNER', 'CASHIER'], labelFallback: 'Warranty' },
+  { href: '/admin/receipt-templates', icon: LayoutTemplate, labelKey: 'settings' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN'], labelFallback: 'Receipt Templates' },
   { href: '/admin/settings', icon: Settings, labelKey: 'settings' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN'], labelFallback: 'System Settings' },
 ]
 

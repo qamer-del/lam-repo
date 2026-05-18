@@ -14,6 +14,8 @@ import {
   type PrinterStatus,
   type ReceiptData,
 } from '@/lib/printer'
+import { getDefaultReceiptTemplate } from '@/actions/receipt-templates'
+import type { ReceiptTemplateConfig } from '@/lib/receipt-template'
 import { toast } from 'sonner'
 
 interface PrinterContextValue {
@@ -37,8 +39,17 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   const [selectedPrinter, setSelectedPrinterState] = useState<string | null>(
     () => (typeof window !== 'undefined' ? getSelectedPrinter() : null)
   )
+  // Active receipt template loaded from DB (null = use original hardcoded Epson path)
+  const [activeTemplate, setActiveTemplate] = useState<ReceiptTemplateConfig | null>(null)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef = useRef(true)
+
+  // Load default template from DB once on mount
+  useEffect(() => {
+    getDefaultReceiptTemplate()
+      .then(t => { if (t && mountedRef.current) setActiveTemplate(t.config) })
+      .catch(() => {/* No template yet — Epson path used unchanged */})
+  }, [])
 
   const refreshPrinters = useCallback(async () => {
     const list = await listPrinters()
@@ -96,7 +107,9 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
     if (isPrinting) return
     setIsPrinting(true)
     try {
-      await printReceipt(data)
+      // Pass the active template so printReceipt uses the configurable renderer.
+      // If no template is loaded yet, undefined is passed — original Epson path runs.
+      await printReceipt(data, activeTemplate ?? undefined)
       toast.success('Receipt Printed', { description: `Invoice ${data.invoiceNumber} sent to printer.` })
     } catch (err: any) {
       console.error('[Printer] Print error:', err)
@@ -107,7 +120,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsPrinting(false)
     }
-  }, [isPrinting])
+  }, [isPrinting, activeTemplate])
 
   const openDrawer = useCallback(async () => {
     try {

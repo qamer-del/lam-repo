@@ -431,6 +431,20 @@ model SystemSettings {
   updatedAt                  DateTime @updatedAt
 }
 
+// ── Receipt Template System ─────────────────────────────────
+
+// Stores admin-customizable receipt/invoice template configurations.
+// The `config` field holds a serialized ReceiptTemplateConfig JSON object.
+// One template may have isDefault=true; all print paths check this first.
+model ReceiptTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  isDefault Boolean  @default(false)
+  config    Json     // serialized ReceiptTemplateConfig
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // ── Barcode & Label Management ──────────────────────────────
 
 // Saved label template configurations
