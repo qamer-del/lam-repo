@@ -44,12 +44,13 @@ export async function getDefaultReceiptTemplate(): Promise<ReceiptTemplateRow | 
 export async function createReceiptTemplate(
   name: string,
   config: ReceiptTemplateConfig = DEFAULT_TEMPLATE_CONFIG,
+  skipRevalidate = false
 ): Promise<ReceiptTemplateRow> {
   const count = await prisma.receiptTemplate.count()
   const row = await prisma.receiptTemplate.create({
     data: { name, config: config as object, isDefault: count === 0 },
   })
-  revalidatePath('/admin/receipt-templates')
+  if (!skipRevalidate) revalidatePath('/admin/receipt-templates')
   return { ...row, config: toConfig(row.config) }
 }
 
@@ -58,7 +59,7 @@ export async function createReceiptTemplate(
 export async function ensureDefaultTemplate(): Promise<ReceiptTemplateRow> {
   const existing = await getDefaultReceiptTemplate()
   if (existing) return existing
-  return createReceiptTemplate('Default Template', DEFAULT_TEMPLATE_CONFIG)
+  return createReceiptTemplate('Default Template', DEFAULT_TEMPLATE_CONFIG, true)
 }
 
 // ─── Update ────────────────────────────────────────────────────────────────────
