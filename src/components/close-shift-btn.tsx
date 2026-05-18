@@ -9,19 +9,27 @@ import { History } from 'lucide-react'
 
 export function CloseShiftBtn({ 
   triggerClassName,
-  triggerIcon
+  triggerIcon,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: { 
   triggerClassName?: string 
   triggerIcon?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const { t } = useLanguage()
-  const [isOpen, setIsOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+
+  // Support both controlled (from parent) and uncontrolled mode
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen
+  const setIsOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setInternalOpen
 
   return (
     <>
       <Button 
-        variant="outline" 
-        className={cn("h-9 px-4 text-sm gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400 font-bold shadow-sm transition-all active:scale-95", triggerClassName)} 
+        variant="ghost"
+        className={cn(triggerClassName, "gap-2 transition-all active:scale-95")} 
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -29,7 +37,7 @@ export function CloseShiftBtn({
         }}
       >
         {triggerIcon || <History size={14} />}
-        <span className={triggerIcon ? "hidden sm:inline" : ""}>{t('closeMyShift')}</span>
+        <span className={triggerIcon ? "" : ""}>{t('closeMyShift')}</span>
       </Button>
 
       <ShiftClosingWorkflow 

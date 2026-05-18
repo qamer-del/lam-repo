@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { CloseShiftBtn } from '@/components/close-shift-btn'
+import { ShiftClosingWorkflow } from '@/components/shift-closing-workflow'
 import { CreditCollectionPanel } from '@/components/credit-collection-panel'
 import { WarrantyNotification } from '@/components/warranty-notification'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -64,7 +65,7 @@ export function PosClient({
   hasUnsettled, unsettledCash, unsettledNetwork, unsettledTabby, unsettledTamara,
   allTodaySales, unpaidCreditSales, activeShift
 }: PosClientProps) {
-  const { t, locale } = useLanguage()
+  const { t, locale, setLocale } = useLanguage()
   const isRTL = locale === 'ar'
   const router = useRouter()
   const { print: printReceipt, status: printerStatus, isPrinting } = usePrinter()
@@ -88,6 +89,7 @@ export function PosClient({
   const [expandedDetails, setExpandedDetails] = useState<any>(null)
   const [expandedLoading, setExpandedLoading] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isShiftOpen, setIsShiftOpen] = useState(false)
   const [mobilePosView, setMobilePosView] = useState<'items' | 'cart'>('items')
   const [collapsedShifts, setCollapsedShifts] = useState<number[]>([])
 
@@ -480,21 +482,19 @@ export function PosClient({
                   </div>
 
                   {/* Close Shift tile */}
-                  <CloseShiftBtn
-                    triggerClassName="group relative flex flex-col items-start gap-3 p-4 rounded-2xl bg-white/[0.05] border border-white/[0.08] hover:border-amber-500/40 hover:bg-amber-500/[0.08] active:scale-95 transition-all overflow-hidden text-start"
-                    triggerIcon={
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center relative shrink-0">
-                          <History size={20} className="text-amber-400" />
-                        </div>
-                        <div className="relative">
-                          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Close Shift</p>
-                          <p className="text-white text-[13px] font-black">End Session</p>
-                        </div>
-                      </>
-                    }
-                  />
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsShiftOpen(true); }}
+                    className="group relative flex flex-col items-start gap-3 p-4 rounded-2xl bg-white/[0.05] border border-white/[0.08] hover:border-amber-500/40 hover:bg-amber-500/[0.08] active:scale-95 transition-all overflow-hidden text-start"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center relative">
+                      <History size={20} className="text-amber-400" />
+                    </div>
+                    <div className="relative">
+                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Close Shift</p>
+                      <p className="text-white text-[13px] font-black">End Session</p>
+                    </div>
+                  </button>
 
                   {/* Logout tile */}
                   <button
@@ -523,7 +523,8 @@ export function PosClient({
           </div>
         </header>
 
-
+        {/* ShiftClosingWorkflow rendered OUTSIDE Sheet so closing the drawer won't dismiss the dialog */}
+        <ShiftClosingWorkflow open={isShiftOpen} onOpenChange={setIsShiftOpen} />
 
         {/* Shortcuts bar */}
         {showShortcuts && (
