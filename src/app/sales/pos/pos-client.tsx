@@ -348,29 +348,34 @@ export function PosClient({
       <div className="fixed top-0 bottom-24 left-0 right-0 lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-[60] lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
         {/* ── HEADER ── */}
-        <header className="min-h-12 bg-white/90 backdrop-blur-md border-b border-gray-200 px-3 flex items-center justify-between shrink-0 z-20 gap-3 shadow-sm">
+        <header className="min-h-16 bg-white border-b border-gray-200 px-3 flex items-center justify-between shrink-0 z-20 gap-3 shadow-sm overflow-x-auto no-scrollbar">
           {/* LEFT: Branding & Shift Info */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
-              <Receipt size={16} className="text-white" />
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-inner shrink-0">
+              <Receipt size={20} className="text-white" />
             </div>
             <div className="hidden sm:block leading-tight">
-              <p className="text-[11px] font-black text-gray-800">{cashierName}</p>
-              {activeShift && <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Shift #{activeShift.id}</p>}
+              <p className="text-xs font-black text-gray-800">{cashierName}</p>
+              {activeShift && <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Shift #{activeShift.id}</p>}
             </div>
           </div>
 
-          {/* CENTER: Sleek Segmented Tabs */}
-          <div className="flex-1 flex justify-center max-w-sm">
-            <div className="flex items-center bg-gray-100/80 p-1 rounded-xl w-full">
+          {/* CENTER: Generous Pill Tabs */}
+          <div className="flex-1 flex justify-center min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-gray-50/50 p-1 rounded-2xl border border-gray-100">
               {([['pos', t('pos'), ShoppingCart], ['sales', t('activity'), History], ['credit', t('credit'), CreditCard]] as const).map(([tab, label, Icon]) => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
-                  className={cn('flex-1 flex items-center justify-center gap-1.5 py-1.5 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all whitespace-nowrap',
-                    activeTab === tab ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
-                  <Icon size={14} className={activeTab === tab ? 'text-blue-600' : ''} />
-                  <span className="hidden sm:inline-block">{label}</span>
+                  className={cn('flex items-center justify-center gap-1.5 sm:gap-2 h-10 px-3 sm:px-5 rounded-xl text-[11px] sm:text-xs font-black transition-all border',
+                    activeTab === tab 
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/30' 
+                      : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                  )}>
+                  <Icon size={16} className={activeTab === tab ? 'text-white' : 'text-gray-400'} />
+                  <span className="tracking-wide">{label}</span>
                   {tab === 'credit' && unpaidCreditSales.length > 0 && (
-                    <span className="bg-rose-500 text-white text-[9px] font-black rounded-full min-w-[14px] h-[14px] flex items-center justify-center -ms-0.5">{unpaidCreditSales.length}</span>
+                    <span className={cn("text-[9px] font-black rounded-full min-w-[16px] h-[16px] flex items-center justify-center -ms-0.5",
+                      activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'bg-rose-500 text-white shadow-sm'
+                    )}>{unpaidCreditSales.length}</span>
                   )}
                 </button>
               ))}
@@ -378,16 +383,10 @@ export function PosClient({
           </div>
 
           {/* RIGHT: Actions */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Minimal Printer Indicator */}
-            <div className="hidden lg:flex items-center gap-1.5 text-[10px] font-bold px-2 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {t('printer')}
-            </div>
-
+          <div className="flex items-center gap-2 shrink-0">
             <CloseShiftBtn
-              triggerClassName="h-8 w-8 sm:h-8 sm:w-auto sm:px-3 rounded-lg text-[11px] font-bold border-gray-200 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm p-0"
-              triggerIcon={<History size={14} className="sm:hidden text-gray-500" />}
+              triggerClassName="h-10 w-10 sm:w-auto sm:px-4 rounded-xl text-xs font-black border-gray-200 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm p-0 sm:p-auto"
+              triggerIcon={<History size={16} className="sm:hidden text-gray-500" />}
             />
             
             <button
@@ -405,13 +404,13 @@ export function PosClient({
                   setIsLoggingOut(false);
                 }
               }}
-              className="h-8 w-8 sm:h-8 sm:w-auto sm:px-3 rounded-lg text-[11px] font-bold border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-50 p-0"
+              className="h-10 w-10 sm:w-auto sm:px-4 rounded-xl text-xs font-black border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center shadow-sm transition-all active:scale-95 disabled:opacity-50 p-0 sm:p-auto"
               title={t('logout') || 'Logout'}
             >
               {isLoggingOut ? (
-                <div className="w-3.5 h-3.5 border-2 border-red-600 border-t-transparent rounded-full animate-spin sm:me-1.5" />
+                <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin sm:me-1.5" />
               ) : (
-                <LogOut size={14} className="sm:me-1.5" />
+                <LogOut size={16} className="sm:me-1.5" />
               )}
               <span className="hidden sm:inline">{t('logout') || 'Logout'}</span>
             </button>
