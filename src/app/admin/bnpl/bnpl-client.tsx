@@ -7,9 +7,11 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
   RefreshCw, CheckCircle2, XCircle, Clock, AlertTriangle,
-  ChevronDown, ChevronRight, ExternalLink, ShieldCheck, RotateCcw, Wifi
+  ChevronDown, ChevronRight, ExternalLink, ShieldCheck, RotateCcw, Wifi,
+  ChevronLeft, ChevronsLeft, ChevronsRight
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
 
 type BnplStatus = 'PENDING_PAYMENT' | 'PAYMENT_LINK_SENT' | 'PAID' | 'FAILED' | 'EXPIRED' | 'CANCELLED'
 
@@ -41,6 +43,76 @@ const STATUS_CONFIG: Record<BnplStatus, { label: string; labelAr: string; cls: s
 
 const PENDING_STATUSES: BnplStatus[] = ['PENDING_PAYMENT', 'PAYMENT_LINK_SENT']
 
+function Pagination({
+  currentPage,
+  totalPages,
+  startIndex,
+  endIndex,
+  totalItems,
+  onPageChange
+}: {
+  currentPage: number
+  totalPages: number
+  startIndex: number
+  endIndex: number
+  totalItems: number
+  onPageChange: (page: number) => void
+}) {
+  return (
+    <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        Showing <span className="font-bold text-gray-900 dark:text-white">{startIndex + 1}</span> to <span className="font-bold text-gray-900 dark:text-white">{endIndex}</span> of <span className="font-bold text-gray-900 dark:text-white">{totalItems}</span> payment sessions
+      </div>
+
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+        >
+          <ChevronsLeft size={14} />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          <ChevronLeft size={14} />
+        </Button>
+
+        <div className="flex items-center gap-1 px-2">
+          <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{currentPage}</span>
+          <span className="text-xs text-gray-400">/</span>
+          <span className="text-xs font-medium text-gray-500">{totalPages}</span>
+        </div>
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+        >
+          <ChevronRight size={14} />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-lg border-gray-200 dark:border-gray-800 disabled:opacity-30"
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+        >
+          <ChevronsRight size={14} />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export function BnplAdminClient({ sessions: initialSessions }: { sessions: Session[] }) {
   const router = useRouter()
   const [sessions, setSessions] = useState<Session[]>(initialSessions)
@@ -51,6 +123,13 @@ export function BnplAdminClient({ sessions: initialSessions }: { sessions: Sessi
   const [confirming, setConfirming] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const [isPending, startTransition] = useTransition()
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [providerFilter, statusFilter])
 
   const pendingCount = sessions.filter(s => PENDING_STATUSES.includes(s.status)).length
 
@@ -87,6 +166,14 @@ export function BnplAdminClient({ sessions: initialSessions }: { sessions: Sessi
     if (statusFilter !== 'ALL' && s.status !== statusFilter) return false
     return true
   })
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginatedSessions = filtered.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filtered.length)
 
   const stats = {
     total: sessions.length,
@@ -238,7 +325,7 @@ export function BnplAdminClient({ sessions: initialSessions }: { sessions: Sessi
             <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-16 text-gray-300 text-sm">No sessions found</td></tr>
-              ) : filtered.map(s => {
+              ) : paginatedSessions.map(s => {
                 const statusCfg = STATUS_CONFIG[s.status]
                 const StatusIcon = statusCfg.icon
                 const isExpanded = expandedId === s.id
@@ -369,6 +456,16 @@ export function BnplAdminClient({ sessions: initialSessions }: { sessions: Sessi
             </tbody>
           </table>
         </div>
+        {filtered.length > ITEMS_PER_PAGE && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            totalItems={filtered.length}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </div>
   )
