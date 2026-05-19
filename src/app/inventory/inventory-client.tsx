@@ -283,8 +283,8 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                 }
               }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 sm:flex-none justify-center ${tab === key
-                  ? 'bg-white dark:bg-gray-900 text-teal-600 dark:text-teal-400 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                ? 'bg-white dark:bg-gray-900 text-teal-600 dark:text-teal-400 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
             >
               <Icon size={15} />
@@ -322,7 +322,7 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                   <TableHead>Item</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Stock</TableHead>
-                  <TableHead>ReturnsA</TableHead>
+                  <TableHead>Returns</TableHead>
                   <TableHead>Damaged</TableHead>
                   <TableHead>Reorder At</TableHead>
                   <TableHead>Unit Cost</TableHead>
