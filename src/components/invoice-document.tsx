@@ -14,11 +14,11 @@ Font.register({
 // ─── Shop config (update these to match your ZATCA registration) ──────────────
 const SHOP = {
   name: 'LAMAHA Car Care Center',
-  nameAr: 'مركز لمعة للعناية بالسيارات',
+  nameAr: ' لمعة لزينة السيارات',
   vatNumber: '300000000000000', // ← Replace with your actual 15-digit VAT number
-  address: 'Riyadh, Saudi Arabia',
-  addressAr: 'الرياض، المملكة العربية السعودية',
-  phone: '+966 50 000 0000',
+  address: 'Sabt Alaya, Saudi Arabia',
+  addressAr: ' سبت العلاية المملكة العربية السعودية',
+  phone: '+966546590141',
   crNumber: '1000000000',      // Commercial Registration number
 }
 
@@ -56,29 +56,29 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
   )
 
   const styles = StyleSheet.create({
-    page:       { fontFamily: 'Cairo', fontSize: 10, color: '#111827', backgroundColor: '#ffffff' },
-    bold:       { fontWeight: 700 },
+    page: { fontFamily: 'Cairo', fontSize: 10, color: '#111827', backgroundColor: '#ffffff' },
+    bold: { fontWeight: 700 },
 
     // ── Header band ──
     headerBand: { backgroundColor: '#0f172a', padding: '24 36 16 36', flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-    shopName:   { fontSize: 18, fontWeight: 700, color: '#ffffff', marginBottom: 2 },
+    shopName: { fontSize: 18, fontWeight: 700, color: '#ffffff', marginBottom: 2 },
     shopNameAr: { fontSize: 13, fontWeight: 400, color: '#94a3b8', marginBottom: 6 },
-    shopMeta:   { fontSize: 8, color: '#94a3b8', marginBottom: 2 },
+    shopMeta: { fontSize: 8, color: '#94a3b8', marginBottom: 2 },
     invoiceTag: { backgroundColor: '#10b981', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4, alignSelf: 'flex-start' },
     invoiceTagText: { color: '#ffffff', fontSize: 11, fontWeight: 700, letterSpacing: 1 },
     invoiceTagSubtext: { color: '#d1fae5', fontSize: 8, textAlign: 'center', marginTop: 2 },
 
     // ── Info grid ──
     infoSection: { padding: '20 36 0 36', flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between' },
-    infoBlock:   { flex: 1 },
-    infoLabel:   { fontSize: 7.5, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
-    infoValue:   { fontSize: 10, fontWeight: 700, color: '#111827', marginBottom: 2 },
+    infoBlock: { flex: 1 },
+    infoLabel: { fontSize: 7.5, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
+    infoValue: { fontSize: 10, fontWeight: 700, color: '#111827', marginBottom: 2 },
     infoValueSm: { fontSize: 9, color: '#374151', marginBottom: 1 },
     dividerLine: { height: 1, backgroundColor: '#e5e7eb', marginHorizontal: 36, marginVertical: 16 },
 
     // ── Items table ──
     tableSection: { marginHorizontal: 36 },
-    tableHeader:  {
+    tableHeader: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
       backgroundColor: '#1e293b',
       borderRadius: 4,
@@ -93,44 +93,44 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
       alignItems: 'center',
     },
     tableRowAlt: { backgroundColor: '#f8fafc' },
-    thText:       { color: '#ffffff', fontSize: 8.5, fontWeight: 700 },
-    tdText:       { fontSize: 9, color: '#374151' },
-    colNo:        { width: '7%',  textAlign: isRtl ? 'right' : 'left' },
-    colItem:      { width: '43%', textAlign: isRtl ? 'right' : 'left' },
-    colQty:       { width: '12%', textAlign: 'center' },
-    colUnit:      { width: '10%', textAlign: 'center' },
-    colPrice:     { width: '14%', textAlign: isRtl ? 'left' : 'right' },
-    colTotal:     { width: '14%', textAlign: isRtl ? 'left' : 'right' },
+    thText: { color: '#ffffff', fontSize: 8.5, fontWeight: 700 },
+    tdText: { fontSize: 9, color: '#374151' },
+    colNo: { width: '7%', textAlign: isRtl ? 'right' : 'left' },
+    colItem: { width: '43%', textAlign: isRtl ? 'right' : 'left' },
+    colQty: { width: '12%', textAlign: 'center' },
+    colUnit: { width: '10%', textAlign: 'center' },
+    colPrice: { width: '14%', textAlign: isRtl ? 'left' : 'right' },
+    colTotal: { width: '14%', textAlign: isRtl ? 'left' : 'right' },
 
     // ── Totals + QR ──
     bottomSection: { padding: '16 36 24 36', flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-    qrBlock:      { alignItems: 'center', width: 120 },
-    qrLabel:      { fontSize: 7.5, color: '#6b7280', textAlign: 'center', marginTop: 6 },
-    qrBorder:     { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 4, padding: 4 },
+    qrBlock: { alignItems: 'center', width: 120 },
+    qrLabel: { fontSize: 7.5, color: '#6b7280', textAlign: 'center', marginTop: 6 },
+    qrBorder: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 4, padding: 4 },
 
-    totalsBlock:    { width: '44%' },
-    totalsRow:      { flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    totalsRowBold:  { borderBottomColor: '#10b981' },
-    totalsLabel:    { fontSize: 9, color: '#6b7280' },
-    totalsValue:    { fontSize: 9, color: '#111827', textAlign: isRtl ? 'left' : 'right' },
-    grandTotalRow:  { flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between', backgroundColor: '#0f172a', borderRadius: 6, padding: '12 14', marginTop: 8 },
-    grandLabel:     { fontSize: 11, fontWeight: 700, color: '#ffffff' },
-    grandValue:     { fontSize: 13, fontWeight: 700, color: '#10b981' },
+    totalsBlock: { width: '44%' },
+    totalsRow: { flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    totalsRowBold: { borderBottomColor: '#10b981' },
+    totalsLabel: { fontSize: 9, color: '#6b7280' },
+    totalsValue: { fontSize: 9, color: '#111827', textAlign: isRtl ? 'left' : 'right' },
+    grandTotalRow: { flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between', backgroundColor: '#0f172a', borderRadius: 6, padding: '12 14', marginTop: 8 },
+    grandLabel: { fontSize: 11, fontWeight: 700, color: '#ffffff' },
+    grandValue: { fontSize: 13, fontWeight: 700, color: '#10b981' },
 
     // ── Tax summary strip ──
-    taxStrip:     { marginHorizontal: 36, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', borderRadius: 6, padding: '10 14', marginBottom: 12, flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between' },
+    taxStrip: { marginHorizontal: 36, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', borderRadius: 6, padding: '10 14', marginBottom: 12, flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between' },
     taxStripItem: { alignItems: 'center' },
-    taxStripLabel:{ fontSize: 7.5, color: '#166534', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
-    taxStripValue:{ fontSize: 10, fontWeight: 700, color: '#15803d' },
+    taxStripLabel: { fontSize: 7.5, color: '#166534', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
+    taxStripValue: { fontSize: 10, fontWeight: 700, color: '#15803d' },
 
     // ── Warranty ──
-    warrantyBox:  { marginHorizontal: 36, marginBottom: 10, padding: 12, backgroundColor: '#faf5ff', borderRadius: 6, borderLeftWidth: isRtl ? 0 : 3, borderRightWidth: isRtl ? 3 : 0, borderLeftColor: '#7c3aed', borderRightColor: '#7c3aed' },
-    warrantyTitle:{ fontSize: 9, fontWeight: 700, color: '#6d28d9', marginBottom: 5 },
+    warrantyBox: { marginHorizontal: 36, marginBottom: 10, padding: 12, backgroundColor: '#faf5ff', borderRadius: 6, borderLeftWidth: isRtl ? 0 : 3, borderRightWidth: isRtl ? 3 : 0, borderLeftColor: '#7c3aed', borderRightColor: '#7c3aed' },
+    warrantyTitle: { fontSize: 9, fontWeight: 700, color: '#6d28d9', marginBottom: 5 },
     warrantyItem: { fontSize: 8.5, color: '#4c1d95', marginBottom: 3 },
 
     // ── Footer ──
-    footer:       { borderTopWidth: 1, borderTopColor: '#e5e7eb', marginHorizontal: 36, paddingTop: 10, flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between' },
-    footerText:   { fontSize: 7.5, color: '#9ca3af' },
+    footer: { borderTopWidth: 1, borderTopColor: '#e5e7eb', marginHorizontal: 36, paddingTop: 10, flexDirection: isRtl ? 'row-reverse' : 'row', justifyContent: 'space-between' },
+    footerText: { fontSize: 7.5, color: '#9ca3af' },
   })
 
   return (
