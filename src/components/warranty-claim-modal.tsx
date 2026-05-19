@@ -1,13 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ShieldCheck, Search, AlertTriangle, Loader2, FileText, History, RefreshCw, Package } from 'lucide-react'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 import { getWarrantiesByInvoice, processWarrantyClaim } from '@/actions/warranty'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -51,11 +50,22 @@ interface WarrantyRecord {
 
 interface Props {
   triggerClassName?: string
+  /** Controlled mode: external open state */
+  open?: boolean
+  onOpenChange?: (v: boolean) => void
+  /** Pre-fill invoice and auto-search when dialog opens */
+  initialInvoice?: string
 }
 
-export function WarrantyClaimModal({ triggerClassName }: Props) {
+export function WarrantyClaimModal({ triggerClassName, open: controlledOpen, onOpenChange, initialInvoice }: Props) {
   const { t } = useLanguage()
-  const [open, setOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = isControlled ? controlledOpen! : internalOpen
+  const setIsOpen = (v: boolean) => {
+    if (isControlled) onOpenChange?.(v)
+    else setInternalOpen(v)
+  }
   const [step, setStep] = useState<'search' | 'select' | 'confirm'>('search')
   const [invoiceInput, setInvoiceInput] = useState('')
   const [searching, setSearching] = useState(false)
@@ -74,11 +84,11 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
     setShowHistory(false)
   }
 
-  const handleSearch = async () => {
-    if (!invoiceInput.trim()) return
+  const doSearch = useCallback(async (query: string) => {
+    if (!query.trim()) return
     setSearching(true)
     try {
-      const results = await getWarrantiesByInvoice(invoiceInput.trim())
+      const results = await getWarrantiesByInvoice(query.trim())
       if (results.length === 0) {
         toast.warning(t('noWarrantyFound'), { description: t('noWarrantiesFoundDesc') })
         return
@@ -90,7 +100,17 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
     } finally {
       setSearching(false)
     }
-  }
+  }, [t])
+
+  // Auto-search when opened via initialInvoice (e.g. clicking REPLACEMENT badge)
+  useEffect(() => {
+    if (isOpen && initialInvoice) {
+      setInvoiceInput(initialInvoice)
+      doSearch(initialInvoice)
+    }
+  }, [isOpen, initialInvoice]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSearch = () => doSearch(invoiceInput)
 
   const handleClaim = async () => {
     if (!selectedWarranty) return
@@ -104,7 +124,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
         description: `Replacement #${selectedWarranty.replacementCount + 1} for ${selectedWarranty.item.name} has been recorded. Warranty remains ACTIVE until ${format(new Date(selectedWarranty.warrantyEndDate), 'dd MMM yyyy')}.`,
       })
       reset()
-      setOpen(false)
+      setIsOpen(false)
     } catch (err: any) {
       toast.error(t('claimError'), { description: err.message || String(err) })
     } finally {
@@ -116,16 +136,18 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
   const nonActiveWarranties = warranties.filter(w => w.status !== 'ACTIVE')
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset() }}>
-      <DialogTrigger render={
-        <Button className={cn(
-          'flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20 transition-all active:scale-95',
-          triggerClassName
-        )} />
-      }>
-        <RefreshCw size={16} />
-        Process Replacement
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={(v) => { setIsOpen(v); if (!v) reset() }}>
+      {!isControlled && (
+        <DialogTrigger render={
+          <button className={cn(
+            'inline-flex items-center gap-2 rounded-lg px-3 h-8 text-sm font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20 transition-all active:scale-95',
+            triggerClassName
+          )} />
+        }>
+          <RefreshCw size={16} />
+          {t('processReplacement')}
+        </DialogTrigger>
+      )}
 
       <DialogContent className="sm:max-w-[540px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white dark:bg-gray-950 max-h-[92vh] overflow-y-auto">
         <div className="h-2 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-violet-600" />
@@ -137,8 +159,8 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
                 <RefreshCw size={28} className="text-violet-600" strokeWidth={2.5} />
               </div>
               <div className="flex flex-col">
-                <span className="leading-tight">Warranty Replacement</span>
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">Multi-replacement · Stays Active</span>
+                <span className="leading-tight">{t('warrantyReplacement')}</span>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">{t('multiReplacementStaysActive')}</span>
               </div>
             </DialogTitle>
           </DialogHeader>
@@ -168,7 +190,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
               <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex gap-3">
                 <ShieldCheck size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium leading-relaxed">
-                  Warranty stays <strong>ACTIVE</strong> after replacement. Customers can replace unlimited times within the original warranty period.
+                  {t('warrantyStaysActiveDesc')}
                 </p>
               </div>
             </div>
@@ -194,7 +216,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
               {/* Active warranties */}
               {activeWarranties.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1">Active Warranties — Eligible for Replacement</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1">{t('activeWarrantiesEligible')}</p>
                   {activeWarranties.map(w => (
                     <button
                       key={w.id}
@@ -210,17 +232,17 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
                             <p className="font-black text-gray-900 dark:text-white text-sm truncate">{w.item.name}</p>
                             {w.replacementCount > 0 && (
                               <span className="shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
-                                {w.replacementCount}× replaced
+                                {w.replacementCount}× {t('replaced')}
                               </span>
                             )}
                           </div>
                           <p className="text-[10px] text-gray-400 font-medium mt-0.5">
-                            Valid until <span className="font-bold text-emerald-600">{format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}</span>
-                            {' · '} Stock: {w.item.currentStock} {w.item.unit}
+                            {t('validUntilLabel')} <span className="font-bold text-emerald-600">{format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}</span>
+                            {' · '} {t('stock')}: {w.item.currentStock} {w.item.unit}
                           </p>
                         </div>
                         <span className="text-[10px] font-black text-violet-500 group-hover:translate-x-1 transition-transform shrink-0">
-                          Select →
+                          {t('select')} →
                         </span>
                       </div>
                     </button>
@@ -244,7 +266,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
                             'text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full',
                             w.status === 'EXPIRED' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'
                           )}>
-                            {w.status}
+                            {w.status === 'EXPIRED' ? t('expired') : t('claimed')}
                           </span>
                         </div>
                       </div>
@@ -269,7 +291,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
               {/* Summary card */}
               <div className="p-5 bg-violet-50 dark:bg-violet-900/10 rounded-2xl border border-violet-200 dark:border-violet-800 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-violet-600">Replacement Summary</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-violet-600">{t('replacementSummary')}</p>
                   <span className="text-xs font-black px-3 py-1 rounded-full bg-violet-600 text-white">
                     #{selectedWarranty.replacementCount + 1}
                   </span>
@@ -280,7 +302,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
                     <span className="font-black text-gray-900 dark:text-white">{selectedWarranty.item.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Replacement #</span>
+                    <span className="text-gray-500 font-medium">{t('replacement')} #</span>
                     <span className="font-black text-violet-600">#{selectedWarranty.replacementCount + 1}</span>
                   </div>
                   <div className="flex justify-between">
@@ -288,7 +310,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
                     <span className="font-mono font-black text-gray-700 dark:text-gray-300">{selectedWarranty.invoiceNumber}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500 font-medium">Warranty Valid Until</span>
+                    <span className="text-gray-500 font-medium">{t('warrantyValidUntil')}</span>
                     <span className="font-black text-emerald-600">{format(new Date(selectedWarranty.warrantyEndDate), 'dd MMM yyyy')}</span>
                   </div>
                   <div className="flex justify-between">
@@ -308,7 +330,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
                     className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-violet-600 transition-colors"
                   >
                     <History size={12} />
-                    Previous Replacements ({selectedWarranty.replacements?.length})
+                    {t('previousReplacements')} ({selectedWarranty.replacements?.length})
                     <span className="ml-1">{showHistory ? '▲' : '▼'}</span>
                   </button>
                   {showHistory && (
@@ -321,7 +343,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-gray-700 dark:text-gray-300">
                               {format(new Date(r.createdAt), 'dd MMM yyyy')}
-                              {r.recordedBy && <span className="text-gray-400 font-normal"> · by {r.recordedBy.name}</span>}
+                              {r.recordedBy && <span className="text-gray-400 font-normal"> · {t('by')} {r.recordedBy.name}</span>}
                             </p>
                             {r.notes && <p className="text-gray-400 truncate">{r.notes}</p>}
                           </div>
@@ -341,18 +363,18 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
 
               {/* What happens note */}
               <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-800 space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1.5">What happens</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1.5">{t('whatHappens')}</p>
                 <div className="flex items-center gap-2 text-[11px] text-blue-700 dark:text-blue-400">
                   <Package size={11} className="shrink-0" />
-                  <span>1 unit deducted from available stock</span>
+                  <span>{t('unitDeductedFromStock')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-blue-700 dark:text-blue-400">
                   <RefreshCw size={11} className="shrink-0" />
-                  <span>Defective item added to Warranty Return pool</span>
+                  <span>{t('defectiveAddedToReturnPool')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-emerald-700 dark:text-emerald-400">
                   <ShieldCheck size={11} className="shrink-0" />
-                  <span>Warranty remains ACTIVE — no expiry change</span>
+                  <span>{t('warrantyRemainsActiveNoExpiry')}</span>
                 </div>
               </div>
 
@@ -360,7 +382,7 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('claimNotes')} ({t('optional')})</Label>
                 <Input
-                  placeholder="e.g. Customer reported product stopped working after 2 months"
+                  placeholder={t('claimNotesPlaceholder')}
                   value={claimNotes}
                   onChange={e => setClaimNotes(e.target.value)}
                   className="h-12 rounded-2xl border-2 border-transparent bg-gray-50 dark:bg-gray-900 focus:border-violet-500 font-medium px-5"
@@ -380,8 +402,8 @@ export function WarrantyClaimModal({ triggerClassName }: Props) {
                   className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-50 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-violet-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
                   {processing
-                    ? <><Loader2 size={16} className="animate-spin" /> Processing...</>
-                    : <><RefreshCw size={16} /> Confirm Replacement #{selectedWarranty.replacementCount + 1}</>
+                    ? <><Loader2 size={16} className="animate-spin" /> {t('processingDot')}</>
+                    : <><RefreshCw size={16} /> {t('confirmReplacement')} #{selectedWarranty.replacementCount + 1}</>
                   }
                 </button>
               </div>

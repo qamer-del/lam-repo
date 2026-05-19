@@ -106,9 +106,21 @@ export function WarrantyCheckCard({ warranty, showClaimButton, onClaim }: Warran
             </p>
           </div>
         </div>
-        <span className={cn('px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest', cfg.badge, cfg.badgeText)}>
-          {t('replacement')}
-        </span>
+        {warranty.status === 'ACTIVE' && onClaim ? (
+          <button
+            onClick={() => onClaim(warranty.id)}
+            className={cn(
+              'px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest cursor-pointer transition-opacity hover:opacity-80 active:scale-95',
+              cfg.badge, cfg.badgeText
+            )}
+          >
+            {t('replacement')}
+          </button>
+        ) : (
+          <span className={cn('px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest', cfg.badge, cfg.badgeText)}>
+            {t('replacement')}
+          </span>
+        )}
       </div>
 
       {/* Item Info */}

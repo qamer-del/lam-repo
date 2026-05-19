@@ -54,6 +54,8 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
   const [searched, setSearched] = useState(false)
   const [selectedCase, setSelectedCase] = useState<any | null>(null)
   const [caseModalOpen, setCaseModalOpen] = useState(false)
+  const [claimInvoice, setClaimInvoice] = useState<string | null>(null)
+  const [claimModalOpen, setClaimModalOpen] = useState(false)
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
@@ -71,11 +73,21 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
     }
   }
 
+  const STATUS_LABELS: Record<string, string> = {
+    PENDING: t('pending'),
+    SENT_TO_SUPPLIER: t('sentToSupplier'),
+    REPLACED: t('replaced'),
+    REPAIRED: t('repaired'),
+    REFUNDED: t('refunded'),
+    REJECTED: t('rejected'),
+    CLOSED: t('closed'),
+  }
+
   const tabs = [
-    { id: 'active' as Tab, label: 'Active', icon: ShieldCheck, count: stats?.active },
-    { id: 'history' as Tab, label: 'History', icon: History, count: stats?.totalReplacements },
-    { id: 'returns' as Tab, label: 'Returns', icon: Package, count: stats?.warrantyReturnItems },
-    { id: 'supplier' as Tab, label: 'Supplier Cases', icon: Truck, count: supplierCases.length },
+    { id: 'active' as Tab, label: t('active'), icon: ShieldCheck, count: stats?.active },
+    { id: 'history' as Tab, label: t('history'), icon: History, count: stats?.totalReplacements },
+    { id: 'returns' as Tab, label: t('returns'), icon: Package, count: stats?.warrantyReturnItems },
+    { id: 'supplier' as Tab, label: t('supplierCases'), icon: Truck, count: supplierCases.length },
   ]
 
   return (
@@ -88,8 +100,8 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
             <Shield size={30} className="text-white" strokeWidth={2} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-gray-900 dark:text-white">Warranty</h1>
-            <p className="text-sm font-medium text-gray-400 mt-0.5">Multi-replacement · Supplier tracking · Full audit trail</p>
+            <h1 className="text-3xl font-black text-gray-900 dark:text-white">{t('warranty')}</h1>
+            <p className="text-sm font-medium text-gray-400 mt-0.5">{t('warrantyPageSubtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -108,13 +120,13 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
       {isAdmin && stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           {[
-            { label: 'Active', value: stats.active, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
-            { label: 'Expiring 30d', value: stats.expiringSoon, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
-            { label: 'Replacements', value: stats.totalReplacements, color: 'text-violet-600', bg: 'bg-violet-50 border-violet-200' },
-            { label: 'Expired', value: stats.expired, color: 'text-red-500', bg: 'bg-red-50 border-red-200' },
-            { label: 'Return Stock', value: stats.warrantyReturnItems, color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200' },
-            { label: 'Damaged', value: stats.damagedItems, color: 'text-gray-600', bg: 'bg-gray-50 border-gray-200' },
-            { label: 'Open Cases', value: stats.pendingSupplierCases, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
+            { label: t('active'), value: stats.active, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+            { label: t('expiring30d'), value: stats.expiringSoon, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+            { label: t('replacements'), value: stats.totalReplacements, color: 'text-violet-600', bg: 'bg-violet-50 border-violet-200' },
+            { label: t('expired'), value: stats.expired, color: 'text-red-500', bg: 'bg-red-50 border-red-200' },
+            { label: t('returnStock'), value: stats.warrantyReturnItems, color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200' },
+            { label: t('damaged'), value: stats.damagedItems, color: 'text-gray-600', bg: 'bg-gray-50 border-gray-200' },
+            { label: t('openCases'), value: stats.pendingSupplierCases, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
           ].map(({ label, value, color, bg }) => (
             <div key={label} className={cn('rounded-2xl border-2 p-4 space-y-1', bg)}>
               <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">{label}</p>
@@ -128,7 +140,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
       <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-lg p-6 space-y-5">
         <h2 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
           <Search size={18} className="text-violet-500" />
-          Warranty Check
+          {t('warrantyCheck')}
         </h2>
         <div className="flex gap-2">
           {(['invoice', 'sku'] as const).map(type => (
@@ -157,7 +169,20 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
         {searched && !searching && (
           <div className="space-y-4 animate-in fade-in duration-300 pt-2">
             {results && results.length > 0 ? (
-              results.map(w => <WarrantyCheckCard key={w.id} warranty={w} showClaimButton={w.status === 'ACTIVE'} />)
+              results.map(w => (
+                <WarrantyCheckCard
+                  key={w.id}
+                  warranty={w}
+                  showClaimButton={w.status === 'ACTIVE'}
+                  onClaim={(warrantyId) => {
+                    const found = results.find((r: any) => r.id === warrantyId)
+                    if (found) {
+                      setClaimInvoice(found.invoiceNumber)
+                      setClaimModalOpen(true)
+                    }
+                  }}
+                />
+              ))
             ) : (
               <div className="py-12 text-center bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
                 <Shield size={32} className="text-gray-300 mx-auto mb-3" />
@@ -199,7 +224,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
                   <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-200 dark:border-amber-800">
                     <div className="flex items-center gap-2 mb-3">
                       <AlertTriangle size={14} className="text-amber-500" />
-                      <p className="text-xs font-black text-amber-700 uppercase tracking-widest">Expiring within 30 days ({expiringSoon.length})</p>
+                      <p className="text-xs font-black text-amber-700 uppercase tracking-widest">{t('expiringWithin30Days')} ({expiringSoon.length})</p>
                     </div>
                     <div className="space-y-2">
                       {expiringSoon.map(w => (
@@ -216,7 +241,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
                   </div>
                 )}
                 {activeWarranties.length === 0 ? (
-                  <div className="py-12 text-center"><ShieldCheck size={32} className="text-gray-300 mx-auto mb-3" /><p className="text-gray-400 font-black">No active warranties</p></div>
+                  <div className="py-12 text-center"><ShieldCheck size={32} className="text-gray-300 mx-auto mb-3" /><p className="text-gray-400 font-black">{t('noActiveWarranties')}</p></div>
                 ) : (
                   <div className="divide-y divide-gray-50 dark:divide-gray-800 max-h-96 overflow-y-auto">
                     {activeWarranties.map(w => (
@@ -226,13 +251,13 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
                           <div className="flex items-center gap-2">
                             <p className="font-black text-sm truncate">{w.item?.name}</p>
                             {w.replacementCount > 0 && (
-                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">{w.replacementCount}× replaced</span>
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">{w.replacementCount}× {t('replaced')}</span>
                             )}
                           </div>
                           <p className="text-[10px] font-mono text-gray-400">{w.invoiceNumber}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-xs font-black text-emerald-600">Until {format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}</p>
+                          <p className="text-xs font-black text-emerald-600">{t('until')} {format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}</p>
                           <p className="text-[10px] text-gray-400">{w.customer?.name || w.customerName}</p>
                         </div>
                       </div>
@@ -246,7 +271,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
             {tab === 'history' && (
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {replacementHistory.length === 0 ? (
-                  <div className="py-12 text-center"><History size={32} className="text-gray-300 mx-auto mb-3" /><p className="text-gray-400 font-black">No replacements yet</p></div>
+                  <div className="py-12 text-center"><History size={32} className="text-gray-300 mx-auto mb-3" /><p className="text-gray-400 font-black">{t('noReplacementsYet')}</p></div>
                 ) : (
                   replacementHistory.map((r, i) => (
                     <div key={r.id} className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl">
@@ -256,9 +281,9 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-sm truncate">{r.replacementItem?.name}</p>
                         <p className="text-[10px] text-gray-400">
-                          Invoice: {r.warranty?.invoiceNumber}
+                          {t('invoice')}: {r.warranty?.invoiceNumber}
                           {r.warranty?.customerName && ` · ${r.warranty.customerName}`}
-                          {r.recordedBy && ` · by ${r.recordedBy.name}`}
+                          {r.recordedBy && ` · ${t('by')} ${r.recordedBy.name}`}
                         </p>
                         {r.notes && <p className="text-[10px] text-gray-400 italic truncate">{r.notes}</p>}
                       </div>
@@ -272,9 +297,9 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
             {/* Warranty Return Stock tab */}
             {tab === 'returns' && (
               <div className="space-y-3">
-                <p className="text-xs font-bold text-gray-400">Defective items returned by customers awaiting supplier action.</p>
+                <p className="text-xs font-bold text-gray-400">{t('defectiveItemsDesc')}</p>
                 {returnStockItems.length === 0 ? (
-                  <div className="py-12 text-center"><Package size={32} className="text-gray-300 mx-auto mb-3" /><p className="text-gray-400 font-black">No warranty return items</p></div>
+                  <div className="py-12 text-center"><Package size={32} className="text-gray-300 mx-auto mb-3" /><p className="text-gray-400 font-black">{t('noWarrantyReturnItems')}</p></div>
                 ) : (
                   <div className="space-y-2">
                     {returnStockItems.map(item => (
@@ -287,13 +312,13 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
                         <div className="text-right space-y-1">
                           {item.warrantyReturnStock > 0 && (
                             <div className="flex items-center gap-1 justify-end">
-                              <span className="text-[9px] font-black uppercase text-orange-500">Return pool</span>
+                              <span className="text-[9px] font-black uppercase text-orange-500">{t('returnPool')}</span>
                               <span className="text-sm font-black text-orange-600">{item.warrantyReturnStock}</span>
                             </div>
                           )}
                           {item.damagedStock > 0 && (
                             <div className="flex items-center gap-1 justify-end">
-                              <span className="text-[9px] font-black uppercase text-red-400">Damaged</span>
+                              <span className="text-[9px] font-black uppercase text-red-400">{t('damaged')}</span>
                               <span className="text-sm font-black text-red-500">{item.damagedStock}</span>
                             </div>
                           )}
@@ -309,7 +334,7 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
             {tab === 'supplier' && (
               <div className="space-y-3">
                 {supplierCases.length === 0 ? (
-                  <div className="py-12 text-center"><Truck size={32} className="text-gray-300 mx-auto mb-3" /><p className="text-gray-400 font-black">No supplier cases yet</p><p className="text-xs text-gray-400 mt-1">Create one from the Warranty Returns tab</p></div>
+                  <div className="py-12 text-center"><Truck size={32} className="text-gray-300 mx-auto mb-3" /><p className="text-gray-400 font-black">{t('noSupplierCasesYet')}</p><p className="text-xs text-gray-400 mt-1">{t('createFromReturnsTab')}</p></div>
                 ) : (
                   supplierCases.map(sc => (
                     <button
@@ -320,14 +345,14 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
                       <Truck size={16} className="text-orange-500 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-black text-sm">Case #{sc.id}</p>
+                          <p className="font-black text-sm">{t('caseHash')}{sc.id}</p>
                           <span className={cn('text-[9px] font-black px-2 py-0.5 rounded-full', STATUS_COLORS[sc.status] || 'bg-gray-100 text-gray-600')}>
-                            {sc.status.replace('_', ' ')}
+                            {STATUS_LABELS[sc.status] || sc.status.replace('_', ' ')}
                           </span>
                         </div>
                         <p className="text-[10px] text-gray-400">
-                          {sc.agent?.name || 'No supplier'} · {sc.items.length} item type(s)
-                          {sc.referenceNumber && ` · Ref: ${sc.referenceNumber}`}
+                          {sc.agent?.name || t('noSupplier')} · {sc.items.length} {t('items').toLowerCase()}
+                          {sc.referenceNumber && ` · ${t('refLabel')}: ${sc.referenceNumber}`}
                         </p>
                         <p className="text-[10px] text-gray-400">{format(new Date(sc.createdAt), 'dd MMM yyyy')}</p>
                       </div>
@@ -348,6 +373,15 @@ export function WarrantyClient({ role, isAdmin, stats, expiringSoon, activeWarra
           open={caseModalOpen}
           onOpenChange={v => { setCaseModalOpen(v); if (!v) setSelectedCase(null) }}
           onSuccess={() => router.refresh()}
+        />
+      )}
+
+      {/* Controlled replacement modal — opened from REPLACEMENT badge in search results */}
+      {claimInvoice && (
+        <WarrantyClaimModal
+          open={claimModalOpen}
+          onOpenChange={v => { setClaimModalOpen(v); if (!v) setClaimInvoice(null) }}
+          initialInvoice={claimInvoice}
         />
       )}
     </div>
