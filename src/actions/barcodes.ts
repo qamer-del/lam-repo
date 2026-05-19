@@ -223,7 +223,7 @@ export async function getPrinterSettings() {
     // Return defaults without persisting — created on first save
     return {
       id: 1,
-      printerName: 'ZDesigner GK420t',
+      printerName: 'ZDesigner GC420t',
       dpi: 203,
       darkness: 15,
       printSpeed: 4,

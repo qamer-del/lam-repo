@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLanguage } from '@/providers/language-provider'
 import { createPurchaseOrder, getAllInventoryItemsForSelect } from '@/actions/inventory'
 import { getAgents } from '@/actions/agents'
+import { getPrinterSettings, getLabelTemplates } from '@/actions/barcodes'
+import { printZebraLabels } from '@/lib/zebra-zpl'
+import { DEFAULT_LABEL_CONFIG } from '@/lib/barcode'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useStore, Transaction } from '@/store/useStore'
@@ -215,6 +218,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
   const [step, setStep] = useState<'form' | 'labels'>('form')
 
   const [agentId, setAgentId] = useState('none')
@@ -285,18 +289,31 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
     }
   }
 
-  const handlePrint = (item: InventoryItem, qty: number) => {
-    const win = window.open('', '_blank')
-    if (!win) return
-    const rows = Array.from({ length: qty }, (_, i) => `
-      <div style="display:inline-block;margin:2mm;border:0.5px dashed #ccc;padding:2mm;text-align:center;width:40mm;font-family:sans-serif;">
-        <strong style="font-size:9pt;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</strong>
-        ${item.sku ? `<span style="font-size:7pt;color:#666;display:block;margin-top:1px;">${item.sku}</span>` : ''}
-        <span style="font-size:8pt;color:green;font-weight:bold;display:block;margin-top:2px;">${item.sellingPrice.toFixed(2)} SAR</span>
-      </div>
-    `).join('')
-    win.document.write(`<html><head><title>Labels - ${item.name}</title><style>body{margin:4mm}</style></head><body>${rows}</body></html>`)
-    win.document.close()
+  const handlePrint = async (item: InventoryItem, qty: number) => {
+    setIsPrinting(true)
+    const loadToastId = toast.loading('Sending to printer...')
+    try {
+      const [settings, templates] = await Promise.all([
+        getPrinterSettings(),
+        getLabelTemplates(),
+      ])
+      
+      let config = templates[0]?.config as any || DEFAULT_LABEL_CONFIG
+      
+      // Attempt to find the specific template by name if they have multiple
+      const exactTemplate = templates.find(t => t.name.includes('39x26'))
+      if (exactTemplate) {
+         config = exactTemplate.config as any
+      }
+
+      await printZebraLabels([{ item: item as any, quantity: qty }], config, settings, 1)
+      
+      toast.success('Print job sent to Zebra printer', { id: loadToastId })
+    } catch (err: any) {
+      toast.error(err.message || 'Printing failed. Is QZ Tray running?', { id: loadToastId })
+    } finally {
+      setIsPrinting(false)
+    }
   }
 
   return (
@@ -543,10 +560,10 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
 
                         <button
                           onClick={() => handlePrint(item, line.printQty)}
-                          disabled={!hasBarcode}
+                          disabled={!hasBarcode || isPrinting}
                           className="flex items-center justify-center gap-2 h-11 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-black shadow-lg shadow-blue-500/10 transition-all active:scale-95"
                         >
-                          <Printer size={14} /> Print Labels
+                          <Printer size={14} /> {isPrinting ? 'Printing...' : 'Print Labels'}
                         </button>
                       </div>
                     </div>

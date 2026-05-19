@@ -186,22 +186,77 @@ export function buildZPL(
 
 // ─── Send ZPL via QZ Tray ─────────────────────────────────────────────────────
 
-async function getQZ(): Promise<any> {
+/**
+ * Loads the QZ Tray module and ensures security (cert + signing) is configured.
+ * Security must be set up on the SAME qz instance before any print call.
+ * Re-uses the setup from printer.ts so we don't register it twice.
+ */
+async function getQZReady(): Promise<any> {
+  // Import the shared connection helper to guarantee security is already set up
+  const { connectPrinter } = await import('@/lib/printer')
   const mod = await import('qz-tray')
-  return mod.default ?? mod
+  const qz = mod.default ?? mod
+
+  if (!qz.websocket.isActive()) {
+    await connectPrinter()
+  }
+
+  return qz
+}
+
+/**
+ * Resolves the exact printer name QZ Tray knows about.
+ * Calls qz.printers.find(name) which does a case-insensitive substring search,
+ * then returns the first exact match (or first partial match) so the print job
+ * uses the canonical name from the OS rather than the user-typed string.
+ */
+async function resolveQZPrinter(qz: any, requestedName: string): Promise<string> {
+  try {
+    // find() with a string arg returns printers matching that substring
+    const matches: string[] = await qz.printers.find(requestedName)
+    if (matches && matches.length > 0) {
+      const exact = matches.find(m => m === requestedName)
+      const resolved = exact ?? matches[0]
+      if (resolved !== requestedName) {
+        console.warn(`[ZebraPrint] Printer name resolved: "${requestedName}" → "${resolved}"`)
+      }
+      return resolved
+    }
+  } catch {
+    // find() with arg not supported on older QZ Tray — fall through
+  }
+
+  // Fallback: list all printers and find exact or case-insensitive match
+  try {
+    const all: string[] = await qz.printers.find()
+    const exact = all.find(p => p === requestedName)
+    if (exact) return exact
+    const ci = all.find(p => p.toLowerCase() === requestedName.toLowerCase())
+    if (ci) {
+      console.warn(`[ZebraPrint] Case mismatch fixed: "${requestedName}" → "${ci}"`)
+      return ci
+    }
+    // Log the available list to help diagnose
+    console.error(`[ZebraPrint] Printer "${requestedName}" not found. Available:`, all)
+    throw new Error(
+      `Printer "${requestedName}" not found in QZ Tray.\n` +
+      `Available printers: ${all.length > 0 ? all.join(', ') : '(none detected)'}.\n` +
+      `Go to Printer Settings → Detect Printers and select the correct one.`
+    )
+  } catch (e: any) {
+    if (e.message?.includes('not found in QZ Tray')) throw e
+    // qz.printers.find() itself failed — just use the name as-is
+    return requestedName
+  }
 }
 
 export async function printZebraLabel(
   zpl: string,
   printerName: string
 ): Promise<void> {
-  const qz = await getQZ()
-
-  if (!qz.websocket.isActive()) {
-    throw new Error('QZ Tray is not connected. Please ensure QZ Tray is running.')
-  }
-
-  const config = qz.configs.create(printerName)
+  const qz = await getQZReady()
+  const resolvedName = await resolveQZPrinter(qz, printerName)
+  const config = qz.configs.create(resolvedName)
   await qz.print(config, [
     { type: 'raw', format: 'plain', data: zpl },
   ])
@@ -213,14 +268,11 @@ export async function printZebraLabels(
   settings: ZebraPrinterSettings,
   copies = 1
 ): Promise<void> {
-  const qz = await getQZ()
-
-  if (!qz.websocket.isActive()) {
-    throw new Error('QZ Tray is not connected.')
-  }
+  const qz = await getQZReady()
+  const resolvedName = await resolveQZPrinter(qz, settings.printerName)
 
   // Create printer config with strict dimensions and density
-  const printerConfig = qz.configs.create(settings.printerName, {
+  const printerConfig = qz.configs.create(resolvedName, {
     size: { width: config.width, height: config.height },
     units: 'mm',
     density: settings.dpi,
@@ -228,7 +280,7 @@ export async function printZebraLabels(
     copies: 1, // We handle quantities by duplicating the image data
   })
 
-  const printData = []
+  const printData: any[] = []
   
   // Generate high-resolution image for each item
   for (const { item, quantity } of items) {

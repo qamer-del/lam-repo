@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
   Printer, ScanLine, Tag, Settings, Save, Search, 
-  Trash2, Copy, Play, CheckCircle2, AlertCircle
+  Trash2, Copy, Play, CheckCircle2, AlertCircle, RefreshCw, ChevronDown
 } from 'lucide-react'
 import { LabelBuilder } from '@/components/label-builder'
 import { LabelPreview } from '@/components/label-preview'
@@ -48,6 +48,46 @@ export function BarcodesClient({
   
   const [isPrinting, setIsPrinting] = useState(false)
   const [templateName, setTemplateName] = useState('')
+
+  // Printer detection
+  const [detectedPrinters, setDetectedPrinters] = useState<string[]>([])
+  const [isDetecting, setIsDetecting] = useState(false)
+  const [showPrinterDropdown, setShowPrinterDropdown] = useState(false)
+
+  const handleDetectPrinters = async () => {
+    setIsDetecting(true)
+    setDetectedPrinters([])
+    try {
+      const mod = await import('qz-tray')
+      const qz = mod.default ?? mod
+
+      if (!qz.websocket.isActive()) {
+        const { connectPrinter } = await import('@/lib/printer')
+        await connectPrinter()
+      }
+
+      const all: string[] = await qz.printers.find()
+      const filtered = all.filter(Boolean).sort((a: string, b: string) => a.localeCompare(b))
+
+      if (filtered.length === 0) {
+        toast.error('No printers found via QZ Tray')
+      } else {
+        setDetectedPrinters(filtered)
+        setShowPrinterDropdown(true)
+        toast.success(`Found ${filtered.length} printer(s)`)
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to detect printers. Is QZ Tray running?')
+    } finally {
+      setIsDetecting(false)
+    }
+  }
+
+  const handleSelectDetectedPrinter = (name: string) => {
+    setPrinterSettings(prev => ({ ...prev, printerName: name }))
+    setShowPrinterDropdown(false)
+    toast.success(`Selected: ${name}`)
+  }
 
   // Filtered items
   const filteredItems = useMemo(() => {
@@ -413,15 +453,63 @@ export function BarcodesClient({
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Printer Name (OS Name)
-                  </label>
-                  <input
-                    type="text"
-                    value={printerSettings.printerName}
-                    onChange={e => setPrinterSettings({ ...printerSettings, printerName: e.target.value })}
-                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                      Printer Name (OS Name)
+                    </label>
+                    <button
+                      onClick={handleDetectPrinters}
+                      disabled={isDetecting}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50 transition"
+                    >
+                      <RefreshCw size={13} className={isDetecting ? 'animate-spin' : ''} />
+                      {isDetecting ? 'Detecting...' : 'Detect Printers'}
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={printerSettings.printerName}
+                      onChange={e => setPrinterSettings({ ...printerSettings, printerName: e.target.value })}
+                      className="w-full p-2.5 pr-10 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. ZDesigner GK420t"
+                    />
+                    {detectedPrinters.length > 0 && (
+                      <button
+                        onClick={() => setShowPrinterDropdown(v => !v)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <ChevronDown size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  {showPrinterDropdown && detectedPrinters.length > 0 && (
+                    <div className="mt-1 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 shadow-lg z-10 overflow-hidden">
+                      {detectedPrinters.map(name => (
+                        <button
+                          key={name}
+                          onClick={() => handleSelectDetectedPrinter(name)}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition flex items-center gap-2 ${
+                            name === printerSettings.printerName
+                              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold'
+                              : 'text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          <Printer size={14} className="shrink-0 text-gray-400" />
+                          {name}
+                          {name === printerSettings.printerName && (
+                            <CheckCircle2 size={14} className="ml-auto text-blue-500" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="mt-1.5 text-xs text-gray-400">
+                    Click <strong>Detect Printers</strong> to auto-discover printers from QZ Tray, then select one — or type the exact Windows printer name manually.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
