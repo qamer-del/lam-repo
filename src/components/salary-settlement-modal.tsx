@@ -44,7 +44,7 @@ export function SalarySettlementModal({
   absenceDeduction?: number,
   netPaid: number
 }) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -245,7 +245,9 @@ export function SalarySettlementModal({
               <div className="flex flex-col gap-3">
                 <PDFDownloadLink
                   document={
-                    <SalarySettlementDocument staffName={staff.name}
+                    <SalarySettlementDocument 
+                      locale={locale}
+                      staffName={staff.name}
                       month={settledData.month}
                       year={settledData.year}
                       baseSalary={settledData.baseSalary}

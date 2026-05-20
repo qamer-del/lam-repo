@@ -1,6 +1,13 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import { format } from 'date-fns';
 import { en, ar } from '@/lib/translations';
+import { shapeArabicText } from 'naqqash';
+
+// A safe wrapper to shape Arabic text if any, passing other text through unchanged.
+const s = (text: string | number | null | undefined): string => {
+  if (text === null || text === undefined) return '';
+  return shapeArabicText(String(text));
+};
 
 Font.register({
   family: 'Cairo',
@@ -172,86 +179,86 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <View style={{ flex: 1, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-            <Text style={styles.title}>{t('salarySettlementVoucher')}</Text>
+            <Text style={styles.title}>{s(t('salarySettlementVoucher'))}</Text>
             <View style={{ marginTop: 8, gap: 2, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-              <Text style={{ fontSize: 12, fontWeight: 'bold' }}>{t('employee')}: {staffName}</Text>
-              {idNumber && <Text style={{ fontSize: 9, color: '#4b5563' }}>{t('idNumber')}: {idNumber}</Text>}
-              {nationality && <Text style={{ fontSize: 9, color: '#4b5563' }}>{t('nationality')}: {nationality}</Text>}
+              <Text style={{ fontSize: 12, fontWeight: 'bold' }}>{s(`${t('employee')}: ${staffName}`)}</Text>
+              {idNumber && <Text style={{ fontSize: 9, color: '#4b5563' }}>{s(`${t('idNumber')}: ${idNumber}`)}</Text>}
+              {nationality && <Text style={{ fontSize: 9, color: '#4b5563' }}>{s(`${t('nationality')}: ${nationality}`)}</Text>}
             </View>
           </View>
           <View style={styles.meta}>
             <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#059669', marginBottom: 4 }}>
-              {monthName} {settlement.year}
+              {s(`${monthName} ${settlement.year}`)}
             </Text>
-            <Text>Voucher #: SAL-{settlement.year}-{settlement.month}-{settlement.paidAt.toString().slice(0,4)}</Text>
-            <Text>{t('date')} {format(new Date(settlement.paidAt), 'PPP')}</Text>
+            <Text>{s(`Voucher #: SAL-${settlement.year}-${settlement.month}-${settlement.paidAt.toString().slice(0,4)}`)}</Text>
+            <Text>{s(`${t('date')} ${format(new Date(settlement.paidAt), 'PPP')}`)}</Text>
           </View>
         </View>
 
         <View style={{ marginBottom: 20 }}>
           <Text style={{ fontSize: 9, color: '#4b5563', textAlign: isRtl ? 'right' : 'left' }}>
-            {t('declarationText')}
+            {s(t('declarationText'))}
           </Text>
         </View>
 
         <View style={styles.summaryGrid}>
           <View style={styles.summaryItem}>
-            <Text style={styles.label}>{t('baseSalary')}</Text>
-            <Text style={styles.value}>{settlement.baseSalary.toFixed(2)}</Text>
+            <Text style={styles.label}>{s(t('baseSalary'))}</Text>
+            <Text style={styles.value}>{s(settlement.baseSalary.toFixed(2))}</Text>
           </View>
           
           {(settlement.overtimeAllowance || 0) > 0 && (
             <View style={styles.summaryItem}>
-              <Text style={styles.label}>{t('overtime')}</Text>
-              <Text style={styles.value}>{settlement.overtimeAllowance?.toFixed(2)}</Text>
+              <Text style={styles.label}>{s(t('overtime'))}</Text>
+              <Text style={styles.value}>{s(settlement.overtimeAllowance?.toFixed(2))}</Text>
             </View>
           )}
 
           {(settlement.transportAllowance || 0) > 0 && (
             <View style={styles.summaryItem}>
-              <Text style={styles.label}>{t('transport')}</Text>
-              <Text style={styles.value}>{settlement.transportAllowance?.toFixed(2)}</Text>
+              <Text style={styles.label}>{s(t('transport'))}</Text>
+              <Text style={styles.value}>{s(settlement.transportAllowance?.toFixed(2))}</Text>
             </View>
           )}
 
           {(settlement.otherAllowance || 0) > 0 && (
             <View style={styles.summaryItem}>
-              <Text style={styles.label}>{t('otherAllowance')}</Text>
-              <Text style={styles.value}>{settlement.otherAllowance?.toFixed(2)}</Text>
+              <Text style={styles.label}>{s(t('otherAllowance'))}</Text>
+              <Text style={styles.value}>{s(settlement.otherAllowance?.toFixed(2))}</Text>
             </View>
           )}
 
           <View style={styles.summaryItem}>
-            <Text style={styles.label}>{t('deductionsTotal')}</Text>
-            <Text style={[styles.value, { color: '#dc2626' }]}>- {settlement.advancesTally.toFixed(2)}</Text>
+            <Text style={styles.label}>{s(t('deductionsTotal'))}</Text>
+            <Text style={[styles.value, { color: '#dc2626' }]}>{s(`- ${settlement.advancesTally.toFixed(2)}`)}</Text>
           </View>
           
           <View style={[styles.summaryItem, { backgroundColor: '#f0fdf4', borderRightWidth: 0, borderLeftWidth: 0 }]}>
-            <Text style={styles.label}>{t('netSalaryPaid')}</Text>
-            <Text style={[styles.value, { color: '#059669' }]}>{settlement.netPaid.toFixed(2)}</Text>
+            <Text style={styles.label}>{s(t('netSalaryPaid'))}</Text>
+            <Text style={[styles.value, { color: '#059669' }]}>{s(settlement.netPaid.toFixed(2))}</Text>
           </View>
           
           <View style={[styles.summaryItem, { borderBottomWidth: 0, borderRightWidth: 0, borderLeftWidth: 0 }]}>
-            <Text style={styles.label}>{t('paymentMethod')}</Text>
-            <Text style={styles.value}>{t(settlement.method.toLowerCase() as any) || settlement.method}</Text>
+            <Text style={styles.label}>{s(t('paymentMethod'))}</Text>
+            <Text style={styles.value}>{s(t(settlement.method.toLowerCase() as any) || settlement.method)}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('deductionsTotal')}</Text>
+          <Text style={styles.sectionTitle}>{s(t('deductionsTotal'))}</Text>
           <View style={styles.table}>
             <View style={[styles.tableRow, styles.tableColHeader]}>
-              <View style={[styles.tableCol, styles.dateCol]}><Text>{t('date')}</Text></View>
-              <View style={[styles.tableCol, styles.typeCol]}><Text>{t('type')}</Text></View>
-              <View style={[styles.tableCol, styles.descCol]}><Text>{t('description')}</Text></View>
-              <View style={[styles.tableCol, styles.amountCol]}><Text>{t('amount')}</Text></View>
+              <View style={[styles.tableCol, styles.dateCol]}><Text>{s(t('date'))}</Text></View>
+              <View style={[styles.tableCol, styles.typeCol]}><Text>{s(t('type'))}</Text></View>
+              <View style={[styles.tableCol, styles.descCol]}><Text>{s(t('description'))}</Text></View>
+              <View style={[styles.tableCol, styles.amountCol]}><Text>{s(t('amount'))}</Text></View>
             </View>
             {settlement.transactions.map((tx, i) => (
               <View key={i} style={styles.tableRow}>
-                <View style={[styles.tableCol, styles.dateCol]}><Text>{format(new Date(tx.createdAt), 'dd/MM/yyyy')}</Text></View>
-                <View style={[styles.tableCol, styles.typeCol]}><Text>{t(tx.type.toLowerCase() as any) || tx.type}</Text></View>
-                <View style={[styles.tableCol, styles.descCol]}><Text>{tx.description || '-'}</Text></View>
-                <View style={[styles.tableCol, styles.amountCol]}><Text>{tx.amount.toFixed(2)}</Text></View>
+                <View style={[styles.tableCol, styles.dateCol]}><Text>{s(format(new Date(tx.createdAt), 'dd/MM/yyyy'))}</Text></View>
+                <View style={[styles.tableCol, styles.typeCol]}><Text>{s(t(tx.type.toLowerCase() as any) || tx.type)}</Text></View>
+                <View style={[styles.tableCol, styles.descCol]}><Text>{s(tx.description || '-')}</Text></View>
+                <View style={[styles.tableCol, styles.amountCol]}><Text>{s(tx.amount.toFixed(2))}</Text></View>
               </View>
             ))}
           </View>
@@ -259,15 +266,15 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
 
         <View style={styles.footer}>
           <View>
-            <Text style={styles.signatureLine}>{t('managerSignature')}</Text>
+            <Text style={styles.signatureLine}>{s(t('managerSignature'))}</Text>
           </View>
           <View>
-            <Text style={styles.signatureLine}>{t('employeeSignature')}</Text>
+            <Text style={styles.signatureLine}>{s(t('employeeSignature'))}</Text>
           </View>
         </View>
 
         <Text style={{ position: 'absolute', bottom: 30, left: 40, right: 40, textAlign: 'center', fontSize: 8, color: '#999' }}>
-          {t('officialRecordFooter')}
+          {s(t('officialRecordFooter'))}
         </Text>
       </Page>
     </Document>

@@ -2,6 +2,13 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 import { format } from 'date-fns'
 import { en, ar } from '@/lib/translations'
+import { shapeArabicText } from 'naqqash'
+
+// A safe wrapper to shape Arabic text if any, passing other text through unchanged.
+const s = (text: string | number | null | undefined): string => {
+  if (text === null || text === undefined) return '';
+  return shapeArabicText(String(text));
+};
 
 Font.register({
   family: 'Cairo',
@@ -77,84 +84,84 @@ export function SalarySettlementDocument({
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>{t('salarySettlementVoucher')}</Text>
-          <Text style={styles.subtitle}>{month}/{year}</Text>
+          <Text style={styles.title}>{s(t('salarySettlementVoucher'))}</Text>
+          <Text style={styles.subtitle}>{s(month)}/{s(year)}</Text>
         </View>
 
         <View style={styles.infoSection}>
           <View style={styles.infoBox}>
-            <Text style={styles.label}>{t('staffDetails')}</Text>
-            <Text style={styles.value}>{staffName}</Text>
-            {idNumber && <Text style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{t('idNumber')}: {idNumber}</Text>}
-            {nationality && <Text style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{t('nationality')}: {nationality}</Text>}
+            <Text style={styles.label}>{s(t('staffDetails'))}</Text>
+            <Text style={styles.value}>{s(staffName)}</Text>
+            {idNumber && <Text style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{s(t('idNumber'))}: {s(idNumber)}</Text>}
+            {nationality && <Text style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{s(t('nationality'))}: {s(nationality)}</Text>}
           </View>
           <View style={styles.infoBox}>
-            <Text style={styles.label}>{t('date')}</Text>
-            <Text style={styles.value}>{format(new Date(), 'PP')}</Text>
+            <Text style={styles.label}>{s(t('date'))}</Text>
+            <Text style={styles.value}>{s(format(new Date(), 'PP'))}</Text>
           </View>
           <View style={styles.infoBox}>
-            <Text style={styles.label}>{t('paymentMethod')}</Text>
-            <Text style={[styles.value, { color: paymentMethod === 'NETWORK' ? '#7c3aed' : '#2563eb' }]}>{t(paymentMethod.toLowerCase() as any) || paymentMethod}</Text>
+            <Text style={styles.label}>{s(t('paymentMethod'))}</Text>
+            <Text style={[styles.value, { color: paymentMethod === 'NETWORK' ? '#7c3aed' : '#2563eb' }]}>{s(t(paymentMethod.toLowerCase() as any) || paymentMethod)}</Text>
           </View>
         </View>
 
         <View style={styles.summary}>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>{t('baseSalary')}</Text>
-            <Text style={styles.totalValue}>{baseSalary.toFixed(2)}</Text>
+            <Text style={styles.totalLabel}>{s(t('baseSalary'))}</Text>
+            <Text style={styles.totalValue}>{s(baseSalary.toFixed(2))}</Text>
           </View>
           {overtimeAllowance > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>{t('overtime')}</Text>
-              <Text style={styles.totalValue}>{overtimeAllowance.toFixed(2)}</Text>
+              <Text style={styles.totalLabel}>{s(t('overtime'))}</Text>
+              <Text style={styles.totalValue}>{s(overtimeAllowance.toFixed(2))}</Text>
             </View>
           )}
           {transportAllowance > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>{t('transport')}</Text>
-              <Text style={styles.totalValue}>{transportAllowance.toFixed(2)}</Text>
+              <Text style={styles.totalLabel}>{s(t('transport'))}</Text>
+              <Text style={styles.totalValue}>{s(transportAllowance.toFixed(2))}</Text>
             </View>
           )}
           {otherAllowance > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>{t('otherAllowance')}</Text>
-              <Text style={styles.totalValue}>{otherAllowance.toFixed(2)}</Text>
+              <Text style={styles.totalLabel}>{s(t('otherAllowance'))}</Text>
+              <Text style={styles.totalValue}>{s(otherAllowance.toFixed(2))}</Text>
             </View>
           )}
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>{t('deductionsTotal')}</Text>
-            <Text style={[styles.totalValue, { color: '#b91c1c' }]}>- {totalAdvances.toFixed(2)}</Text>
+            <Text style={styles.totalLabel}>{s(t('deductionsTotal'))}</Text>
+            <Text style={[styles.totalValue, { color: '#b91c1c' }]}>- {s(totalAdvances.toFixed(2))}</Text>
           </View>
           <View style={[styles.totalRow, { marginTop: 10, borderTop: 1, borderTopColor: '#bae6fd', paddingTop: 10 }]}>
-            <Text style={[styles.totalLabel, { fontWeight: 'bold', fontSize: 14, color: '#0369a1' }]}>{t('netSalaryPaid')}</Text>
-            <Text style={[styles.totalValue, { fontSize: 18, color: '#0c4a6e' }]}>{netPaid.toFixed(2)}</Text>
+            <Text style={[styles.totalLabel, { fontWeight: 'bold', fontSize: 14, color: '#0369a1' }]}>{s(t('netSalaryPaid'))}</Text>
+            <Text style={[styles.totalValue, { fontSize: 18, color: '#0c4a6e' }]}>{s(netPaid.toFixed(2))}</Text>
           </View>
         </View>
 
         <View style={styles.table}>
-          <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 10, textAlign: isRtl ? 'right' : 'left' }}>{t('deductionsTotal')}</Text>
+          <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 10, textAlign: isRtl ? 'right' : 'left' }}>{s(t('deductionsTotal'))}</Text>
           <View style={styles.tableHeader}>
-            <Text style={[styles.col1, { fontSize: 10, fontWeight: 'bold' }]}>{t('description')} / {t('date')}</Text>
-            <Text style={[styles.col2, { fontSize: 10, fontWeight: 'bold' }]}>{t('amount')}</Text>
+            <Text style={[styles.col1, { fontSize: 10, fontWeight: 'bold' }]}>{s(t('description'))} / {s(t('date'))}</Text>
+            <Text style={[styles.col2, { fontSize: 10, fontWeight: 'bold' }]}>{s(t('amount'))}</Text>
           </View>
           {advances.map((adv, i) => (
             <View key={i} style={styles.tableRow}>
-              <Text style={[styles.col1, { fontSize: 10 }]}>{format(new Date(adv.createdAt), 'PP')}</Text>
-              <Text style={[styles.col2, { fontSize: 10 }]}>{adv.amount.toFixed(2)}</Text>
+              <Text style={[styles.col1, { fontSize: 10 }]}>{s(format(new Date(adv.createdAt), 'PP'))}</Text>
+              <Text style={[styles.col2, { fontSize: 10 }]}>{s(adv.amount.toFixed(2))}</Text>
             </View>
           ))}
         </View>
 
         <View style={styles.declarationBox}>
-          <Text style={styles.declarationTitle}>{t('declaration')}</Text>
-          <Text style={styles.declarationText}>{t('declarationText')}</Text>
+          <Text style={styles.declarationTitle}>{s(t('declaration'))}</Text>
+          <Text style={styles.declarationText}>{s(t('declarationText'))}</Text>
           
           <View style={styles.signatureBox}>
             <View style={styles.signatureBlock}>
-              <Text style={styles.signatureLabel}>{t('employeeSignature')}</Text>
+              <Text style={styles.signatureLabel}>{s(t('employeeSignature'))}</Text>
             </View>
             <View style={styles.signatureBlock}>
-              <Text style={styles.signatureLabel}>{t('managerSignature')}</Text>
+              <Text style={styles.signatureLabel}>{s(t('managerSignature'))}</Text>
             </View>
           </View>
         </View>
