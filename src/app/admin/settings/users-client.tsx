@@ -55,7 +55,7 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
   }
 
   const handleReset = async () => {
-    if (resetConfirm !== 'RESET') return;
+    if (resetConfirm.trim() !== 'RESET') return;
     
     setLoading(true)
     try {
@@ -210,7 +210,7 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
           </div>
 
           <Card className="border-2 border-red-200 dark:border-red-900/50 shadow-2xl shadow-red-500/5 bg-red-50/30 dark:bg-red-950/10 overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-8 opacity-5">
+            <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
               <AlertTriangle size={120} className="text-red-600" />
             </div>
             <CardContent className="p-8 space-y-8 relative z-10">
@@ -221,20 +221,21 @@ export function UsersClient({ initialUsers }: { initialUsers: any[] }) {
                   User accounts will be preserved to maintain access. There is no way to recover this data.
                 </p>
               </div>
-
+ 
               <div className="flex flex-col md:flex-row items-end gap-4 max-w-xl bg-white dark:bg-black/40 p-6 rounded-2xl border border-red-100 dark:border-red-900/40">
                 <div className="flex-1 space-y-2">
                   <Label className="text-[10px] font-black uppercase text-red-500 tracking-widest">Type "RESET" to confirm</Label>
-                  <Input 
+                  <input 
+                    type="text"
                     placeholder="Type RESET here..." 
-                    className="h-12 border-red-100 focus:ring-red-500 font-black text-center tracking-widest uppercase placeholder:font-normal placeholder:tracking-normal"
+                    className="flex w-full min-w-0 rounded-lg border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 h-12 border-red-100 focus:ring-red-500 font-black text-center tracking-widest uppercase placeholder:font-normal placeholder:tracking-normal"
                     value={resetConfirm}
-                    onChange={(e) => setResetConfirm(e.target.value.toUpperCase().trim())}
+                    onChange={(e) => setResetConfirm(e.target.value.toUpperCase())}
                   />
                 </div>
                 <Button 
                   variant="destructive" 
-                  disabled={loading || resetConfirm !== 'RESET'}
+                  disabled={loading || resetConfirm.trim() !== 'RESET'}
                   onClick={handleReset}
                   className="h-12 px-8 bg-red-600 hover:bg-red-700 font-black text-sm uppercase tracking-widest shadow-xl shadow-red-600/20 active:scale-95 transition-all disabled:opacity-30"
                 >

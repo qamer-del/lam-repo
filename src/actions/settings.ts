@@ -42,14 +42,27 @@ export async function factoryReset() {
 
   try {
     await prisma.$transaction([
+      // 1. Child tables of warranty/sales/inventory first
       prisma.warrantyReplacement.deleteMany(),
+      prisma.supplierWarrantyCaseItem.deleteMany(),
+      prisma.supplierWarrantyCase.deleteMany(),
       prisma.warranty.deleteMany(),
+      
+      // 2. Inventory and Purchase Order child tables
       prisma.purchaseOrderItem.deleteMany(),
       prisma.stockMovement.deleteMany(),
       prisma.purchaseOrder.deleteMany(),
       prisma.inventoryItem.deleteMany(),
+      
+      // 3. BNPL and other transactional tables
+      prisma.bnplSession.deleteMany(),
       prisma.transaction.deleteMany(),
+      
+      // 4. Staff/Salary/Attendance tables
+      prisma.absenceRecord.deleteMany(),
       prisma.salarySettlement.deleteMany(),
+      
+      // 5. Shift and general registry tables
       prisma.shift.deleteMany(),
       prisma.settlement.deleteMany(),
       prisma.agent.deleteMany(),
