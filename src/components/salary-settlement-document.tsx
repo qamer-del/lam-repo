@@ -43,6 +43,17 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
   const t = (k: keyof typeof en) => locale === 'ar' ? (ar as any)[k] || en[k] || k : en[k] || k;
   const isRtl = locale === 'ar';
 
+  const cashAmount = settlement.transactions
+    ? settlement.transactions
+        .filter((tx: any) => tx.type === 'SALARY_PAYMENT' && tx.method === 'CASH')
+        .reduce((sum: number, tx: any) => sum + tx.amount, 0)
+    : 0;
+  const networkAmount = settlement.transactions
+    ? settlement.transactions
+        .filter((tx: any) => tx.type === 'SALARY_PAYMENT' && tx.method === 'NETWORK')
+        .reduce((sum: number, tx: any) => sum + tx.amount, 0)
+    : 0;
+
   const styles = StyleSheet.create({
     page: {
       padding: 40,
@@ -240,7 +251,12 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
           
           <View style={[styles.summaryItem, { borderBottomWidth: 0, borderRightWidth: 0, borderLeftWidth: 0 }]}>
             <Text style={styles.label}>{s(t('paymentMethod'))}</Text>
-            <Text style={styles.value}>{s(t(settlement.method.toLowerCase() as any) || settlement.method)}</Text>
+            <Text style={styles.value}>{s(settlement.method === 'SPLIT' ? 'Split Payment' : (t(settlement.method.toLowerCase() as any) || settlement.method))}</Text>
+            {settlement.method === 'SPLIT' && (
+              <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>
+                {s(`Cash: ${cashAmount.toFixed(2)} SAR`)} / {s(`Net: ${networkAmount.toFixed(2)} SAR`)}
+              </Text>
+            )}
           </View>
         </View>
 

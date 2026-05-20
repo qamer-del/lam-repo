@@ -42,6 +42,7 @@ export async function factoryReset() {
 
   try {
     await prisma.$transaction([
+      prisma.warrantyReplacement.deleteMany(),
       prisma.warranty.deleteMany(),
       prisma.purchaseOrderItem.deleteMany(),
       prisma.stockMovement.deleteMany(),

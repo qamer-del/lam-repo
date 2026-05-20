@@ -32,6 +32,8 @@ export function SalarySettlementDocument({
   totalAdvances = 0, 
   netPaid = 0,
   paymentMethod = 'CASH',
+  cashAmount,
+  networkAmount,
   locale = 'en'
 }: { 
   staffName: string, 
@@ -46,7 +48,9 @@ export function SalarySettlementDocument({
   advances: any[], 
   totalAdvances: number, 
   netPaid: number,
-  paymentMethod: 'CASH' | 'NETWORK',
+  paymentMethod: 'CASH' | 'NETWORK' | 'SPLIT',
+  cashAmount?: number,
+  networkAmount?: number,
   locale?: 'en' | 'ar' | string
 }) {
   if (month === undefined || year === undefined) return null;
@@ -101,7 +105,14 @@ export function SalarySettlementDocument({
           </View>
           <View style={styles.infoBox}>
             <Text style={styles.label}>{s(t('paymentMethod'))}</Text>
-            <Text style={[styles.value, { color: paymentMethod === 'NETWORK' ? '#7c3aed' : '#2563eb' }]}>{s(t(paymentMethod.toLowerCase() as any) || paymentMethod)}</Text>
+            <Text style={[styles.value, { color: paymentMethod === 'NETWORK' ? '#7c3aed' : paymentMethod === 'SPLIT' ? '#059669' : '#2563eb' }]}>
+              {s(paymentMethod === 'SPLIT' ? 'Split Payment' : (t(paymentMethod.toLowerCase() as any) || paymentMethod))}
+            </Text>
+            {paymentMethod === 'SPLIT' && (
+              <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>
+                {s(`Cash: ${(cashAmount || 0).toFixed(2)} SAR`)} / {s(`Net: ${(networkAmount || 0).toFixed(2)} SAR`)}
+              </Text>
+            )}
           </View>
         </View>
 

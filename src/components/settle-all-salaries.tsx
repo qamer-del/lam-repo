@@ -100,7 +100,7 @@ export function SettleAllSalaries() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CASH">Cash Settlement (Drawer)</SelectItem>
+                      <SelectItem value="CASH">Cash Settlement (Salary Fund)</SelectItem>
                       <SelectItem value="NETWORK">Bank Transfer / Network</SelectItem>
                     </SelectContent>
                   </Select>

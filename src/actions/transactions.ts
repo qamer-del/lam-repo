@@ -134,7 +134,9 @@ export async function getDashboardData() {
       if (tx.method === 'TABBY' && isActiveInDrawer) tabbyBalance -= tx.amount
       if (tx.method === 'TAMARA' && isActiveInDrawer) tamaraBalance -= tx.amount
     } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'AGENT_PURCHASE', 'SALARY_PAYMENT'].includes(tx.type)) {
-      if (tx.method === 'CASH' && isActiveInDrawer) cashInDrawer -= tx.amount
+      if (tx.method === 'CASH' && isActiveInDrawer) {
+        if (tx.type !== 'SALARY_PAYMENT') cashInDrawer -= tx.amount
+      }
       else if (tx.method === 'NETWORK' && isActiveInDrawer) networkSales -= tx.amount
       else if (tx.method === 'TABBY' && isActiveInDrawer) tabbyBalance -= tx.amount
       else if (tx.method === 'TAMARA' && isActiveInDrawer) tamaraBalance -= tx.amount
@@ -246,7 +248,7 @@ export async function getShiftSummary(shiftId: number) {
       }
     } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type)) {
       if (tx.method === 'CASH') {
-        expectedCash -= tx.amount
+        if (tx.type !== 'SALARY_PAYMENT') expectedCash -= tx.amount
       }
     }
   })
@@ -451,7 +453,7 @@ export async function recordRefund(data: {
   })
 }
 
-export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK', deductOverdueCredit?: boolean, absenceHours?: number, absenceDeduction?: number }) {
+export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK' | 'SPLIT', cashAmount?: number, networkAmount?: number, deductOverdueCredit?: boolean, absenceHours?: number, absenceDeduction?: number }) {
   const session = await auth()
   if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN' && session?.user?.role !== 'OWNER') {
     throw new Error("Unauthorized")
@@ -518,7 +520,7 @@ export async function settleSalary(data: { staffId: number, month: number, year:
       absenceHours: absenceHours,
       absenceDeduction: absenceDeduction,
       netPaid: netPaid,
-      method: data.method,
+      method: data.method === 'SPLIT' ? 'CASH' : data.method,
       transactions: {
         connect: staff.transactions.map(tx => ({ id: tx.id }))
       }
@@ -557,7 +559,7 @@ export async function settleSalary(data: { staffId: number, month: number, year:
         data: {
           type: 'SALE',
           amount: remaining,
-          method: data.method,
+          method: data.method === 'SPLIT' ? 'CASH' : data.method,
           description: `[SETTLEMENT] Paid via Staff Salary Deduction (${staff.name})`,
           recordedById: session.user.id,
           linkedTransactionId: tx.id,
@@ -576,21 +578,64 @@ export async function settleSalary(data: { staffId: number, month: number, year:
   }
 
   // 3. Record final SALARY_PAYMENT if netPaid > 0
-  let paymentTransaction = null
+  let paymentTransaction: any = null
+  const paymentTransactions: any[] = []
   if (netPaid > 0) {
-    paymentTransaction = await prisma.transaction.create({
-      data: {
-        type: 'SALARY_PAYMENT',
-        amount: netPaid,
-        method: data.method,
-        description: `Final payout for period ${data.month}/${data.year}`,
-        staffId: data.staffId,
-        recordedById: session.user.id,
-        isSettled: true,
-        salarySettlementId: salarySettlement.id
-      },
-      include: { recordedBy: { select: { name: true } } }
-    })
+    if (data.method === 'SPLIT') {
+      const cashAmt = data.cashAmount || 0;
+      const netAmt = data.networkAmount || 0;
+
+      if (cashAmt > 0) {
+        const cashTx = await prisma.transaction.create({
+          data: {
+            type: 'SALARY_PAYMENT',
+            amount: cashAmt,
+            method: 'CASH',
+            description: `Final payout (Cash portion) for period ${data.month}/${data.year}`,
+            staffId: data.staffId,
+            recordedById: session.user.id,
+            isSettled: true,
+            salarySettlementId: salarySettlement.id
+          },
+          include: { recordedBy: { select: { name: true } } }
+        })
+        paymentTransaction = cashTx
+        paymentTransactions.push(cashTx)
+      }
+
+      if (netAmt > 0) {
+        const netTx = await prisma.transaction.create({
+          data: {
+            type: 'SALARY_PAYMENT',
+            amount: netAmt,
+            method: 'NETWORK',
+            description: `Final payout (Network portion) for period ${data.month}/${data.year}`,
+            staffId: data.staffId,
+            recordedById: session.user.id,
+            isSettled: true,
+            salarySettlementId: salarySettlement.id
+          },
+          include: { recordedBy: { select: { name: true } } }
+        })
+        if (!paymentTransaction) paymentTransaction = netTx
+        paymentTransactions.push(netTx)
+      }
+    } else {
+      paymentTransaction = await prisma.transaction.create({
+        data: {
+          type: 'SALARY_PAYMENT',
+          amount: netPaid,
+          method: data.method as 'CASH' | 'NETWORK',
+          description: `Final payout for period ${data.month}/${data.year}`,
+          staffId: data.staffId,
+          recordedById: session.user.id,
+          isSettled: true,
+          salarySettlementId: salarySettlement.id
+        },
+        include: { recordedBy: { select: { name: true } } }
+      })
+      paymentTransactions.push(paymentTransaction)
+    }
   }
 
   // 4. Mark advances as settled
@@ -603,7 +648,13 @@ export async function settleSalary(data: { staffId: number, month: number, year:
 
   revalidatePath('/')
   revalidatePath('/staff')
-  return { ...salarySettlement, paymentTransaction }
+  return { 
+    ...salarySettlement, 
+    paymentTransaction,
+    paymentTransactions,
+    cashAmount: data.method === 'SPLIT' ? data.cashAmount : undefined,
+    networkAmount: data.method === 'SPLIT' ? data.networkAmount : undefined
+  }
 }
 
 export async function settleAllSalaries(data: { month: number, year: number, method: 'CASH' | 'NETWORK' }) {
@@ -706,7 +757,9 @@ export async function createSettlement(actualCashCounted: number) {
     if (tx.description?.includes('[DRAWER_NEUTRAL]')) return acc;
     if (tx.type === 'SALE' && tx.method === 'CASH') return acc + tx.amount;
     if (tx.type === 'RETURN' && tx.method === 'CASH') return acc - tx.amount;
-    if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type) && tx.method === 'CASH') return acc - tx.amount;
+    if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type) && tx.method === 'CASH') {
+      if (tx.type !== 'SALARY_PAYMENT') return acc - tx.amount;
+    }
     return acc;
   }, 0)
 
@@ -786,7 +839,9 @@ export async function createCashierHandover(actualCashCounted: number) {
     if (tx.description?.includes('[DRAWER_NEUTRAL]')) return acc;
     if (tx.type === 'SALE' && tx.method === 'CASH') return acc + tx.amount;
     if (tx.type === 'RETURN' && tx.method === 'CASH') return acc - tx.amount;
-    if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type) && tx.method === 'CASH') return acc - tx.amount;
+    if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type) && tx.method === 'CASH') {
+      if (tx.type !== 'SALARY_PAYMENT') return acc - tx.amount;
+    }
     return acc;
   }, 0)
 

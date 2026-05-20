@@ -15,6 +15,7 @@ import { settleSalary } from '@/actions/transactions'
 import { getStaffOverdueCredits } from '@/actions/staff'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { useRouter } from 'next/navigation'
 import { ModernLoader } from './ui/modern-loader'
 import { PDFDownloadLink } from '@react-pdf/renderer'
@@ -48,11 +49,26 @@ export function SalarySettlementModal({
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [method, setMethod] = useState<'CASH' | 'NETWORK'>('CASH')
+  const [method, setMethod] = useState<'CASH' | 'NETWORK' | 'SPLIT'>('CASH')
+  const [cashAmount, setCashAmount] = useState<string>('')
+  const [networkAmount, setNetworkAmount] = useState<string>('')
   const [settledData, setSettledData] = useState<any>(null)
   const [overdueInfo, setOverdueInfo] = useState<{count: number, total: number, invoices: any[]} | null>(null)
   const [deductOverdueCredit, setDeductOverdueCredit] = useState(false)
   const [showInvoices, setShowInvoices] = useState(false)
+
+  const currentNetPayable = netPaid - (deductOverdueCredit && overdueInfo ? overdueInfo.total : 0)
+
+  useEffect(() => {
+    if (method === 'SPLIT') {
+      const half = (currentNetPayable / 2).toFixed(2)
+      setCashAmount(half)
+      setNetworkAmount((currentNetPayable - parseFloat(half)).toFixed(2))
+    } else {
+      setCashAmount('')
+      setNetworkAmount('')
+    }
+  }, [method, currentNetPayable])
 
   useEffect(() => {
     if (open) {
@@ -63,6 +79,22 @@ export function SalarySettlementModal({
     }
   }, [open, staff.id])
 
+  const handleCashAmountChange = (val: string) => {
+    setCashAmount(val)
+    const num = parseFloat(val)
+    if (!isNaN(num) && num >= 0 && num <= currentNetPayable) {
+      setNetworkAmount((currentNetPayable - num).toFixed(2))
+    }
+  }
+
+  const handleNetworkAmountChange = (val: string) => {
+    setNetworkAmount(val)
+    const num = parseFloat(val)
+    if (!isNaN(num) && num >= 0 && num <= currentNetPayable) {
+      setCashAmount((currentNetPayable - num).toFixed(2))
+    }
+  }
+
   const handleSettle = async () => {
     setLoading(true)
     try {
@@ -72,13 +104,15 @@ export function SalarySettlementModal({
         month: now.getMonth() + 1,
         year: now.getFullYear(),
         method,
+        cashAmount: method === 'SPLIT' ? parseFloat(cashAmount) : undefined,
+        networkAmount: method === 'SPLIT' ? parseFloat(networkAmount) : undefined,
         deductOverdueCredit,
         absenceHours: absenceHours || 0,
         absenceDeduction: absenceDeduction || 0,
       })
       setSettledData(res)
       toast.success('Salary Settled', {
-        description: `Successfully settled salary for ${staff.name}. Net payout: ${netPaid.toFixed(2)} SAR.`,
+        description: `Successfully settled salary for ${staff.name}. Net payout: ${(netPaid - (deductOverdueCredit && overdueInfo ? overdueInfo.total : 0)).toFixed(2)} SAR.`,
       })
       
       // Update store for real-time ledger sync
@@ -87,7 +121,9 @@ export function SalarySettlementModal({
         (t.staffId === staff.id && !t.isSettled) ? { ...t, isSettled: true } : t
       )
       setVaultData({ transactions: updatedTxs })
-      if (res && res.paymentTransaction) {
+      if (res && res.paymentTransactions && res.paymentTransactions.length > 0) {
+        res.paymentTransactions.forEach((tx: any) => addTransaction(tx as Transaction))
+      } else if (res && res.paymentTransaction) {
         addTransaction(res.paymentTransaction as Transaction)
       }
     } catch (error) {
@@ -221,13 +257,74 @@ export function SalarySettlementModal({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="CASH">Cash Payment (Drawer)</SelectItem>
+                      <SelectItem value="CASH">Cash Payment (Salary Fund)</SelectItem>
                       <SelectItem value="NETWORK">Network / Bank Transfer</SelectItem>
+                      <SelectItem value="SPLIT">Split Payment (Cash + Network)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <Button onClick={handleSettle} className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">
+                {method === 'SPLIT' && (
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl animate-in fade-in-50 slide-in-from-top-2 duration-200">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase text-gray-400">Cash Portion (SAR)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max={currentNetPayable}
+                        step="0.01"
+                        value={cashAmount}
+                        onChange={(e) => handleCashAmountChange(e.target.value)}
+                        className="rounded-xl border-emerald-100 focus-visible:ring-emerald-500 font-bold bg-white dark:bg-black/20"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase text-gray-400">Network Portion (SAR)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max={currentNetPayable}
+                        step="0.01"
+                        value={networkAmount}
+                        onChange={(e) => handleNetworkAmountChange(e.target.value)}
+                        className="rounded-xl border-emerald-100 focus-visible:ring-emerald-500 font-bold bg-white dark:bg-black/20"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="col-span-2 text-center pt-1">
+                      {(() => {
+                        const cash = parseFloat(cashAmount) || 0
+                        const net = parseFloat(networkAmount) || 0
+                        const diff = Math.abs((cash + net) - currentNetPayable)
+                        if (diff > 0.01) {
+                          return (
+                            <p className="text-[10px] text-rose-500 font-semibold">
+                              Sum ({ (cash + net).toFixed(2) }) must equal Net Salary ({ currentNetPayable.toFixed(2) })
+                            </p>
+                          )
+                        }
+                        return (
+                          <p className="text-[10px] text-emerald-600 font-semibold flex items-center justify-center gap-1">
+                            <CheckCircle2 size={12} className="text-emerald-600" /> Split allocation matches net salary perfectly!
+                          </p>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                <Button 
+                  onClick={handleSettle} 
+                  disabled={
+                    method === 'SPLIT' && (() => {
+                      const cash = parseFloat(cashAmount) || 0
+                      const net = parseFloat(networkAmount) || 0
+                      return Math.abs((cash + net) - currentNetPayable) >= 0.01 || cash < 0 || net < 0
+                    })()
+                  }
+                  className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Confirm & Clear Balance
                 </Button>
               </div>
@@ -258,6 +355,8 @@ export function SalarySettlementModal({
                       totalAdvances={settledData.advancesTally}
                       netPaid={settledData.netPaid}
                       paymentMethod={settledData.method}
+                      cashAmount={settledData.cashAmount}
+                      networkAmount={settledData.networkAmount}
                     />
                   }
                   fileName={`Settlement_${staff.name}_${settledData.month}_${settledData.year}.pdf`}
