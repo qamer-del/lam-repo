@@ -1,7 +1,7 @@
 'use client'
 
 import { PDFDownloadLink } from '@react-pdf/renderer';
-import { Printer, Download } from 'lucide-react';
+import { Printer, Download, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { SalarySettlementDocument } from './salary-settlement-document';
 import { useState, useEffect } from 'react'
@@ -38,7 +38,7 @@ export function SalarySettlementPdfButton({ staffName, idNumber, nationality, se
           disabled={loading}
         >
           {loading ? (
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-emerald-600" />
+            <Loader2 size={16} className="animate-spin" />
           ) : (
             <Printer size={16} />
           )}

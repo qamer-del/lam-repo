@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Clock, Trash2, Plus, AlertTriangle } from 'lucide-react'
+import { Clock, Trash2, Plus, AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -168,10 +168,19 @@ export function AbsenceRecordModal({
             <Button
               onClick={handleAdd}
               disabled={loading || !hours || parseFloat(hours) <= 0}
-              className="w-full bg-red-600 hover:bg-red-700 gap-2 shadow-lg shadow-red-500/20"
+              className="w-full bg-red-600 hover:bg-red-700 gap-2 shadow-lg shadow-red-500/20 flex items-center justify-center"
             >
-              <Plus size={16} />
-              {loading ? 'Saving...' : 'Add Absence Record'}
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Plus size={16} />
+                  Add Absence Record
+                </>
+              )}
             </Button>
           </div>
 
@@ -197,9 +206,13 @@ export function AbsenceRecordModal({
                   <button
                     onClick={() => handleDelete(record.id)}
                     disabled={deleting === record.id}
-                    className="ml-3 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    className="ml-3 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center justify-center min-h-[30px] min-w-[30px]"
                   >
-                    <Trash2 size={14} />
+                    {deleting === record.id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
                   </button>
                 </div>
               ))}

@@ -31,7 +31,7 @@ export default function StaffPage() {
   const { data: session, status } = useSession()
   const [staff, setStaff] = useState<Staff[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   const loadData = async () => {
     setLoading(true)
@@ -50,9 +50,14 @@ export default function StaffPage() {
   }
 
   useEffect(() => {
+    // Only load once the session status is resolved — 'loading' means NextAuth
+    // is still hydrating; we must wait for 'authenticated' or 'unauthenticated'
     if (status === 'authenticated') {
       loadData()
+    } else if (status === 'unauthenticated') {
+      setLoading(false)
     }
+    // Do nothing while status === 'loading' (NextAuth hydrating)
   }, [status])
 
   return (
@@ -69,15 +74,36 @@ export default function StaffPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-32 space-y-6 animate-in fade-in duration-1000">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full border-4 border-gray-100 dark:border-gray-800" />
-            <div className="absolute top-0 left-0 w-20 h-20 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
+      {/* Show skeleton while NextAuth session is resolving OR data is loading */}
+      {(status === 'loading' || loading) ? (
+        <div className="space-y-8 animate-pulse" aria-busy="true" aria-label="Loading staff ledger...">
+          {/* Tab bar skeleton */}
+          <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-900 rounded-2xl w-full overflow-hidden">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="h-9 rounded-xl bg-gray-200 dark:bg-gray-800" style={{ width: `${60 + i * 12}px`, flexShrink: 0 }} />
+            ))}
           </div>
-          <div className="text-center space-y-2">
-            <p className="text-gray-400 font-black tracking-widest uppercase text-[10px]">Please Wait</p>
-            <p className="text-gray-900 dark:text-white font-bold">Synchronizing Ledger Data...</p>
+          {/* Summary cards skeleton */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-6 shadow-sm space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 mx-auto" />
+                <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full w-2/3 mx-auto" />
+                <div className="h-8 bg-gray-100 dark:bg-gray-800 rounded-full w-1/2 mx-auto" />
+              </div>
+            ))}
+          </div>
+          {/* Table skeleton */}
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl overflow-hidden shadow-sm">
+            <div className="h-14 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50" />
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-gray-50 dark:border-gray-800/50">
+                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded-full w-1/4" />
+                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded-full w-1/6" />
+                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded-full w-1/6" />
+                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded-full w-1/5 ml-auto" />
+              </div>
+            ))}
           </div>
         </div>
       ) : (

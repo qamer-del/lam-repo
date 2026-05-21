@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Wallet, CheckCircle2, Download, AlertTriangle, Calendar } from 'lucide-react'
+import { Wallet, CheckCircle2, Download, AlertTriangle, Calendar, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -405,14 +405,15 @@ export function SalarySettlementModal({
                 <Button 
                   onClick={handleSettle} 
                   disabled={
-                    method === 'SPLIT' && (() => {
+                    loading || (method === 'SPLIT' && (() => {
                       const cash = parseFloat(cashAmount) || 0
                       const net = parseFloat(networkAmount) || 0
                       return Math.abs((cash + net) - currentNetPayable) >= 0.01 || cash < 0 || net < 0
-                    })()
+                    })())
                   }
-                  className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg rounded-2xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
+                  {loading && <Loader2 className="h-5 w-5 animate-spin" />}
                   Confirm & Clear Balance
                 </Button>
               </div>

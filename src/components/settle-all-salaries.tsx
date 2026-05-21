@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Landmark, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Landmark, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -106,7 +106,12 @@ export function SettleAllSalaries() {
                   </Select>
                 </div>
 
-                <Button onClick={handleSettleAll} className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg shadow-xl shadow-emerald-500/20 active:scale-95 transition-all rounded-2xl">
+                <Button 
+                  onClick={handleSettleAll} 
+                  disabled={loading}
+                  className="w-full py-6 mt-4 bg-emerald-600 hover:bg-emerald-700 font-bold text-lg shadow-xl shadow-emerald-500/20 active:scale-95 transition-all rounded-2xl flex items-center justify-center gap-2"
+                >
+                  {loading && <Loader2 className="h-5 w-5 animate-spin" />}
                   Confirm Bulk Settlement
                 </Button>
               </div>

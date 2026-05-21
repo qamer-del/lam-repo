@@ -15,7 +15,7 @@ import { PdfReportButton } from './pdf-report-button'
 import { editAdvance } from '@/actions/transactions'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent } from '@/components/ui/card'
-import { User, DollarSign, Calendar, CheckCircle2, AlertCircle, Wallet, Landmark, Clock } from 'lucide-react'
+import { User, DollarSign, Calendar, CheckCircle2, AlertCircle, Wallet, Landmark, Clock, Loader2 } from 'lucide-react'
 import { SalarySettlementModal } from './salary-settlement-modal'
 import { SettleAllSalaries } from './settle-all-salaries'
 import { SalarySettlementPdfButton } from './salary-settlement-pdf-button'
@@ -97,6 +97,7 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
   const [selected, setSelected] = useState<number | null>(null)
   const [editingRow, setEditingRow] = useState<number | null>(null)
   const [editAmount, setEditAmount] = useState<string>('')
+  const [savingRow, setSavingRow] = useState<number | null>(null)
   const [overdueInfo, setOverdueInfo] = useState<{count: number, total: number, invoices: any[]} | null>(null)
 
   useEffect(() => {
@@ -108,11 +109,14 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
   }, [selected])
 
   const handleEditSave = async (txId: number) => {
+    setSavingRow(txId)
     try {
       await editAdvance(txId, parseFloat(editAmount))
       setEditingRow(null)
     } catch(e) {
       alert("Failed to edit advance. Ensure you are a system administrator.")
+    } finally {
+      setSavingRow(null)
     }
   }
 
@@ -416,12 +420,26 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
                           <div className="flex items-center gap-2">
                             <input 
                               type="number" 
-                              className="w-20 p-1 border rounded text-sm" 
+                              className="w-20 p-1 border rounded text-sm bg-white dark:bg-gray-800" 
                               value={editAmount} 
+                              disabled={savingRow === tx.id}
                               onChange={e => setEditAmount(e.target.value)} 
                             />
-                            <button onClick={() => handleEditSave(tx.id)} className="text-xs bg-blue-600 text-white px-2 py-1 rounded">Save</button>
-                            <button onClick={() => setEditingRow(null)} className="text-xs bg-gray-200 px-2 py-1 rounded">Cancel</button>
+                            <button 
+                              onClick={() => handleEditSave(tx.id)} 
+                              disabled={savingRow === tx.id}
+                              className="text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-2 py-1 rounded flex items-center gap-1 transition-all"
+                            >
+                              {savingRow === tx.id && <Loader2 className="h-3 w-3 animate-spin" />}
+                              Save
+                            </button>
+                            <button 
+                              onClick={() => setEditingRow(null)} 
+                              disabled={savingRow === tx.id}
+                              className="text-xs bg-gray-200 hover:bg-gray-300 disabled:opacity-50 px-2 py-1 rounded transition-all"
+                            >
+                              Cancel
+                            </button>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
@@ -521,13 +539,16 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
                       <div className="flex gap-2">
                         <button 
                           onClick={() => handleEditSave(tx.id)} 
-                          className="flex-1 py-3 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                          disabled={savingRow === tx.id}
+                          className="flex-1 py-3 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
                         >
+                          {savingRow === tx.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                           Save Changes
                         </button>
                         <button 
                           onClick={() => setEditingRow(null)} 
-                          className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-xl active:scale-95 transition-all"
+                          disabled={savingRow === tx.id}
+                          className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-xl active:scale-95 disabled:opacity-50 transition-all"
                         >
                           Cancel
                         </button>
