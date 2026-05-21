@@ -25,6 +25,9 @@ export function SalarySettlementDocument({
   month, 
   year, 
   baseSalary = 0, 
+  earnedSalary,
+  workedDays,
+  totalDays,
   overtimeAllowance = 0,
   transportAllowance = 0,
   otherAllowance = 0,
@@ -41,7 +44,10 @@ export function SalarySettlementDocument({
   nationality?: string,
   month: number, 
   year: number, 
-  baseSalary: number, 
+  baseSalary: number,
+  earnedSalary?: number,
+  workedDays?: number,
+  totalDays?: number,
   overtimeAllowance?: number,
   transportAllowance?: number,
   otherAllowance?: number,
@@ -137,6 +143,13 @@ export function SalarySettlementDocument({
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>{s(t('otherAllowance'))}</Text>
               <Text style={styles.totalValue}>{s(otherAllowance.toFixed(2))}</Text>
+            </View>
+          )}
+          {/* Pro-ration row: only shown when a partial month is settled */}
+          {workedDays !== undefined && totalDays !== undefined && workedDays < totalDays && (
+            <View style={[styles.totalRow, { backgroundColor: '#eff6ff', paddingVertical: 4, paddingHorizontal: 6, borderRadius: 4, marginTop: 4 }]}>
+              <Text style={[styles.totalLabel, { color: '#2563eb' }]}>Pro-rated ({workedDays}/{totalDays} days)</Text>
+              <Text style={[styles.totalValue, { color: '#2563eb' }]}>{s((earnedSalary ?? baseSalary).toFixed(2))}</Text>
             </View>
           )}
           <View style={styles.totalRow}>

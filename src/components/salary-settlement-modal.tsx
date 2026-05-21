@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Wallet, CheckCircle2, Download, AlertTriangle } from 'lucide-react'
+import { Wallet, CheckCircle2, Download, AlertTriangle, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,6 +23,22 @@ import { SalarySettlementDocument } from './salary-settlement-pdf'
 import { toast } from 'sonner'
 import { useStore, Transaction } from '@/store/useStore'
 
+// Calculate pro-rated earned salary using daily rate method
+function calcProRation(monthlySalary: number, upToDate: Date, month: number, year: number, joiningDate?: Date | null) {
+  const totalDays = new Date(year, month, 0).getDate() // total calendar days in month
+  let startDay = 1
+  if (joiningDate) {
+    const jd = new Date(joiningDate)
+    if (jd.getFullYear() === year && jd.getMonth() + 1 === month) {
+      startDay = jd.getDate()
+    }
+  }
+  const upToDay = Math.min(upToDate.getDate(), totalDays)
+  const workedDays = Math.max(1, upToDay - startDay + 1)
+  const earnedSalary = parseFloat(((monthlySalary / totalDays) * workedDays).toFixed(2))
+  return { totalDays, workedDays, earnedSalary, startDay }
+}
+
 export function SalarySettlementModal({ 
   staff, 
   advances, 
@@ -37,7 +53,8 @@ export function SalarySettlementModal({
     baseSalary: number,
     overtimeAllowance?: number,
     transportAllowance?: number,
-    otherAllowance?: number
+    otherAllowance?: number,
+    joiningDate?: Date | null
   },
   advances: any[],
   totalAdvances: number,
@@ -57,7 +74,25 @@ export function SalarySettlementModal({
   const [deductOverdueCredit, setDeductOverdueCredit] = useState(false)
   const [showInvoices, setShowInvoices] = useState(false)
 
-  const currentNetPayable = netPaid - (deductOverdueCredit && overdueInfo ? overdueInfo.total : 0)
+  // Settle-up-to date (defaults to today)
+  const today = new Date()
+  const [settledUpToDate, setSettledUpToDate] = useState<Date>(today)
+
+  // Pro-ration values (computed from the settle-up-to date)
+  const now = settledUpToDate
+  const totalMonthlySalary = staff.baseSalary + (staff.overtimeAllowance || 0) + (staff.transportAllowance || 0) + (staff.otherAllowance || 0)
+  const { totalDays, workedDays, earnedSalary } = calcProRation(
+    totalMonthlySalary,
+    now,
+    now.getMonth() + 1,
+    now.getFullYear(),
+    staff.joiningDate
+  )
+  const isFullMonth = workedDays === totalDays
+
+  const overdueDeduction = deductOverdueCredit && overdueInfo ? overdueInfo.total : 0
+  const absenceAmt = absenceDeduction || 0
+  const currentNetPayable = earnedSalary - absenceAmt - totalAdvances - overdueDeduction
 
   useEffect(() => {
     if (method === 'SPLIT') {
@@ -98,21 +133,21 @@ export function SalarySettlementModal({
   const handleSettle = async () => {
     setLoading(true)
     try {
-      const now = new Date()
       const res = await settleSalary({
         staffId: staff.id,
-        month: now.getMonth() + 1,
-        year: now.getFullYear(),
+        month: settledUpToDate.getMonth() + 1,
+        year: settledUpToDate.getFullYear(),
         method,
         cashAmount: method === 'SPLIT' ? parseFloat(cashAmount) : undefined,
         networkAmount: method === 'SPLIT' ? parseFloat(networkAmount) : undefined,
         deductOverdueCredit,
         absenceHours: absenceHours || 0,
         absenceDeduction: absenceDeduction || 0,
+        settledUpToDate,
       })
       setSettledData(res)
       toast.success('Salary Settled', {
-        description: `Successfully settled salary for ${staff.name}. Net payout: ${(netPaid - (deductOverdueCredit && overdueInfo ? overdueInfo.total : 0)).toFixed(2)} SAR.`,
+        description: `Successfully settled salary for ${staff.name}. Net payout: ${currentNetPayable.toFixed(2)} SAR.`,
       })
       
       // Update store for real-time ledger sync
@@ -162,6 +197,46 @@ export function SalarySettlementModal({
                   </p>
                 </div>
 
+                {/* ── Settle Up To Date Picker ─── */}
+                <div className="bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={15} className="text-blue-500" />
+                    <span className="text-[10px] font-black uppercase text-blue-500 tracking-widest">Settlement Period</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-[10px] text-gray-400 font-bold uppercase">Paid up to date</Label>
+                      <input
+                        type="date"
+                        className="w-full rounded-xl border border-blue-100 dark:border-blue-900/40 bg-white dark:bg-black/20 px-3 py-2 text-sm font-bold text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        value={settledUpToDate.toISOString().split('T')[0]}
+                        max={today.toISOString().split('T')[0]}
+                        onChange={(e) => {
+                          const d = new Date(e.target.value + 'T12:00:00')
+                          if (!isNaN(d.getTime())) setSettledUpToDate(d)
+                        }}
+                      />
+                    </div>
+                    <div className="text-center">
+                      <div className={`text-2xl font-black ${isFullMonth ? 'text-emerald-600' : 'text-blue-600'}`}>
+                        {workedDays}<span className="text-sm font-medium text-gray-400">/{totalDays}</span>
+                      </div>
+                      <div className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">Days Worked</div>
+                    </div>
+                  </div>
+                  {!isFullMonth && (
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                      Pro-rated salary: <strong>{earnedSalary.toFixed(2)} SAR</strong> ({workedDays}/{totalDays} days × {totalMonthlySalary.toFixed(2)} SAR/month)
+                    </p>
+                  )}
+                  {isFullMonth && (
+                    <p className="text-[10px] text-emerald-600 font-medium">
+                      ✓ Full month — paying 100% of monthly salary ({totalMonthlySalary.toFixed(2)} SAR)
+                    </p>
+                  )}
+                </div>
+
+                {/* ── Salary Breakdown ─── */}
                 <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl space-y-2">
                   <div className="flex justify-between text-[10px]">
                     <span className="text-gray-400 font-bold uppercase">{t('baseSalary')}</span>
@@ -185,6 +260,13 @@ export function SalarySettlementModal({
                       <span className="font-bold">{staff.otherAllowance?.toFixed(2)}</span>
                     </div>
                   )}
+                  {/* Show pro-ration row only when not a full month */}
+                  {!isFullMonth && (
+                    <div className="flex justify-between text-[10px] border-t border-blue-100 dark:border-blue-900/30 pt-2">
+                      <span className="text-blue-500 font-bold uppercase">Pro-rated ({workedDays}/{totalDays} days)</span>
+                      <span className="font-bold text-blue-600">{earnedSalary.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm pt-1 border-t border-gray-100 dark:border-gray-800">
                     <span className="text-gray-500 font-bold uppercase text-[10px]">{t('advancesDeducted') || 'Advances Deducted'}</span>
                     <span className="font-bold text-red-500">- {totalAdvances.toFixed(2)}</span>
@@ -195,10 +277,16 @@ export function SalarySettlementModal({
                       <span className="font-bold text-rose-500">- {(absenceDeduction || 0).toFixed(2)}</span>
                     </div>
                   )}
+                  {overdueDeduction > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span className="text-gray-400 font-bold uppercase">Overdue Credit Deduction</span>
+                      <span className="font-bold text-rose-500">- {overdueDeduction.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="pt-2 border-t border-gray-200 dark:border-gray-800 flex justify-between">
                     <span className="text-emerald-600 font-black uppercase text-xs">{t('netSalary')}</span>
                     <span className="text-xl font-black text-emerald-600">
-                      {(netPaid - (deductOverdueCredit && overdueInfo ? overdueInfo.total : 0)).toFixed(2)}
+                      {currentNetPayable.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -348,6 +436,9 @@ export function SalarySettlementModal({
                       month={settledData.month}
                       year={settledData.year}
                       baseSalary={settledData.baseSalary}
+                      earnedSalary={settledData.earnedSalary}
+                      workedDays={settledData.workedDays}
+                      totalDays={settledData.totalDays}
                       overtimeAllowance={staff.overtimeAllowance}
                       transportAllowance={staff.transportAllowance}
                       otherAllowance={staff.otherAllowance}

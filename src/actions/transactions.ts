@@ -453,7 +453,7 @@ export async function recordRefund(data: {
   })
 }
 
-export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK' | 'SPLIT', cashAmount?: number, networkAmount?: number, deductOverdueCredit?: boolean, absenceHours?: number, absenceDeduction?: number }) {
+export async function settleSalary(data: { staffId: number, month: number, year: number, method: 'CASH' | 'NETWORK' | 'SPLIT', cashAmount?: number, networkAmount?: number, deductOverdueCredit?: boolean, absenceHours?: number, absenceDeduction?: number, settledUpToDate?: Date }) {
   const session = await auth()
   if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN' && session?.user?.role !== 'OWNER') {
     throw new Error("Unauthorized")
@@ -503,11 +503,33 @@ export async function settleSalary(data: { staffId: number, month: number, year:
   }
 
   const finalAdvancesTally = totalAdvances + totalOverdueRemaining
-  // Calculate total salary (base + allowances) — always full month
+
+  // ── Pro-Ration Calculation (Daily Rate Method) ────────────────────────────
+  // Formula: Earned Salary = (Monthly Salary / Calendar Days in Month) × Days Worked
+  // This is the Saudi Labor Law standard for partial-month salary calculations.
+  const upToDate = data.settledUpToDate ? new Date(data.settledUpToDate) : new Date()
+  // Calculate total days in the settlement month
+  const totalDaysInMonth = new Date(data.year, data.month, 0).getDate() // e.g. 31 for May
+  // Days worked = from the 1st of the month (or joining date if this is their first month)
+  let startDay = 1
+  if (staff.joiningDate) {
+    const jd = new Date(staff.joiningDate)
+    if (jd.getFullYear() === data.year && jd.getMonth() + 1 === data.month) {
+      startDay = jd.getDate() // They joined mid-month, start from joining day
+    }
+  }
+  // Days worked = upToDate day - startDay + 1, capped at totalDaysInMonth
+  const upToDay = Math.min(upToDate.getDate(), totalDaysInMonth)
+  const workedDays = Math.max(1, upToDay - startDay + 1)
+
+  // Full monthly salary (base + allowances)
   const totalSalary = staff.baseSalary + (staff.overtimeAllowance || 0) + (staff.transportAllowance || 0) + (staff.otherAllowance || 0)
+  // Pro-rated earned salary
+  const earnedSalary = parseFloat(((totalSalary / totalDaysInMonth) * workedDays).toFixed(2))
+
   const absenceDeduction = data.absenceDeduction || 0
   const absenceHours = data.absenceHours || 0
-  const netPaid = totalSalary - absenceDeduction - finalAdvancesTally
+  const netPaid = earnedSalary - absenceDeduction - finalAdvancesTally
 
   // 2. Create SalarySettlement record
   const salarySettlement = await prisma.salarySettlement.create({
@@ -515,7 +537,11 @@ export async function settleSalary(data: { staffId: number, month: number, year:
       staffId: data.staffId,
       month: data.month,
       year: data.year,
-      baseSalary: totalSalary,
+      baseSalary: totalSalary,        // Full monthly salary (for reference)
+      earnedSalary: earnedSalary,     // Pro-rated earned amount
+      workedDays: workedDays,
+      totalDays: totalDaysInMonth,
+      settledUpToDate: upToDate,
       advancesTally: finalAdvancesTally,
       absenceHours: absenceHours,
       absenceDeduction: absenceDeduction,

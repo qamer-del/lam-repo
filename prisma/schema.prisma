@@ -115,6 +115,7 @@ model Staff {
   transportAllowance Float             @default(0)
   otherAllowance    Float              @default(0)
   monthlyHours      Float              @default(208) // Expected working hours per month
+  joiningDate       DateTime?          // Used to prorate salary for first partial month
   isActive          Boolean            @default(true)
   userId            String?            @unique
   user              User?              @relation(fields: [userId], references: [id])
@@ -237,7 +238,11 @@ model SalarySettlement {
   staff             Staff         @relation(fields: [staffId], references: [id])
   month             Int
   year              Int
-  baseSalary        Float
+  baseSalary        Float         // Full monthly salary (before pro-ration)
+  earnedSalary      Float?        // Pro-rated earned salary (= baseSalary * workedDays/totalDays)
+  workedDays        Int?          // Number of days worked this settlement period
+  totalDays         Int?          // Total calendar days in the settlement month
+  settledUpToDate   DateTime?     // The exact date the settlement covers up to
   advancesTally     Float
   absenceHours      Float         @default(0)
   absenceDeduction  Float         @default(0)

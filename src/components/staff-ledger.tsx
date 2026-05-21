@@ -30,6 +30,9 @@ type SalarySettlement = {
   month: number
   year: number
   baseSalary: number
+  earnedSalary?: number
+  workedDays?: number
+  totalDays?: number
   advancesTally: number
   absenceHours?: number
   absenceDeduction?: number
@@ -55,6 +58,7 @@ type Staff = {
   transportAllowance?: number
   otherAllowance?: number
   monthlyHours?: number
+  joiningDate?: Date | null
   isActive: boolean
   idNumber?: string
   nationality?: string
