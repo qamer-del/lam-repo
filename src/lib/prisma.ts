@@ -6,12 +6,8 @@ import { Pool } from 'pg'
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL
-  if (!connectionString) {
-    // Provide a dummy connection string during compilation/build time to prevent failures
-    process.env.DATABASE_URL = 'postgresql://dummy:dummy@localhost:5432/dummy'
-    return new PrismaClient()
-  }
+  // Use the real connection string if available, or a dummy string for build-time compilation
+  const connectionString = process.env.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy'
   
   const pool = new Pool({ connectionString })
   const adapter = new PrismaPg(pool)
