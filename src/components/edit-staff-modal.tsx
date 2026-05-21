@@ -54,9 +54,18 @@ export function EditStaffModal({ staff, onUpdated }: EditStaffModalProps) {
 
   useEffect(() => {
     if (open) {
+      setName(staff.name)
+      setSalary(staff.baseSalary.toString())
+      setOvertime((staff.overtimeAllowance || 0).toString())
+      setTransport((staff.transportAllowance || 0).toString())
+      setOther((staff.otherAllowance || 0).toString())
+      setMonthlyHoursInput((staff.monthlyHours || 208).toString())
+      setIdNumber(staff.idNumber || '')
+      setNationality(staff.nationality || '')
+      setUserId(staff.userId || 'none')
       getUsers().then(setUsers).catch(console.error)
     }
-  }, [open])
+  }, [open, staff])
 
   const baseSal = parseFloat(salary) || 0
   const overtimeAllow = parseFloat(overtime) || 0
