@@ -130,4 +130,10 @@
   }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .safe-area-top {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
 }

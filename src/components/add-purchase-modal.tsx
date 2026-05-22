@@ -320,35 +320,40 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
     <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) reset() }}>
       <DialogTrigger render={
         <button className={cn(
-          'inline-flex items-center gap-2 rounded-2xl px-5 h-11 text-sm font-black bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all active:scale-95',
+          'inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl px-3 sm:px-5 font-black bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 transition-all active:scale-95 min-w-0 shrink',
           triggerClassName
         )} />
       }>
-        <ShoppingCart size={16} />
-        {t('addPurchase')}
+        <ShoppingCart size={16} className="shrink-0" />
+        <span className="truncate text-center leading-tight">{t('addPurchase')}</span>
       </DialogTrigger>
 
-      {/* Redesigned dialogue screen style (max-w-[98vw] sm:max-w-[95vw] lg:max-w-6xl w-full h-[95vh] sm:h-[90vh]) */}
-      <DialogContent className="max-w-[98vw] sm:max-w-[95vw] lg:max-w-6xl w-full h-[95vh] sm:h-[90vh] p-0 border-none shadow-3xl rounded-[2rem] sm:rounded-[3rem] bg-white dark:bg-gray-950 flex flex-col overflow-hidden font-sans">
+      <DialogContent className={cn(
+        "w-full max-w-none p-0 border-none shadow-3xl bg-white dark:bg-gray-950 flex flex-col overflow-hidden font-sans",
+        "fixed inset-x-0 bottom-0 top-auto left-0 translate-x-0 translate-y-0 rounded-t-[1.75rem] rounded-b-none",
+        "h-[100dvh] max-h-[100dvh]",
+        "sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:-translate-x-1/2 sm:-translate-y-1/2",
+        "sm:max-w-[95vw] sm:rounded-[2rem] lg:max-w-6xl lg:rounded-[3rem] sm:h-[90vh] sm:max-h-[92vh]"
+      )}>
         
-        {/* Header - Screen Layout */}
-        <div className="p-6 sm:p-8 border-b border-gray-100 dark:border-gray-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
-          <div className="space-y-1">
-            <DialogTitle className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl shrink-0">
-                <ShoppingCart size={22} strokeWidth={2.5} />
+        {/* Header */}
+        <div className="p-4 sm:p-6 md:p-8 border-b border-gray-100 dark:border-gray-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 shrink-0 safe-area-top">
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <DialogTitle className="text-lg sm:text-2xl font-black tracking-tight text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
+              <div className="p-2 sm:p-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl sm:rounded-2xl shrink-0">
+                <ShoppingCart size={20} strokeWidth={2.5} className="sm:w-[22px] sm:h-[22px]" />
               </div>
-              <div>
-                <span>{step === 'form' ? 'Purchase Order Workflow' : 'Post-Purchase Barcode Labels'}</span>
-                <p className="text-xs font-semibold text-gray-400 mt-0.5">
-                  {step === 'form' ? 'Record inventory purchase items and balance stock' : 'Manage and print barcode labels for incoming stock'}
+              <div className="min-w-0">
+                <span className="block leading-tight">{step === 'form' ? 'Purchase Order' : 'Barcode Labels'}</span>
+                <p className="text-[11px] sm:text-xs font-semibold text-gray-400 mt-0.5 line-clamp-2">
+                  {step === 'form' ? 'Record inventory purchase items and balance stock' : 'Print barcode labels for incoming stock'}
                 </p>
               </div>
             </DialogTitle>
           </div>
 
           {/* Steps Stepper */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300",
               step === 'form' ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105" : "bg-emerald-500 text-white"
@@ -367,14 +372,13 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
 
         {/* ── FORM STEP ── */}
         {step === 'form' && (
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0 bg-gray-50/50 dark:bg-gray-900/30">
+          <div className="flex-1 overflow-y-auto lg:overflow-hidden min-h-0 flex flex-col lg:flex-row bg-gray-50/50 dark:bg-gray-900/30">
             
-            {/* Left Side Panel: Purchase Settings & Summary */}
-            <div className="w-full lg:w-[360px] p-6 sm:p-8 lg:border-r border-gray-100 dark:border-gray-900 overflow-y-auto space-y-6 shrink-0 bg-white dark:bg-gray-950 flex flex-col justify-between">
-              <div className="space-y-6">
+            {/* Settings — after line items on mobile */}
+            <div className="order-2 lg:order-1 w-full lg:w-[360px] shrink-0 lg:shrink-0 p-4 sm:p-6 lg:p-8 lg:border-r border-gray-100 dark:border-gray-900 lg:overflow-y-auto bg-white dark:bg-gray-950 border-t lg:border-t-0 border-gray-100 dark:border-gray-900">
+              <div className="space-y-5 sm:space-y-6 max-w-md lg:max-w-none mx-auto lg:mx-0">
                 <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">{t('settings') || 'Purchase Settings'}</h3>
                 
-                {/* Supplier */}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('supplier')}</Label>
                   <SupplierPicker
@@ -385,26 +389,24 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
                   />
                 </div>
 
-                {/* Method */}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('method')}</Label>
-                  <div className="grid grid-cols-3 gap-1.5 bg-gray-100 dark:bg-gray-900 p-1.5 rounded-2xl h-12">
+                  <div className="grid grid-cols-3 gap-2 bg-gray-100 dark:bg-gray-900 p-2 rounded-2xl">
                     {[
                       { key: 'CASH', icon: DollarSign, color: 'text-emerald-600' },
                       { key: 'NETWORK', icon: Wifi, color: 'text-blue-600' },
                       { key: 'CREDIT', icon: Users, color: 'text-amber-600' },
                     ].map(({ key, icon: Icon, color }) => (
                       <button key={key} type="button" onClick={() => setMethod(key as any)}
-                        className={cn('flex items-center justify-center gap-1.5 rounded-xl text-xs font-black transition-all',
+                        className={cn('flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2.5 sm:py-0 sm:h-12 rounded-xl text-[10px] sm:text-xs font-black transition-all min-w-0',
                           method === key ? `bg-white dark:bg-gray-950 ${color} shadow-sm` : 'text-gray-400 hover:text-gray-600'
                         )}>
-                        <Icon size={13} />{key}
+                        <Icon size={14} className="shrink-0" />{key}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Notes */}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">{t('description')}</Label>
                   <textarea
@@ -412,48 +414,47 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
                     value={note}
                     onChange={e => setNote(e.target.value)}
                     rows={3}
-                    className="w-full p-4 text-sm font-medium rounded-2xl border-2 border-gray-100 dark:border-gray-800 bg-gray-50/30 focus:outline-none focus:border-blue-500 transition resize-none"
+                    className="w-full p-3 sm:p-4 text-sm font-medium rounded-2xl border-2 border-gray-100 dark:border-gray-800 bg-gray-50/30 focus:outline-none focus:border-blue-500 transition resize-none"
                   />
                 </div>
-              </div>
 
-              {/* Expected Total Summary Card */}
-              {totalCost > 0 && (
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-blue-500/10 space-y-1.5 mt-6 shrink-0">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-blue-100">{t('totalCost')}</span>
-                  <p className="text-3xl font-black tracking-tight tabular-nums">
-                    {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    <span className="text-xs font-bold ml-1 text-blue-200">SAR</span>
-                  </p>
-                  <p className="text-[10px] font-bold text-blue-100/70">
-                    {validLines.length} active inventory product line{validLines.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-              )}
+                {totalCost > 0 && (
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl sm:rounded-[2rem] p-5 sm:p-6 text-white shadow-xl shadow-blue-500/10 space-y-1.5 lg:mt-0">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-100">{t('totalCost')}</span>
+                    <p className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums">
+                      {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      <span className="text-xs font-bold ml-1 text-blue-200">SAR</span>
+                    </p>
+                    <p className="text-[10px] font-bold text-blue-100/70">
+                      {validLines.length} active line{validLines.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Right Side Panel: Items Table / List */}
-            <div className="flex-1 p-6 sm:p-8 overflow-y-auto flex flex-col justify-between min-w-0">
+            {/* Line items — first on mobile */}
+            <div className="order-1 lg:order-2 flex-1 min-w-0 p-4 sm:p-6 lg:p-8 lg:overflow-y-auto flex flex-col">
               <div className="space-y-4 flex-1">
-                <div className="flex items-center justify-between px-2 shrink-0">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Inventory Items ({lineItems.length})</h3>
+                <div className="flex items-center justify-between gap-2 shrink-0 sticky top-0 z-10 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-sm py-2 -mx-1 px-1 lg:static lg:bg-transparent lg:backdrop-blur-none lg:p-0">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Items ({lineItems.length})</h3>
                   <button
                     type="button"
                     onClick={addLine}
-                    className="flex items-center gap-1 text-xs font-black text-blue-600 hover:text-blue-700 transition"
+                    className="flex items-center gap-1 text-xs font-black text-blue-600 hover:text-blue-700 transition shrink-0"
                   >
-                    <Plus size={14} /> Add Line Item
+                    <Plus size={14} /> Add Line
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3 pb-2">
                   {lineItems.map((line, idx) => {
                     const item = inventoryItems.find(i => i.id === line.itemId)
                     const subtotal = (parseFloat(line.quantity) || 0) * (parseFloat(line.unitCost) || 0)
                     return (
-                      <div key={idx} className="bg-white dark:bg-gray-950 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-900 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center gap-5 relative group transition-all duration-300 hover:border-gray-200 dark:hover:border-gray-800">
-                        {/* Selector */}
-                        <div className="flex-1 min-w-0">
+                      <div key={idx} className="bg-white dark:bg-gray-950 p-4 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-gray-100 dark:border-gray-900 shadow-sm space-y-4 relative group transition-all duration-300 hover:border-gray-200 dark:hover:border-gray-800">
+                        <div className="min-w-0">
+                          <Label className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">Product</Label>
                           <ItemPicker
                             items={inventoryItems}
                             selectedId={line.itemId}
@@ -461,45 +462,42 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
                           />
                         </div>
 
-                        {/* Fields Row */}
-                        <div className="grid grid-cols-2 lg:flex items-center gap-3 shrink-0">
-                          <div className="space-y-1 lg:w-32">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-gray-400">Quantity {item ? `(${item.unit})` : ''}</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1 min-w-0">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-gray-400">Qty {item ? `(${item.unit})` : ''}</Label>
                             <Input
                               type="number" step="0.1" min="0" placeholder="0"
                               value={line.quantity}
                               onChange={e => updateLine(idx, 'quantity', e.target.value)}
-                              className="h-10 rounded-2xl border-2 border-gray-100 dark:border-gray-800 font-black text-sm"
+                              className="h-11 rounded-xl sm:rounded-2xl border-2 border-gray-100 dark:border-gray-800 font-black text-sm"
                             />
                           </div>
-
-                          <div className="space-y-1 lg:w-32">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-gray-400">Unit Cost (SAR)</Label>
+                          <div className="space-y-1 min-w-0">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-gray-400">Unit Cost</Label>
                             <Input
                               type="number" step="0.01" min="0" placeholder="0.00"
                               value={line.unitCost}
                               onChange={e => updateLine(idx, 'unitCost', e.target.value)}
-                              className="h-10 rounded-2xl border-2 border-gray-100 dark:border-gray-800 font-black text-sm"
+                              className="h-11 rounded-xl sm:rounded-2xl border-2 border-gray-100 dark:border-gray-800 font-black text-sm"
                             />
                           </div>
                         </div>
 
-                        {/* Total Label / Actions */}
-                        <div className="flex items-center justify-between lg:justify-end gap-5 shrink-0 border-t lg:border-0 pt-3 lg:pt-0">
-                          <div className="text-right">
-                            <Label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block lg:hidden">Subtotal</Label>
-                            <span className="text-base font-black text-blue-600 dark:text-blue-400 tabular-nums">
+                        <div className="flex items-center justify-between gap-3 pt-1 border-t border-gray-100 dark:border-gray-900">
+                          <div>
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block">Subtotal</Label>
+                            <span className="text-lg font-black text-blue-600 dark:text-blue-400 tabular-nums">
                               {subtotal.toFixed(2)} <span className="text-[10px] font-medium text-gray-400">SAR</span>
                             </span>
                           </div>
-
                           {lineItems.length > 1 && (
                             <button
                               type="button"
                               onClick={() => removeLine(idx)}
-                              className="p-2.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-2xl transition shrink-0"
+                              className="p-2.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition shrink-0"
+                              aria-label="Remove line"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={18} />
                             </button>
                           )}
                         </div>
@@ -514,16 +512,15 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
 
         {/* ── LABELS STEP ── */}
         {step === 'labels' && (
-          <div className="flex-1 overflow-y-auto p-8 sm:p-10 space-y-6 bg-gray-50/50 dark:bg-gray-900/30">
-            <div className="max-w-3xl mx-auto space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 md:p-10 space-y-5 sm:space-y-6 bg-gray-50/50 dark:bg-gray-900/30 min-h-0">
+            <div className="max-w-3xl mx-auto w-full space-y-5 sm:space-y-6">
               
-              {/* Success Banner */}
-              <div className="p-6 bg-emerald-50 dark:bg-emerald-950/20 rounded-[2rem] border border-emerald-100 dark:border-emerald-900 flex items-center gap-4 shadow-sm animate-in zoom-in-95 duration-300">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shrink-0">
-                  <CheckCircle2 size={24} strokeWidth={2.5} />
+              <div className="p-4 sm:p-6 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl sm:rounded-[2rem] border border-emerald-100 dark:border-emerald-900 flex items-start sm:items-center gap-3 sm:gap-4 shadow-sm animate-in zoom-in-95 duration-300">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shrink-0">
+                  <CheckCircle2 size={22} strokeWidth={2.5} className="sm:w-6 sm:h-6" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-black text-emerald-800 dark:text-emerald-400">Purchase Order Successful</h3>
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-black text-emerald-800 dark:text-emerald-400">Purchase Successful</h3>
                   <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-500/80 mt-0.5">
                     Stock has been recorded. Review quantities below to print barcode labels.
                   </p>
@@ -538,7 +535,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
                   if (!item) return null
                   const hasBarcode = !!(item.sku || item.barcode)
                   return (
-                    <div key={idx} className="bg-white dark:bg-gray-950 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-900 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div key={idx} className="bg-white dark:bg-gray-950 p-4 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-gray-100 dark:border-gray-900 shadow-sm flex flex-col gap-4">
                       <div className="min-w-0 flex-1">
                         <h4 className="font-black text-gray-900 dark:text-white truncate">{item.name}</h4>
                         <div className="flex items-center gap-2 mt-1">
@@ -547,21 +544,20 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4 shrink-0 mt-3 sm:mt-0 w-full sm:w-auto justify-between sm:justify-end">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Copies</Label>
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full">
+                        <div className="flex items-center justify-between sm:justify-start gap-3 flex-1">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 shrink-0">Copies</Label>
                           <input
                             type="number" min="1" max="999"
                             value={line.printQty}
                             onChange={e => updateLine(idx, 'printQty', parseInt(e.target.value) || 1)}
-                            className="w-16 h-10 text-center text-sm font-black rounded-xl border-2 border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900"
+                            className="w-20 h-11 text-center text-sm font-black rounded-xl border-2 border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900"
                           />
                         </div>
-
                         <button
                           onClick={() => handlePrint(item, line.printQty)}
                           disabled={!hasBarcode || isPrinting}
-                          className="flex items-center justify-center gap-2 h-11 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-black shadow-lg shadow-blue-500/10 transition-all active:scale-95"
+                          className="flex items-center justify-center gap-2 h-11 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-black shadow-lg shadow-blue-500/10 transition-all active:scale-95 w-full sm:w-auto"
                         >
                           <Printer size={14} /> {isPrinting ? 'Printing...' : 'Print Labels'}
                         </button>
@@ -575,11 +571,11 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
         )}
 
         {/* Footer Actions */}
-        <div className="p-6 border-t border-gray-100 dark:border-gray-900 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center bg-white dark:bg-gray-950 gap-4 shrink-0">
+        <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-900 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center bg-white dark:bg-gray-950 gap-3 sm:gap-4 shrink-0 safe-area-bottom">
           <button
             type="button"
             onClick={() => { setOpen(false); reset() }}
-            className="h-14 px-8 rounded-2xl text-gray-400 hover:text-gray-900 font-black text-sm flex items-center justify-center gap-2 transition"
+            className="h-12 sm:h-14 px-6 sm:px-8 rounded-2xl text-gray-400 hover:text-gray-900 font-black text-sm flex items-center justify-center gap-2 transition w-full sm:w-auto"
           >
             <ArrowLeft size={16} />
             {step === 'form' ? t('cancel') : 'Close Workflow'}
@@ -589,7 +585,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
             <button
               onClick={() => handleSubmit()}
               disabled={loading || validLines.length === 0}
-              className="h-14 px-12 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-black text-base shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 transition-all active:scale-95"
+              className="h-12 sm:h-14 px-8 sm:px-12 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-black text-sm sm:text-base shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 w-full sm:w-auto"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -15,6 +15,7 @@ import { bulkCreateInventoryItems } from '@/actions/inventory'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { InventoryCategory } from '@prisma/client'
+import { cn } from '@/lib/utils'
 
 const VAT_RATE = 0.15
 
@@ -107,7 +108,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   OTHER: 'bg-slate-100 text-slate-600',
 }
 
-export function ImportInventoryModal() {
+export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -191,10 +192,13 @@ export function ImportInventoryModal() {
       <DialogTrigger render={
         <Button
           variant="outline"
-          className="h-10 px-4 text-sm gap-2 border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 font-bold"
+          className={cn(
+            "inline-flex items-center gap-2 rounded-xl sm:rounded-2xl border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 font-bold shrink min-w-0",
+            triggerClassName
+          )}
         >
-          <FileSpreadsheet size={16} />
-          Import Excel
+          <FileSpreadsheet size={16} className="shrink-0" />
+          <span className="truncate sm:whitespace-nowrap">Import Excel</span>
         </Button>
       } />
 

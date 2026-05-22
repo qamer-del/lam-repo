@@ -195,49 +195,47 @@ export function BarcodesClient({
     })
   }
 
+  const tabButtons = [
+    { key: 'designer' as const, label: 'Designer', icon: ScanLine },
+    { key: 'batch' as const, label: 'Batch Print', icon: Copy },
+    { key: 'settings' as const, label: 'Printer Settings', icon: Settings },
+  ]
+
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <Tag className="text-blue-500" />
-            Barcode & Labels
+    <div className="p-4 sm:p-6 md:p-10 max-w-[1600px] mx-auto w-full min-w-0 space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-4 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
+            <Tag className="text-blue-500 shrink-0" />
+            <span className="truncate">{t('barcodeLabels') || 'Barcode & Labels'}</span>
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Design and print product labels for Zebra printers.</p>
+          <p className="text-gray-500 text-xs sm:text-sm mt-1">Design and print product labels for Zebra printers.</p>
         </div>
-        
-        <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveTab('designer')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              activeTab === 'designer' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            <ScanLine size={16} /> Designer
-          </button>
-          <button
-            onClick={() => setActiveTab('batch')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              activeTab === 'batch' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            <Copy size={16} /> Batch Print
-          </button>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              activeTab === 'settings' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            <Settings size={16} /> Printer Settings
-          </button>
+
+        <div className="w-full min-w-0 overflow-x-auto no-scrollbar">
+          <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-max min-w-full sm:w-auto sm:min-w-0">
+            {tabButtons.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition shrink-0 whitespace-nowrap ${
+                  activeTab === key
+                    ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-blue-400'
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}
+              >
+                <Icon size={16} className="shrink-0" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-12 gap-4 sm:gap-6 items-start min-w-0">
         
-        {/* Left Panel: Item Selection */}
-        <div className="col-span-12 lg:col-span-3 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col h-[800px]">
+        {/* Left Panel: Item Selection (designer tab only on mobile) */}
+        <div className={`col-span-12 lg:col-span-3 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 flex flex-col max-h-[min(50vh,420px)] lg:max-h-none lg:h-[min(800px,calc(100vh-10rem))] min-h-[240px] ${activeTab !== 'designer' ? 'hidden lg:flex' : 'flex'}`}>
           <div className="p-4 border-b border-gray-100 dark:border-gray-800">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
@@ -288,16 +286,16 @@ export function BarcodesClient({
         {/* Center/Right Panels based on Tab */}
         {activeTab === 'designer' && (
           <>
-            <div className="col-span-12 lg:col-span-5 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 flex flex-col h-[800px] overflow-y-auto">
-              <h2 className="text-lg font-bold mb-4">Label Configuration</h2>
+            <div className="col-span-12 lg:col-span-5 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 sm:p-6 flex flex-col min-h-0 lg:h-[min(800px,calc(100vh-10rem))] lg:overflow-y-auto">
+              <h2 className="text-base sm:text-lg font-bold mb-4">Label Configuration</h2>
               <LabelBuilder config={config} onChange={setConfig} />
             </div>
 
-            <div className="col-span-12 lg:col-span-4 space-y-6">
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 flex flex-col items-center justify-center min-h-[400px]">
-                <h2 className="text-lg font-bold mb-4 w-full text-left">Live Preview</h2>
+            <div className="col-span-12 lg:col-span-4 space-y-4 sm:space-y-6 min-w-0">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 sm:p-6 flex flex-col items-center justify-center min-h-[240px] sm:min-h-[320px]">
+                <h2 className="text-base sm:text-lg font-bold mb-4 w-full text-left">Live Preview</h2>
                 {selectedItem ? (
-                  <div className="bg-gray-100 dark:bg-gray-800 w-full p-4 rounded-xl flex items-center justify-center overflow-hidden min-h-[300px]">
+                  <div className="bg-gray-100 dark:bg-gray-800 w-full p-3 sm:p-4 rounded-xl flex items-center justify-center overflow-x-auto min-h-[200px] sm:min-h-[300px]">
                     <LabelPreview config={config} item={selectedItem} />
                   </div>
                 ) : (
@@ -308,9 +306,9 @@ export function BarcodesClient({
                 )}
               </div>
 
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex-1">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 sm:gap-4 mb-4">
+                  <div className="flex-1 min-w-0">
                     <label className="text-xs font-bold text-gray-500 uppercase">Print Quantity</label>
                     <input
                       type="number"
@@ -323,7 +321,7 @@ export function BarcodesClient({
                   <button
                     onClick={handlePrintSingle}
                     disabled={isPrinting || !selectedItem || (!selectedItem.barcode && !selectedItem.sku)}
-                    className="flex-1 mt-5 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition"
+                    className="w-full sm:flex-1 sm:mt-5 bg-blue-600 hover:bg-blue-700 text-white p-2.5 sm:p-2 rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition shrink-0"
                   >
                     <Printer size={18} />
                     {isPrinting ? 'Printing...' : 'Print Label'}
@@ -338,9 +336,9 @@ export function BarcodesClient({
               </div>
 
               {/* Templates */}
-              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 sm:p-6">
                 <h3 className="font-bold mb-3 text-sm">Save Template</h3>
-                <div className="flex gap-2 mb-6">
+                <div className="flex flex-col sm:flex-row gap-2 mb-6">
                   <input
                     type="text"
                     value={templateName}
@@ -379,22 +377,22 @@ export function BarcodesClient({
         )}
 
         {activeTab === 'batch' && (
-          <div className="col-span-12 lg:col-span-9 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 h-[800px] flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">Batch Print</h2>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-bold text-gray-600">Copies per label:</label>
+          <div className="col-span-12 lg:col-span-9 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 sm:p-6 flex flex-col min-h-0 lg:h-[min(800px,calc(100vh-10rem))]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6 shrink-0">
+              <h2 className="text-lg sm:text-xl font-bold">Batch Print</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                <div className="flex items-center justify-between sm:justify-start gap-2">
+                  <label className="text-sm font-bold text-gray-600 dark:text-gray-400 whitespace-nowrap">Copies per label:</label>
                   <input
                     type="number" min={1} value={globalCopies}
                     onChange={e => setGlobalCopies(parseInt(e.target.value) || 1)}
-                    className="w-16 p-1 text-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none"
+                    className="w-16 p-1.5 text-center bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none"
                   />
                 </div>
                 <button
                   onClick={handlePrintBatch}
                   disabled={isPrinting || Object.keys(printQuantities).length === 0}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 disabled:opacity-50"
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 sm:py-2 rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Printer size={18} />
                   Print Selected
@@ -402,7 +400,8 @@ export function BarcodesClient({
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto border border-gray-200 dark:border-gray-800 rounded-xl">
+            {/* Desktop table */}
+            <div className="hidden md:block flex-1 min-h-0 overflow-auto border border-gray-200 dark:border-gray-800 rounded-xl">
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-800/50 sticky top-0">
                   <tr>
@@ -432,17 +431,43 @@ export function BarcodesClient({
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-2 max-h-[min(60vh,520px)]">
+              {filteredItems.map(item => (
+                <div
+                  key={item.id}
+                  className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 space-y-3"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{item.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">SKU: {item.sku || '—'}</p>
+                    <p className="text-xs text-gray-500 truncate">Barcode: {item.barcode || '—'}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-xs font-bold text-gray-500 uppercase shrink-0">Print Qty</label>
+                    <input
+                      type="number" min={0}
+                      value={printQuantities[item.id] || ''}
+                      onChange={e => updateQuantity(item.id, parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                      className="w-24 p-2 text-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:border-blue-500 text-sm font-bold"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {activeTab === 'settings' && (
-          <div className="col-span-12 lg:col-span-9 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 h-[800px]">
-            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+          <div className="col-span-12 lg:col-span-9 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 p-4 sm:p-6 min-h-0 lg:h-[min(800px,calc(100vh-10rem))] lg:overflow-y-auto">
+            <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 flex items-center gap-2">
               <Printer className="text-blue-500" />
               Zebra Printer Settings
             </h2>
             
-            <div className="max-w-xl space-y-6">
+            <div className="max-w-xl w-full space-y-6">
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl flex items-start gap-3">
                 <AlertCircle className="text-blue-500 shrink-0 mt-0.5" size={18} />
                 <p className="text-sm text-blue-800 dark:text-blue-200">
@@ -453,14 +478,14 @@ export function BarcodesClient({
 
               <div className="space-y-4">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
                     <label className="text-sm font-bold text-gray-700 dark:text-gray-300">
                       Printer Name (OS Name)
                     </label>
                     <button
                       onClick={handleDetectPrinters}
                       disabled={isDetecting}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50 transition"
+                      className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-50 transition shrink-0"
                     >
                       <RefreshCw size={13} className={isDetecting ? 'animate-spin' : ''} />
                       {isDetecting ? 'Detecting...' : 'Detect Printers'}
@@ -512,7 +537,7 @@ export function BarcodesClient({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">
                       Resolution (DPI)
@@ -555,7 +580,7 @@ export function BarcodesClient({
                   <h3 className="font-bold text-gray-900 dark:text-white mb-3 border-b border-gray-100 dark:border-gray-800 pb-2">
                     Default Media Dimensions
                   </h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">
                         Width (mm)

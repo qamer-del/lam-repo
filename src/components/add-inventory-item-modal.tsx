@@ -157,14 +157,14 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
       render={
         <Button
           className={cn(
-            'flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20 transition-all active:scale-95',
+            'inline-flex items-center gap-2 rounded-xl sm:rounded-2xl bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20 transition-all active:scale-95 min-w-0 shrink',
             triggerClassName
           )}
         />
       }
     >
-      <Plus size={16} />
-      {t('addItem')}
+      <Plus size={16} className="shrink-0" />
+      <span className="truncate">{t('addItem')}</span>
     </DialogTrigger>
   ) : null
 
@@ -173,26 +173,31 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
       {loading && <ModernLoader />}
       <Dialog open={open} onOpenChange={handleClose}>
         {trigger}
-        <DialogContent className="sm:max-w-[540px] p-0 overflow-hidden border-none shadow-2xl rounded-[2rem] bg-white dark:bg-gray-950 max-h-[90vh] overflow-y-auto font-cairo">
-          <div className="h-2 w-full bg-gradient-to-r from-teal-400 via-emerald-500 to-teal-600 sticky top-0 z-10" />
-          <div className="p-5 sm:p-10 space-y-8">
-            <DialogHeader>
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-4">
-                  <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-2xl shadow-inner">
-                    <Package size={28} strokeWidth={2.5} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="leading-tight">{isEdit ? t('editItem') : t('addItem')}</span>
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">{t('inventoryManagement')}</span>
-                  </div>
-                </DialogTitle>
-              </div>
+        <DialogContent className={cn(
+          "w-full max-w-none p-0 border-none shadow-2xl bg-white dark:bg-gray-950 font-cairo flex flex-col overflow-hidden",
+          "fixed inset-x-0 bottom-0 top-auto left-0 translate-x-0 translate-y-0 rounded-t-[1.75rem] rounded-b-none",
+          "h-[100dvh] max-h-[100dvh]",
+          "sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:bottom-auto sm:-translate-x-1/2 sm:-translate-y-1/2",
+          "sm:max-w-[540px] sm:rounded-[2rem] sm:h-auto sm:max-h-[min(90dvh,900px)]"
+        )}>
+          <div className="h-1.5 sm:h-2 w-full bg-gradient-to-r from-teal-400 via-emerald-500 to-teal-600 shrink-0" />
+          <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="p-4 sm:p-8 md:p-10 space-y-5 sm:space-y-8">
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-xl sm:text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3 sm:gap-4">
+                <div className="p-2.5 sm:p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl sm:rounded-2xl shadow-inner shrink-0">
+                  <Package size={22} strokeWidth={2.5} className="sm:w-7 sm:h-7" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="leading-tight truncate">{isEdit ? t('editItem') : t('addItem')}</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-[0.15em] sm:tracking-[0.2em] mt-0.5 sm:mt-1">{t('inventoryManagement')}</span>
+                </div>
+              </DialogTitle>
             </DialogHeader>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 pb-4">
               {/* Main Info Section */}
-              <div className="grid gap-6 p-6 bg-gray-50/50 dark:bg-gray-900/30 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-inner">
+              <div className="grid gap-4 sm:gap-6 p-4 sm:p-6 bg-gray-50/50 dark:bg-gray-900/30 rounded-2xl sm:rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-inner">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('itemName')}</Label>
                   <Input
@@ -200,11 +205,11 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
                     placeholder="e.g. Meguiar's G17 Polish"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="h-14 rounded-2xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-teal-500 focus:ring-teal-500/10 shadow-sm text-lg font-bold transition-all px-5"
+                    className="h-12 sm:h-14 rounded-xl sm:rounded-2xl border-2 border-transparent bg-white dark:bg-gray-900 focus:border-teal-500 focus:ring-teal-500/10 shadow-sm text-base sm:text-lg font-bold transition-all px-4 sm:px-5"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('sku')}</Label>
                     <Input
@@ -233,8 +238,8 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
               </div>
 
               {/* Pricing & Stock Section */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-5 bg-teal-50/30 dark:bg-teal-900/10 rounded-[1.5rem] border border-teal-100 dark:border-teal-900/30 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 sm:p-5 bg-teal-50/30 dark:bg-teal-900/10 rounded-2xl sm:rounded-[1.5rem] border border-teal-100 dark:border-teal-900/30 space-y-3">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-teal-600 dark:text-teal-400 ml-1">{t('unitCost')}</Label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-teal-600 font-black text-sm">SAR</span>
@@ -256,7 +261,7 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
                   </label>
                 </div>
 
-                <div className="p-5 bg-emerald-50/30 dark:bg-emerald-900/10 rounded-[1.5rem] border border-emerald-100 dark:border-emerald-900/30 space-y-3">
+                <div className="p-4 sm:p-5 bg-emerald-50/30 dark:bg-emerald-900/10 rounded-2xl sm:rounded-[1.5rem] border border-emerald-100 dark:border-emerald-900/30 space-y-3">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 ml-1">Selling Price</Label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 font-black text-sm">SAR</span>
@@ -271,7 +276,7 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
               </div>
 
               {/* Advanced Settings */}
-              <div className="grid grid-cols-2 gap-4 px-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-0 sm:px-2">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">{t('unit')}</Label>
                   <Select value={unit} onValueChange={(v: string | null) => { if (v) setUnit(v) }}>
@@ -298,7 +303,7 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
               </div>
 
               {!isEdit && (
-                <div className="p-6 bg-blue-50/30 dark:bg-blue-900/10 rounded-[1.5rem] border border-blue-100 dark:border-blue-900/30 space-y-3">
+                <div className="p-4 sm:p-6 bg-blue-50/30 dark:bg-blue-900/10 rounded-2xl sm:rounded-[1.5rem] border border-blue-100 dark:border-blue-900/30 space-y-3">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 ml-1">{t('initialStock')}</Label>
                   <Input
                     type="number" step="0.1" min="0"
@@ -310,26 +315,26 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
               )}
 
               {/* ── Barcode Section ── */}
-              <div className="p-5 bg-gray-50/50 dark:bg-gray-900/30 rounded-[1.5rem] border border-gray-100 dark:border-gray-800/50 space-y-4">
+              <div className="p-4 sm:p-5 bg-gray-50/50 dark:bg-gray-900/30 rounded-2xl sm:rounded-[1.5rem] border border-gray-100 dark:border-gray-800/50 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Tag className="w-4 h-4 text-gray-400" />
+                  <Tag className="w-4 h-4 text-gray-400 shrink-0" />
                   <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Barcode</h3>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2 space-y-2">
+                <div className="space-y-4">
+                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Barcode Value</Label>
                     <div className="flex gap-2">
                       <Input
                         value={barcode}
                         onChange={e => setBarcode(e.target.value)}
                         placeholder="Scan or type barcode..."
-                        className="h-11 rounded-xl border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 font-mono text-sm"
+                        className="h-11 flex-1 min-w-0 rounded-xl border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 font-mono text-sm"
                       />
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setBarcode(generateRandomBarcode(barcodeType))}
-                        className="h-11 px-3 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 text-blue-600 dark:text-blue-400"
+                        className="h-11 px-3 shrink-0 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 text-blue-600 dark:text-blue-400"
                         title="Auto-generate Barcode"
                       >
                         <Wand2 className="w-4 h-4" />
@@ -339,7 +344,7 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Type</Label>
                     <Select value={barcodeType} onValueChange={(v) => { if (v) setBarcodeType(v as BarcodeType) }}>
-                      <SelectTrigger className="h-11 rounded-xl border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 font-bold">
+                      <SelectTrigger className="h-11 w-full rounded-xl border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 font-bold">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl p-1">
@@ -391,7 +396,7 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
 
                 {/* Expandable config */}
                 {hasWarranty && (
-                  <div className="px-5 pb-5 grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                  <div className="px-4 sm:px-5 pb-4 sm:pb-5 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400 ml-1">Duration</Label>
                       <Input
@@ -425,7 +430,7 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-16 text-lg font-black uppercase tracking-widest text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 rounded-[1.25rem] shadow-2xl shadow-teal-500/20 active:scale-[0.98] transition-all mt-4"
+                className="w-full h-14 sm:h-16 text-base sm:text-lg font-black uppercase tracking-widest text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 rounded-xl sm:rounded-[1.25rem] shadow-2xl shadow-teal-500/20 active:scale-[0.98] transition-all mt-2 sm:mt-4"
               >
                 {loading ? (
                   <div className="flex items-center gap-3">
@@ -440,6 +445,7 @@ export function AddInventoryItemModal({ triggerClassName, editItem, onClose }: P
                 )}
               </Button>
             </form>
+          </div>
           </div>
         </DialogContent>
       </Dialog>
