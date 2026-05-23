@@ -119,29 +119,44 @@ export async function bulkCreateInventoryItems(items: {
   unit: string
   reorderLevel: number
   unitCost: number
-  basePrice: number      // Pre-VAT selling price from Excel
+  basePrice: number      // Selling price from Excel (pre-VAT or VAT-inclusive depending on addVat)
   initialStock: number
+  addVat: boolean        // true → apply 15% VAT on top of basePrice; false → basePrice is already the final price
 }[]) {
   const session = await requireAdminOrAbove()
 
   const VAT_RATE = 0.15
 
-  // Prepare all rows with VAT computed upfront
+  // Helper: round to 2 decimal places without floating-point drift
+  const round2 = (n: number) => Math.round(n * 100) / 100
+
+  // Prepare all rows with precise VAT / price computation
   const rows = items.map((data) => {
-    const vatAmount = data.basePrice * VAT_RATE
-    const finalPrice = parseFloat((data.basePrice + vatAmount).toFixed(2))
+    let finalPrice: number
+    let appliedVatRate: number
+
+    if (data.addVat) {
+      // Excel price is ex-VAT → add 15%
+      finalPrice = round2(data.basePrice * (1 + VAT_RATE))
+      appliedVatRate = VAT_RATE
+    } else {
+      // Excel price already includes VAT (or no VAT needed)
+      finalPrice = round2(data.basePrice)
+      appliedVatRate = 0
+    }
+
     return {
       name: data.name,
       sku: data.sku || null,
       category: data.category,
       unit: data.unit,
-      reorderLevel: data.reorderLevel,
-      unitCost: data.unitCost,
+      reorderLevel: Math.round(data.reorderLevel),
+      unitCost: round2(data.unitCost),
       costIncludesVat: false,
-      basePrice: data.basePrice,
-      vatRate: VAT_RATE,
+      basePrice: round2(data.basePrice),
+      vatRate: appliedVatRate,
       sellingPrice: finalPrice,
-      currentStock: data.initialStock,
+      currentStock: Math.round(data.initialStock),
       hasWarranty: false,
     }
   })
@@ -151,7 +166,7 @@ export async function bulkCreateInventoryItems(items: {
 
   // Record initial stock movements for items that have stock > 0
   const withStock = created
-    .map((item, i) => ({ item, initialStock: items[i].initialStock, unitCost: items[i].unitCost }))
+    .map((item, i) => ({ item, initialStock: Math.round(items[i].initialStock), unitCost: round2(items[i].unitCost) }))
     .filter(({ initialStock }) => initialStock > 0)
 
   if (withStock.length > 0) {

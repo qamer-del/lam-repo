@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import * as XLSX from 'xlsx'
-import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Download, Loader2 } from 'lucide-react'
+import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Download, Loader2, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -22,6 +22,42 @@ const VAT_RATE = 0.15
 const VALID_CATEGORIES: InventoryCategory[] = ['POLISH', 'COATING', 'CONSUMABLE', 'EQUIPMENT', 'CHEMICAL', 'OTHER']
 const VALID_UNITS = ['pcs', 'L', 'mL', 'kg', 'g', 'roll', 'box', 'set', 'pair', 'bottle', 'can', 'bag', 'unit']
 
+// ── Precise numeric helpers ───────────────────────────────────────────────────
+
+/** Round to 2 decimal places without floating-point drift */
+function round2(n: number) {
+  return Math.round(n * 100) / 100
+}
+
+/**
+ * Parse a raw cell value as a float price.
+ * XLSX with `raw:true` can return numbers, strings, or undefined.
+ * We strip currency symbols and thousands separators before parsing.
+ */
+function parsePrice(val: unknown): number {
+  if (val === null || val === undefined || val === '') return 0
+  if (typeof val === 'number') return isNaN(val) ? 0 : round2(val)
+  // Strip anything that isn't a digit, dot, or minus sign
+  const cleaned = String(val).replace(/[^\d.\-]/g, '')
+  const n = parseFloat(cleaned)
+  return isNaN(n) ? 0 : round2(n)
+}
+
+/**
+ * Parse a raw cell value as an integer quantity.
+ * Excel sometimes encodes integers as floats (e.g. 10.0000000001).
+ * We parse as float then round to the nearest integer.
+ */
+function parseQty(val: unknown): number {
+  if (val === null || val === undefined || val === '') return 0
+  if (typeof val === 'number') return isNaN(val) ? 0 : Math.round(val)
+  const cleaned = String(val).replace(/[^\d.\-]/g, '')
+  const n = parseFloat(cleaned)
+  return isNaN(n) ? 0 : Math.round(n)
+}
+
+// ── Row type ──────────────────────────────────────────────────────────────────
+
 interface ParsedRow {
   rowIndex: number
   name: string
@@ -29,43 +65,60 @@ interface ParsedRow {
   category: InventoryCategory
   unit: string
   unitCost: number
-  basePrice: number     // From Excel — pre-VAT
-  vatAmount: number     // Calculated: basePrice × 0.15
-  finalPrice: number    // Calculated: basePrice + vatAmount
-  initialStock: number
-  reorderLevel: number
+  basePrice: number     // Raw price from Excel
+  initialStock: number  // Integer quantity
+  reorderLevel: number  // Integer
   errors: string[]
   isValid: boolean
 }
 
-function validateRow(raw: Record<string, any>, rowIndex: number): ParsedRow {
+// ── Row parser ────────────────────────────────────────────────────────────────
+
+function validateRow(raw: Record<string, unknown>, rowIndex: number): ParsedRow {
   const errors: string[] = []
 
-  const name = String(raw['name'] || raw['Name'] || raw['ITEM NAME'] || raw['item name'] || '').trim()
+  const name = String(
+    raw['name'] ?? raw['Name'] ?? raw['ITEM NAME'] ?? raw['item name'] ?? raw['Product'] ?? raw['PRODUCT'] ?? ''
+  ).trim()
   if (!name) errors.push('Name is required')
 
-  const rawCategory = String(raw['category'] || raw['Category'] || raw['CATEGORY'] || 'OTHER').trim().toUpperCase()
+  const rawCategory = String(
+    raw['category'] ?? raw['Category'] ?? raw['CATEGORY'] ?? 'OTHER'
+  ).trim().toUpperCase()
   const category: InventoryCategory = VALID_CATEGORIES.includes(rawCategory as InventoryCategory)
     ? (rawCategory as InventoryCategory)
     : 'OTHER'
 
-  const rawUnit = String(raw['unit'] || raw['Unit'] || raw['UNIT'] || 'pcs').trim().toLowerCase()
+  const rawUnit = String(raw['unit'] ?? raw['Unit'] ?? raw['UNIT'] ?? 'pcs').trim().toLowerCase()
   const unit = VALID_UNITS.includes(rawUnit) ? rawUnit : 'pcs'
 
-  const unitCost = parseFloat(String(raw['unitCost'] || raw['Unit Cost'] || raw['UNIT COST'] || raw['cost'] || 0))
-  if (isNaN(unitCost) || unitCost < 0) errors.push('Unit cost must be a non-negative number')
+  const unitCost = parsePrice(
+    raw['unitCost'] ?? raw['Unit Cost'] ?? raw['UNIT COST'] ?? raw['cost'] ?? raw['Cost'] ?? raw['COST']
+  )
+  if (unitCost < 0) errors.push('Unit cost must be a non-negative number')
 
-  // Excel price is always the BASE price (pre-VAT) per specification
-  const basePrice = parseFloat(String(raw['sellingPrice'] || raw['Selling Price'] || raw['SELLING PRICE'] || raw['price'] || raw['basePrice'] || raw['Base Price'] || 0))
-  if (isNaN(basePrice) || basePrice < 0) errors.push('Selling price must be a non-negative number')
+  const basePrice = parsePrice(
+    raw['sellingPrice'] ?? raw['Selling Price'] ?? raw['SELLING PRICE'] ??
+    raw['price'] ?? raw['Price'] ?? raw['PRICE'] ??
+    raw['basePrice'] ?? raw['Base Price'] ?? raw['BASE PRICE']
+  )
+  if (basePrice < 0) errors.push('Selling price must be a non-negative number')
 
-  const vatAmount = parseFloat((basePrice * VAT_RATE).toFixed(2))
-  const finalPrice = parseFloat((basePrice + vatAmount).toFixed(2))
+  const initialStock = parseQty(
+    raw['initialStock'] ?? raw['Initial Stock'] ?? raw['INITIAL STOCK'] ??
+    raw['stock'] ?? raw['Stock'] ?? raw['STOCK'] ??
+    raw['qty'] ?? raw['Qty'] ?? raw['QTY'] ??
+    raw['quantity'] ?? raw['Quantity'] ?? raw['QUANTITY']
+  )
 
-  const initialStock = parseFloat(String(raw['initialStock'] || raw['Initial Stock'] || raw['INITIAL STOCK'] || raw['stock'] || 0))
-  const reorderLevel = parseFloat(String(raw['reorderLevel'] || raw['Reorder Level'] || raw['REORDER LEVEL'] || raw['reorder'] || 5))
+  const reorderLevel = parseQty(
+    raw['reorderLevel'] ?? raw['Reorder Level'] ?? raw['REORDER LEVEL'] ??
+    raw['reorder'] ?? raw['Reorder'] ?? raw['REORDER']
+  ) || 5
 
-  const sku = String(raw['sku'] || raw['SKU'] || raw['Sku'] || raw['Code'] || raw['CODE'] || '').trim() || undefined
+  const sku = String(
+    raw['sku'] ?? raw['SKU'] ?? raw['Sku'] ?? raw['Code'] ?? raw['CODE'] ?? raw['code'] ?? ''
+  ).trim() || undefined
 
   return {
     rowIndex,
@@ -73,21 +126,21 @@ function validateRow(raw: Record<string, any>, rowIndex: number): ParsedRow {
     sku,
     category,
     unit,
-    unitCost: isNaN(unitCost) ? 0 : unitCost,
-    basePrice: isNaN(basePrice) ? 0 : basePrice,
-    vatAmount: isNaN(basePrice) ? 0 : vatAmount,
-    finalPrice: isNaN(basePrice) ? 0 : finalPrice,
-    initialStock: isNaN(initialStock) ? 0 : initialStock,
-    reorderLevel: isNaN(reorderLevel) ? 5 : reorderLevel,
+    unitCost,
+    basePrice,
+    initialStock,
+    reorderLevel,
     errors,
     isValid: errors.length === 0 && !!name,
   }
 }
 
+// ── Template generator ────────────────────────────────────────────────────────
+
 function generateTemplate() {
   const headers = ['name', 'sku', 'category', 'unit', 'unitCost', 'sellingPrice', 'initialStock', 'reorderLevel']
   const sample = [
-    ['Meguiar\'s G17 Polish', 'POL-001', 'POLISH', 'bottle', 120, 180, 10, 3],
+    ["Meguiar's G17 Polish", 'POL-001', 'POLISH', 'bottle', 120, 180, 10, 3],
     ['Ceramic Coating Pro', 'COA-002', 'COATING', 'mL', 450, 700, 5, 2],
     ['Microfiber Towel', 'CON-003', 'CONSUMABLE', 'pcs', 15, 25, 50, 10],
   ]
@@ -99,6 +152,8 @@ function generateTemplate() {
   XLSX.writeFile(wb, 'inventory-template.xlsx')
 }
 
+// ── Category colours ──────────────────────────────────────────────────────────
+
 const CATEGORY_COLORS: Record<string, string> = {
   POLISH: 'bg-blue-100 text-blue-700',
   COATING: 'bg-purple-100 text-purple-700',
@@ -108,6 +163,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   OTHER: 'bg-slate-100 text-slate-600',
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -115,6 +172,7 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [fileName, setFileName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [addVat, setAddVat] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const validRows = rows.filter(r => r.isValid)
@@ -126,9 +184,14 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer)
-        const workbook = XLSX.read(data, { type: 'array' })
+        // raw:true preserves numeric cell values without string conversion
+        // cellNF:false suppresses format strings we don't need
+        const workbook = XLSX.read(data, { type: 'array', raw: true, cellNF: false })
         const sheet = workbook.Sheets[workbook.SheetNames[0]]
-        const json: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+        const json: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, {
+          defval: '',
+          raw: true,  // keep raw numbers – avoids "10.00000001" string drift
+        })
         const parsed = json.map((row, i) => validateRow(row, i + 2))
         setRows(parsed)
       } catch {
@@ -160,14 +223,15 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
         category: r.category,
         unit: r.unit,
         unitCost: r.unitCost,
-        basePrice: r.basePrice,  // Pre-VAT; action computes vatAmount + finalPrice
+        basePrice: r.basePrice,
         initialStock: r.initialStock,
         reorderLevel: r.reorderLevel,
+        addVat,
       })))
       toast.success(`${validRows.length} items imported successfully`, {
-        description: invalidRows.length > 0
-          ? `${invalidRows.length} rows were skipped due to errors. VAT (15%) applied to all prices.`
-          : 'VAT of 15% has been applied to all selling prices.',
+        description: addVat
+          ? `VAT (15%) has been applied to all selling prices. ${invalidRows.length > 0 ? `${invalidRows.length} rows skipped.` : ''}`
+          : `Selling prices imported as-is (no VAT added). ${invalidRows.length > 0 ? `${invalidRows.length} rows skipped.` : ''}`,
       })
       setOpen(false)
       setRows([])
@@ -186,6 +250,10 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
     setFileName('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
+
+  // ── Preview price display helpers ──────────────────────────────────────────
+  const getVatAmount = (basePrice: number) => round2(basePrice * VAT_RATE)
+  const getFinalPrice = (basePrice: number) => addVat ? round2(basePrice * (1 + VAT_RATE)) : round2(basePrice)
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) handleReset() }}>
@@ -222,12 +290,40 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
                 Template
               </button>
             </div>
-            <div className="ml-[52px] mt-1 space-y-1">
+            <div className="ml-[52px] mt-1 space-y-2">
               <p className="text-sm text-gray-400">Upload an .xlsx or .csv file. Download the template to see the correct format.</p>
-              <div className="inline-flex items-center gap-1.5 text-[11px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/30">
-                <span>⚡</span>
-                VAT 15% will be automatically added to all selling prices during import
-              </div>
+
+              {/* ── VAT Toggle ────────────────────────────────────────────────── */}
+              <label className="inline-flex items-center gap-2.5 cursor-pointer select-none group">
+                <div
+                  onClick={() => setAddVat(v => !v)}
+                  className={cn(
+                    "relative w-10 h-5.5 rounded-full transition-colors duration-200 flex-shrink-0",
+                    addVat ? "bg-amber-500" : "bg-gray-300 dark:bg-gray-700"
+                  )}
+                  style={{ height: '22px' }}
+                  role="checkbox"
+                  aria-checked={addVat}
+                  tabIndex={0}
+                  onKeyDown={e => e.key === ' ' && setAddVat(v => !v)}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform duration-200",
+                      addVat ? "translate-x-[18px]" : "translate-x-0"
+                    )}
+                  />
+                </div>
+                <span className={cn(
+                  "text-[12px] font-black uppercase tracking-wider transition-colors",
+                  addVat ? "text-amber-600 dark:text-amber-400" : "text-gray-400"
+                )}>
+                  {addVat ? "⚡ Add VAT (15%) to selling prices" : "Selling prices already include VAT (or no VAT needed)"}
+                </span>
+                <span className="text-gray-300 dark:text-gray-600">
+                  <Info size={13} />
+                </span>
+              </label>
             </div>
           </DialogHeader>
 
@@ -264,7 +360,7 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
           {/* Preview */}
           {rows.length > 0 && (
             <div className="flex flex-col gap-4 overflow-hidden flex-1 min-h-0">
-              {/* Stats bar */}
+              {/* Stats + VAT badge */}
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded-xl border border-gray-100 dark:border-gray-800">
                   <FileSpreadsheet size={15} className="text-gray-400" />
@@ -283,15 +379,24 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
                     <span className="text-sm font-black text-red-600">{invalidRows.length} errors</span>
                   </div>
                 )}
-                <span className="text-xs text-gray-400 ml-auto">{rows.length} rows total</span>
+                {/* Live VAT mode badge */}
+                <div className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black uppercase tracking-wider ml-auto",
+                  addVat
+                    ? "bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30 text-amber-600"
+                    : "bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 text-blue-600"
+                )}>
+                  {addVat ? "⚡ +15% VAT will be added" : "✓ Prices stored as-is"}
+                </div>
+                <span className="text-xs text-gray-400">{rows.length} rows total</span>
               </div>
 
-              {/* VAT Legend */}
+              {/* Column legend */}
               <div className="flex items-center gap-4 text-[11px] font-bold px-1">
                 <span className="text-gray-400 uppercase tracking-widest">Price columns:</span>
-                <span className="text-gray-600 dark:text-gray-400">Base = from Excel</span>
-                <span className="text-amber-600">+VAT = 15%</span>
-                <span className="text-teal-600 font-black">Final = stored in system</span>
+                <span className="text-gray-600 dark:text-gray-400">From Excel</span>
+                {addVat && <span className="text-amber-600">+VAT 15%</span>}
+                <span className="text-teal-600 font-black">{addVat ? 'Final = stored in system' : 'Final = same as Excel'}</span>
               </div>
 
               {/* Preview Table */}
@@ -304,10 +409,14 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
                       <th className="text-left px-3 py-3 font-black text-gray-400 uppercase tracking-wider whitespace-nowrap">SKU</th>
                       <th className="text-left px-3 py-3 font-black text-gray-400 uppercase tracking-wider whitespace-nowrap">Cat.</th>
                       <th className="text-right px-3 py-3 font-black text-gray-400 uppercase tracking-wider whitespace-nowrap">Cost</th>
-                      <th className="text-right px-3 py-3 font-black text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">Base Price</th>
-                      <th className="text-right px-3 py-3 font-black text-amber-500 uppercase tracking-wider whitespace-nowrap">+VAT (15%)</th>
+                      <th className="text-right px-3 py-3 font-black text-gray-600 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap">
+                        {addVat ? 'Ex-VAT Price' : 'Sale Price'}
+                      </th>
+                      {addVat && (
+                        <th className="text-right px-3 py-3 font-black text-amber-500 uppercase tracking-wider whitespace-nowrap">+VAT (15%)</th>
+                      )}
                       <th className="text-right px-3 py-3 font-black text-teal-600 uppercase tracking-wider whitespace-nowrap">Final Price</th>
-                      <th className="text-right px-3 py-3 font-black text-gray-400 uppercase tracking-wider whitespace-nowrap">Stock</th>
+                      <th className="text-right px-3 py-3 font-black text-blue-500 uppercase tracking-wider whitespace-nowrap">Stock</th>
                       <th className="text-left px-3 py-3 font-black text-gray-400 uppercase tracking-wider">Status</th>
                     </tr>
                   </thead>
@@ -332,10 +441,20 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
                           </span>
                         </td>
                         <td className="px-3 py-2.5 text-right tabular-nums text-gray-500">{row.unitCost.toFixed(2)}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums font-medium text-gray-700 dark:text-gray-300">{row.basePrice.toFixed(2)}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums font-bold text-amber-600">+{row.vatAmount.toFixed(2)}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums font-black text-teal-600">{row.finalPrice.toFixed(2)}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums font-bold text-blue-600">{row.initialStock}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-medium text-gray-700 dark:text-gray-300">
+                          {row.basePrice.toFixed(2)}
+                        </td>
+                        {addVat && (
+                          <td className="px-3 py-2.5 text-right tabular-nums font-bold text-amber-600">
+                            +{getVatAmount(row.basePrice).toFixed(2)}
+                          </td>
+                        )}
+                        <td className="px-3 py-2.5 text-right tabular-nums font-black text-teal-600">
+                          {getFinalPrice(row.basePrice).toFixed(2)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-black text-blue-600">
+                          {row.initialStock}
+                        </td>
                         <td className="px-3 py-2.5">
                           {row.isValid ? (
                             <span className="flex items-center gap-1 text-emerald-600 font-bold whitespace-nowrap"><CheckCircle2 size={12} /> OK</span>
@@ -377,7 +496,8 @@ export function ImportInventoryModal({ triggerClassName }: { triggerClassName?: 
                   ) : (
                     <span className="flex items-center gap-2">
                       <CheckCircle2 size={16} />
-                      Import {validRows.length} Items with VAT Applied
+                      Import {validRows.length} Items
+                      {addVat && <span className="opacity-80 text-xs font-medium">(+15% VAT applied)</span>}
                       {invalidRows.length > 0 && <span className="opacity-70 text-xs font-medium">({invalidRows.length} skipped)</span>}
                     </span>
                   )}
