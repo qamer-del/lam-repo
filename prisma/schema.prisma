@@ -103,25 +103,29 @@ model User {
   supplierCases         SupplierWarrantyCase[]
   bnplSessions          BnplSession[]         @relation("UserBnplSessions")
   absenceRecords        AbsenceRecord[]       @relation("AbsenceRecordedBy")
+  attendanceRecords     AttendanceRecord[]    @relation("AttendanceRecordedBy")
 }
 
 model Staff {
-  id                Int                @id @default(autoincrement())
-  name              String
-  idNumber          String?            // ID or Iqama Number
-  nationality       String?
-  baseSalary        Float
-  overtimeAllowance Float              @default(0)
-  transportAllowance Float             @default(0)
-  otherAllowance    Float              @default(0)
-  monthlyHours      Float              @default(208) // Expected working hours per month
-  joiningDate       DateTime?          // Used to prorate salary for first partial month
-  isActive          Boolean            @default(true)
-  userId            String?            @unique
-  user              User?              @relation(fields: [userId], references: [id])
-  transactions      Transaction[]
-  salarySettlements SalarySettlement[]
-  absenceRecords    AbsenceRecord[]
+  id                  Int                @id @default(autoincrement())
+  name                String
+  idNumber            String?            // ID or Iqama Number
+  nationality         String?
+  baseSalary          Float
+  safetyAllowance     Float              @default(0)   // Fixed monthly safety allowance
+  overtimeAllowance   Float              @default(0)   // Kept for backward-compat (legacy fixed OT allowance)
+  transportAllowance  Float              @default(0)
+  otherAllowance      Float              @default(0)
+  overtimeMultiplier  Float              @default(1.5) // OT rate multiplier (default 1.5x)
+  monthlyHours        Float              @default(208) // Official working hours per month (26d × 8h)
+  joiningDate         DateTime?          // Used to prorate salary for first partial month
+  isActive            Boolean            @default(true)
+  userId              String?            @unique
+  user                User?              @relation(fields: [userId], references: [id])
+  transactions        Transaction[]
+  salarySettlements   SalarySettlement[]
+  absenceRecords      AbsenceRecord[]
+  attendanceRecords   AttendanceRecord[]
 }
 
 model Agent {
@@ -233,23 +237,41 @@ model Shift {
 }
 
 model SalarySettlement {
-  id                Int           @id @default(autoincrement())
-  staffId           Int
-  staff             Staff         @relation(fields: [staffId], references: [id])
-  month             Int
-  year              Int
-  baseSalary        Float         // Full monthly salary (before pro-ration)
-  earnedSalary      Float?        // Pro-rated earned salary (= baseSalary * workedDays/totalDays)
-  workedDays        Int?          // Number of days worked this settlement period
-  totalDays         Int?          // Total calendar days in the settlement month
-  settledUpToDate   DateTime?     // The exact date the settlement covers up to
-  advancesTally     Float
-  absenceHours      Float         @default(0)
-  absenceDeduction  Float         @default(0)
-  netPaid           Float
-  method            PayMethod     @default(CASH)
-  paidAt            DateTime      @default(now())
-  transactions      Transaction[]
+  id                    Int           @id @default(autoincrement())
+  staffId               Int
+  staff                 Staff         @relation(fields: [staffId], references: [id])
+  month                 Int
+  year                  Int
+  // ── Period range ─────────────────────────────────────────
+  settlementFrom        DateTime?     // Start date of this settlement period (for locking)
+  settledUpToDate       DateTime?     // End date (inclusive) of this settlement period
+  // ── Salary base ──────────────────────────────────────────
+  baseSalary            Float         // Full monthly basic salary (before pro-ration)
+  earnedSalary          Float?        // Pro-rated basic salary earned in this period
+  workedDays            Int?          // Calendar days in settlement period
+  totalDays             Int?          // Total calendar days in the settlement month
+  // ── Allowances ───────────────────────────────────────────
+  safetyAllowance       Float         @default(0)  // Safety allowance for this period
+  transportAllowance    Float         @default(0)  // Transport allowance snapshot
+  otherAllowance        Float         @default(0)  // Other allowance snapshot
+  bonus                 Float         @default(0)  // One-time bonus for this settlement
+  // ── Overtime (computed from attendance) ──────────────────
+  officialHours         Float         @default(0)  // Total official hours worked (≤8h/day, non-Friday)
+  overtimeHours         Float         @default(0)  // Regular OT hours (>8h/day, non-Friday)
+  fridayHours           Float         @default(0)  // All Friday worked hours (all = OT)
+  overtimeAmount        Float         @default(0)  // Regular OT pay
+  fridayOvertimeAmount  Float         @default(0)  // Friday OT pay
+  overtimeMultiplier    Float         @default(1.5) // Multiplier used at time of settlement
+  // ── Deductions ───────────────────────────────────────────
+  advancesTally         Float         @default(0)  // Sum of unsettled advances deducted
+  absenceHours          Float         @default(0)  // Legacy: manual absence hours
+  absenceDeduction      Float         @default(0)  // Legacy: absence deduction amount
+  // ── Payment ──────────────────────────────────────────────
+  netPaid               Float
+  method                PayMethod     @default(CASH)
+  cashSource            String?       // CASH_DRAWER | SALARY_FUND (when method=CASH)
+  paidAt                DateTime      @default(now())
+  transactions          Transaction[]
 }
 
 model AbsenceRecord {
@@ -263,6 +285,29 @@ model AbsenceRecord {
   createdAt    DateTime @default(now())
   recordedById String?
   recordedBy   User?    @relation("AbsenceRecordedBy", fields: [recordedById], references: [id])
+}
+
+// ── Attendance Records (daily clock-in/out per employee) ────
+// Used by payroll engine to calculate overtime & Friday hours
+// Foundation for future biometric/HRMS integration
+model AttendanceRecord {
+  id           Int      @id @default(autoincrement())
+  staffId      Int
+  staff        Staff    @relation(fields: [staffId], references: [id])
+  date         DateTime // The day this record is for (stored at midnight UTC)
+  clockIn      DateTime // Actual clock-in datetime
+  clockOut     DateTime // Actual clock-out datetime
+  workedHours  Float    // Computed hours (clockOut - clockIn)
+  isFriday     Boolean  @default(false) // True if the day falls on Friday
+  isHoliday    Boolean  @default(false) // Future: mark as public holiday
+  note         String?
+  recordedById String?
+  recordedBy   User?    @relation("AttendanceRecordedBy", fields: [recordedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@unique([staffId, date]) // One record per employee per day
+  @@index([staffId])
+  @@index([date])
 }
 
 // ── Inventory ──────────────────────────────────────────────

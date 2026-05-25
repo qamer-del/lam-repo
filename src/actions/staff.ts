@@ -29,9 +29,11 @@ export async function getStaffList() {
 export async function addStaff(data: { 
   name: string; 
   baseSalary: number;
+  safetyAllowance?: number;
   overtimeAllowance?: number;
   transportAllowance?: number;
   otherAllowance?: number;
+  overtimeMultiplier?: number;
   monthlyHours?: number;
   idNumber?: string;
   nationality?: string;
@@ -46,9 +48,11 @@ export async function addStaff(data: {
     data: {
       name: data.name,
       baseSalary: data.baseSalary,
+      safetyAllowance: data.safetyAllowance || 0,
       overtimeAllowance: data.overtimeAllowance || 0,
       transportAllowance: data.transportAllowance || 0,
       otherAllowance: data.otherAllowance || 0,
+      overtimeMultiplier: data.overtimeMultiplier || 1.5,
       monthlyHours: data.monthlyHours || 208,
       idNumber: data.idNumber,
       nationality: data.nationality,
@@ -117,9 +121,11 @@ export async function getStaffOverdueCredits(staffId: number) {
 export async function updateStaff(id: number, data: { 
   name: string; 
   baseSalary: number;
+  safetyAllowance?: number;
   overtimeAllowance?: number;
   transportAllowance?: number;
   otherAllowance?: number;
+  overtimeMultiplier?: number;
   monthlyHours?: number;
   idNumber?: string;
   nationality?: string;
@@ -135,9 +141,11 @@ export async function updateStaff(id: number, data: {
     data: {
       name: data.name,
       baseSalary: data.baseSalary,
+      safetyAllowance: data.safetyAllowance || 0,
       overtimeAllowance: data.overtimeAllowance || 0,
       transportAllowance: data.transportAllowance || 0,
       otherAllowance: data.otherAllowance || 0,
+      overtimeMultiplier: data.overtimeMultiplier || 1.5,
       monthlyHours: data.monthlyHours || 208,
       idNumber: data.idNumber,
       nationality: data.nationality,
@@ -196,3 +204,168 @@ export async function getAbsenceRecords(staffId: number, month: number, year: nu
     orderBy: { createdAt: 'desc' },
   })
 }
+
+// ── ERP Workspace Server Actions ────────────────────────────────────────────
+
+/**
+ * Lightweight staff list for the sidebar — only fields needed for display.
+ * Includes unsettled advance total for balance indicator.
+ */
+export async function getStaffListSummary() {
+  const staff = await prisma.staff.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      baseSalary: true,
+      safetyAllowance: true,
+      transportAllowance: true,
+      otherAllowance: true,
+      isActive: true,
+      transactions: {
+        where: {
+          isSettled: false,
+          type: { in: ['ADVANCE', 'EXPENSE'] },
+          isInternal: false,
+        },
+        select: { amount: true },
+      },
+    },
+    orderBy: { name: 'asc' },
+  })
+
+  return staff.map(s => ({
+    id: s.id,
+    name: s.name,
+    baseSalary: s.baseSalary,
+    totalMonthlySalary: s.baseSalary + (s.safetyAllowance || 0) + (s.transportAllowance || 0) + (s.otherAllowance || 0),
+    unsettledAdvancesTotal: s.transactions.reduce((sum, t) => sum + t.amount, 0),
+    isActive: s.isActive,
+  }))
+}
+
+/**
+ * Full employee profile for the Overview tab.
+ */
+export async function getStaffProfile(staffId: number) {
+  return prisma.staff.findUnique({
+    where: { id: staffId },
+    select: {
+      id: true,
+      name: true,
+      idNumber: true,
+      nationality: true,
+      baseSalary: true,
+      safetyAllowance: true,
+      overtimeAllowance: true,
+      transportAllowance: true,
+      otherAllowance: true,
+      overtimeMultiplier: true,
+      monthlyHours: true,
+      joiningDate: true,
+      isActive: true,
+      userId: true,
+    },
+  })
+}
+
+/**
+ * Paginated, server-filtered advances and expenses for the Advances tab.
+ * filter: 'all' | 'pending' | 'settled'
+ */
+export async function getStaffAdvances(
+  staffId: number,
+  filter: 'all' | 'pending' | 'settled' = 'all',
+  page: number = 1,
+  pageSize: number = 20
+) {
+  const whereSettled =
+    filter === 'pending' ? false : filter === 'settled' ? true : undefined
+
+  const where: any = {
+    staffId,
+    type: { in: ['ADVANCE', 'EXPENSE'] },
+    isInternal: false,
+    ...(whereSettled !== undefined ? { isSettled: whereSettled } : {}),
+  }
+
+  const [total, items] = await Promise.all([
+    prisma.transaction.count({ where }),
+    prisma.transaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        type: true,
+        amount: true,
+        method: true,
+        description: true,
+        isSettled: true,
+        createdAt: true,
+        salarySettlementId: true,
+        recordedBy: { select: { name: true } },
+      },
+    }),
+  ])
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+}
+
+/**
+ * Paginated, server-filtered all staff transactions for the Transactions tab.
+ * filter: 'all' | 'ADVANCE' | 'EXPENSE' | 'SALARY_PAYMENT' | 'pending' | 'settled'
+ */
+export async function getStaffTransactions(
+  staffId: number,
+  filter: string = 'all',
+  page: number = 1,
+  pageSize: number = 20
+) {
+  const where: any = { staffId, isInternal: false }
+
+  if (filter === 'pending') {
+    where.isSettled = false
+  } else if (filter === 'settled') {
+    where.isSettled = true
+  } else if (['ADVANCE', 'EXPENSE', 'SALARY_PAYMENT'].includes(filter)) {
+    where.type = filter
+  }
+
+  const [total, items] = await Promise.all([
+    prisma.transaction.count({ where }),
+    prisma.transaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        type: true,
+        amount: true,
+        method: true,
+        description: true,
+        isSettled: true,
+        createdAt: true,
+        salarySettlementId: true,
+        recordedBy: { select: { name: true } },
+      },
+    }),
+  ])
+
+  return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+}
+
+/**
+ * Deactivate a staff member (soft delete — sets isActive to false).
+ */
+export async function deactivateStaff(id: number) {
+  const session = await auth()
+  if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
+    throw new Error('Unauthorized')
+  }
+  await prisma.staff.update({ where: { id }, data: { isActive: false } })
+  revalidatePath('/staff')
+}
+

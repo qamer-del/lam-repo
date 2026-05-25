@@ -19,11 +19,12 @@ import { User, DollarSign, Calendar, CheckCircle2, AlertCircle, Wallet, Landmark
 import { SalarySettlementModal } from './salary-settlement-modal'
 import { SettleAllSalaries } from './settle-all-salaries'
 import { SalarySettlementPdfButton } from './salary-settlement-pdf-button'
-import { Printer, History, FileWarning } from 'lucide-react'
+import { Printer, History, FileWarning, Calculator } from 'lucide-react'
 import { getStaffOverdueCredits } from '@/actions/staff'
 import { EditStaffModal } from './edit-staff-modal'
 import { MoreVertical } from 'lucide-react'
 import { AbsenceRecordModal } from './absence-record-modal'
+import Link from 'next/link'
 
 type SalarySettlement = {
   id: number
@@ -388,6 +389,12 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
                   absenceDeduction={absenceDeduction}
                   netPaid={netSalary}
                 />
+                <Link href={`/staff/payroll`}>
+                  <button className="flex items-center gap-2 h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition-all active:scale-95">
+                    <Calculator size={15} />
+                    ERP Payroll
+                  </button>
+                </Link>
               </div>
             )}
           </div>

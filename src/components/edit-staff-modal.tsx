@@ -26,9 +26,11 @@ interface EditStaffModalProps {
     id: number
     name: string
     baseSalary: number
+    safetyAllowance?: number
     overtimeAllowance?: number
     transportAllowance?: number
     otherAllowance?: number
+    overtimeMultiplier?: number
     monthlyHours?: number
     idNumber?: string
     nationality?: string
@@ -43,9 +45,11 @@ export function EditStaffModal({ staff, onUpdated }: EditStaffModalProps) {
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(staff.name)
   const [salary, setSalary] = useState(staff.baseSalary.toString())
+  const [safety, setSafety] = useState((staff.safetyAllowance || 0).toString())
   const [overtime, setOvertime] = useState((staff.overtimeAllowance || 0).toString())
   const [transport, setTransport] = useState((staff.transportAllowance || 0).toString())
   const [other, setOther] = useState((staff.otherAllowance || 0).toString())
+  const [overtimeMult, setOvertimeMult] = useState((staff.overtimeMultiplier || 1.5).toString())
   const [monthlyHoursInput, setMonthlyHoursInput] = useState((staff.monthlyHours || 208).toString())
   const [idNumber, setIdNumber] = useState(staff.idNumber || '')
   const [nationality, setNationality] = useState(staff.nationality || '')
@@ -56,9 +60,11 @@ export function EditStaffModal({ staff, onUpdated }: EditStaffModalProps) {
     if (open) {
       setName(staff.name)
       setSalary(staff.baseSalary.toString())
+      setSafety((staff.safetyAllowance || 0).toString())
       setOvertime((staff.overtimeAllowance || 0).toString())
       setTransport((staff.transportAllowance || 0).toString())
       setOther((staff.otherAllowance || 0).toString())
+      setOvertimeMult((staff.overtimeMultiplier || 1.5).toString())
       setMonthlyHoursInput((staff.monthlyHours || 208).toString())
       setIdNumber(staff.idNumber || '')
       setNationality(staff.nationality || '')
@@ -68,10 +74,11 @@ export function EditStaffModal({ staff, onUpdated }: EditStaffModalProps) {
   }, [open, staff])
 
   const baseSal = parseFloat(salary) || 0
+  const safetyAllow = parseFloat(safety) || 0
   const overtimeAllow = parseFloat(overtime) || 0
   const transAllow = parseFloat(transport) || 0
   const otherAllow = parseFloat(other) || 0
-  const totalSalary = baseSal + overtimeAllow + transAllow + otherAllow
+  const totalSalary = baseSal + safetyAllow + overtimeAllow + transAllow + otherAllow
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -80,9 +87,11 @@ export function EditStaffModal({ staff, onUpdated }: EditStaffModalProps) {
       await updateStaff(staff.id, { 
         name, 
         baseSalary: baseSal,
+        safetyAllowance: safetyAllow,
         overtimeAllowance: overtimeAllow,
         transportAllowance: transAllow,
         otherAllowance: otherAllow,
+        overtimeMultiplier: parseFloat(overtimeMult) || 1.5,
         monthlyHours: parseFloat(monthlyHoursInput) || 208,
         idNumber,
         nationality,

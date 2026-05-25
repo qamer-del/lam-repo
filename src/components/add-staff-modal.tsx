@@ -27,9 +27,11 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState('')
   const [salary, setSalary] = useState('')
+  const [safety, setSafety] = useState('')
   const [overtime, setOvertime] = useState('')
   const [transport, setTransport] = useState('')
   const [other, setOther] = useState('')
+  const [overtimeMult, setOvertimeMult] = useState('1.5')
   const [monthlyHoursInput, setMonthlyHoursInput] = useState('208')
   const [idNumber, setIdNumber] = useState('')
   const [nationality, setNationality] = useState('')
@@ -43,10 +45,11 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
   }, [open])
 
   const baseSal = parseFloat(salary) || 0
+  const safetyAllow = parseFloat(safety) || 0
   const overtimeAllow = parseFloat(overtime) || 0
   const transAllow = parseFloat(transport) || 0
   const otherAllow = parseFloat(other) || 0
-  const totalSalary = baseSal + overtimeAllow + transAllow + otherAllow
+  const totalSalary = baseSal + safetyAllow + overtimeAllow + transAllow + otherAllow
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,9 +58,11 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
       await addStaff({ 
         name, 
         baseSalary: baseSal,
+        safetyAllowance: safetyAllow,
         overtimeAllowance: overtimeAllow,
         transportAllowance: transAllow,
         otherAllowance: otherAllow,
+        overtimeMultiplier: parseFloat(overtimeMult) || 1.5,
         monthlyHours: parseFloat(monthlyHoursInput) || 208,
         idNumber,
         nationality,
@@ -69,9 +74,11 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
       setOpen(false)
       setName('')
       setSalary('')
+      setSafety('')
       setOvertime('')
       setTransport('')
       setOther('')
+      setOvertimeMult('1.5')
       setMonthlyHoursInput('208')
       setIdNumber('')
       setNationality('')
@@ -168,18 +175,32 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
 
               <div className="p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl space-y-4 shadow-sm">
                 <h4 className="text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white mb-2">{t('salaryAndAllowances') || 'Salary & Allowances'}</h4>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="baseSalary" className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{t('baseSalarySar') || 'Base Salary (SAR)'}</Label>
-                  <Input
-                    id="baseSalary"
-                    type="number"
-                    step="0.01"
-                    required
-                    value={salary}
-                    onChange={(e) => setSalary(e.target.value)}
-                    className="h-10 rounded-lg bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800 tabular-nums"
-                    placeholder="0.00"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="baseSalary" className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{t('baseSalarySar') || 'Base Salary (SAR)'}</Label>
+                    <Input
+                      id="baseSalary"
+                      type="number"
+                      step="0.01"
+                      required
+                      value={salary}
+                      onChange={(e) => setSalary(e.target.value)}
+                      className="h-10 rounded-lg bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800 tabular-nums"
+                      placeholder="1000.00"
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="safetyAllowance" className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Safety Allowance (SAR)</Label>
+                    <Input
+                      id="safetyAllowance"
+                      type="number"
+                      step="0.01"
+                      value={safety}
+                      onChange={(e) => setSafety(e.target.value)}
+                      className="h-10 rounded-lg bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800 tabular-nums"
+                      placeholder="300.00"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="grid gap-1.5">
@@ -221,7 +242,7 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label htmlFor="monthlyHours" className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Monthly Working Hours</Label>
+                  <Label htmlFor="monthlyHours" className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Monthly Official Hours</Label>
                   <Input
                     id="monthlyHours"
                     type="number"
@@ -232,7 +253,22 @@ export function AddStaffModal({ onAdded }: { onAdded?: () => void }) {
                     className="h-10 rounded-lg bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800 tabular-nums"
                     placeholder="208"
                   />
-                  <p className="text-[10px] text-gray-400">Used to calculate hourly rate for absence deductions. Default: 208 hrs (8h × 26 days)</p>
+                  <p className="text-[10px] text-gray-400">8h/day × 26 working days = 208 hrs/month</p>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="overtimeMult" className="text-[10px] font-bold uppercase tracking-wider text-gray-500">OT Multiplier (e.g. 1.5)</Label>
+                  <Input
+                    id="overtimeMult"
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    max="3"
+                    value={overtimeMult}
+                    onChange={(e) => setOvertimeMult(e.target.value)}
+                    className="h-10 rounded-lg bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800 tabular-nums"
+                    placeholder="1.5"
+                  />
+                  <p className="text-[10px] text-gray-400">Default: 1.5× — applied to all overtime hours</p>
                 </div>
 
                 <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
