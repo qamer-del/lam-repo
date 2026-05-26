@@ -32,6 +32,7 @@ import {
 } from '@/lib/payroll-engine'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useLanguage } from '@/providers/language-provider'
 
 type StaffWithSettlements = {
   id: number
@@ -46,6 +47,7 @@ type StaffWithSettlements = {
 }
 
 export default function PayrollPage() {
+  const { t } = useLanguage()
   const { data: session, status } = useSession()
   const isAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN'
 
@@ -171,16 +173,16 @@ export default function PayrollPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-gray-900 to-gray-400 dark:from-white dark:to-gray-500">
-            Payroll
+            {t('payroll')}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">
-            ERP-style payroll management — attendance, overtime & salary settlement
+            {t('payrollSubtitle')}
           </p>
         </div>
         <Link href="/staff">
           <Button variant="outline" className="gap-2 rounded-xl border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300">
             <Users size={15} />
-            Back to Staff
+            {t('backToStaff')}
           </Button>
         </Link>
       </div>
@@ -211,28 +213,28 @@ export default function PayrollPage() {
             {[
               {
                 icon: Wallet,
-                label: 'Basic Salary',
+                label: t('payrollBasicSalary'),
                 value: `${selectedStaff.baseSalary.toLocaleString()} SAR`,
                 sub: '1000 SAR / month',
                 color: 'blue',
               },
               {
                 icon: Shield,
-                label: 'Safety Allowance',
+                label: t('payrollSafetyAllowance'),
                 value: `${(selectedStaff.safetyAllowance || 0).toLocaleString()} SAR`,
-                sub: 'Fixed monthly',
+                sub: t('payrollFixedMonthly'),
                 color: 'emerald',
               },
               {
                 icon: TrendingUp,
-                label: 'OT Hours (Period)',
+                label: t('payrollOtHoursPeriod'),
                 value: previewBreakdown ? `${previewBreakdown.overtimeHours.toFixed(1)} hrs` : '—',
                 sub: previewBreakdown ? `+ ${previewBreakdown.overtimeAmount.toFixed(2)} SAR` : '',
                 color: 'orange',
               },
               {
                 icon: Sun,
-                label: 'Friday Hours',
+                label: t('payrollFridayHours'),
                 value: previewBreakdown ? `${previewBreakdown.fridayHours.toFixed(1)} hrs` : '—',
                 sub: previewBreakdown ? `+ ${previewBreakdown.fridayOvertimeAmount.toFixed(2)} SAR` : '',
                 color: 'amber',
@@ -260,15 +262,15 @@ export default function PayrollPage() {
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),_transparent_70%)]" />
               <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <p className="text-sm font-black uppercase tracking-widest text-emerald-100 mb-1">Estimated Net Salary</p>
+                  <p className="text-sm font-black uppercase tracking-widest text-emerald-100 mb-1">{t('payrollEstimatedNetSalary')}</p>
                   <p className="text-4xl font-black tabular-nums">
                     {previewBreakdown.netSalary.toFixed(2)} <span className="text-xl text-emerald-200">SAR</span>
                   </p>
                   <p className="text-xs text-emerald-200 mt-2">
-                    Period: {format(nextPeriodFrom, 'MMM d')} → {format(today, 'MMM d, yyyy')}
+                    {t('period')}: {format(nextPeriodFrom, 'MMM d')} → {format(today, 'MMM d, yyyy')}
                     {lastSettlement && (
                       <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-[10px]">
-                        Last settled: {format(new Date(lastSettlement.paidAt), 'MMM d')}
+                        {t('payrollLastSettled').replace('{date}', format(new Date(lastSettlement.paidAt), 'MMM d'))}
                       </span>
                     )}
                   </p>
@@ -292,10 +294,10 @@ export default function PayrollPage() {
               {/* Mini breakdown */}
               <div className="mt-5 pt-4 border-t border-white/20 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: 'Basic', value: previewBreakdown.baseSalaryEarned.toFixed(2) },
-                  { label: 'Safety', value: previewBreakdown.safetyAllowance.toFixed(2) },
-                  { label: 'OT', value: (previewBreakdown.overtimeAmount + previewBreakdown.fridayOvertimeAmount).toFixed(2) },
-                  { label: 'Advances', value: `−${previewBreakdown.advancesTotal.toFixed(2)}` },
+                    { label: t('payrollMiniBasic'), value: previewBreakdown.baseSalaryEarned.toFixed(2) },
+                    { label: t('payrollMiniSafety'), value: previewBreakdown.safetyAllowance.toFixed(2) },
+                    { label: t('payrollMiniOt'), value: (previewBreakdown.overtimeAmount + previewBreakdown.fridayOvertimeAmount).toFixed(2) },
+                    { label: t('payrollMiniAdvances'), value: `−${previewBreakdown.advancesTotal.toFixed(2)}` },
                 ].map((item, i) => (
                   <div key={i}>
                     <p className="text-[9px] font-black uppercase tracking-wider text-emerald-200">{item.label}</p>
@@ -308,18 +310,18 @@ export default function PayrollPage() {
 
           {/* ── Tabs ──────────────────────────────────────────────────── */}
           <div className="flex items-center gap-2">
-            {(['attendance', 'history'] as const).map(t => (
+            {(['attendance', 'history'] as const).map((tabKey) => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
+                key={tabKey}
+                onClick={() => setTab(tabKey)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all ${
-                  tab === t
+                  tab === tabKey
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
                     : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
-                {t === 'attendance' ? <Clock size={14} /> : <History size={14} />}
-                {t === 'attendance' ? 'Attendance' : 'Settlement History'}
+                {tabKey === 'attendance' ? <Clock size={14} /> : <History size={14} />}
+                {tabKey === 'attendance' ? t('attendance') : t('settlementHistoryShort')}
               </button>
             ))}
             {isAdmin && tab === 'attendance' && (
@@ -344,16 +346,16 @@ export default function PayrollPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-black text-gray-900 dark:text-white">
-                      Attendance Records — {format(today, 'MMMM yyyy')}
+                      {t('attendanceRecordsForMonth').replace('{month}', format(today, 'MMMM yyyy'))}
                     </h3>
                     <p className="text-[10px] text-gray-400 font-medium mt-0.5">
-                      {attendanceRecords.length} days logged
+                      {t('daysLogged').replace('{count}', String(attendanceRecords.length))}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Official</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500 inline-block" /> OT</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Friday</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> {t('official')}</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500 inline-block" /> {t('ot')}</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> {t('friday')}</span>
                   </div>
                 </div>
               </div>
@@ -363,9 +365,9 @@ export default function PayrollPage() {
                   <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-400">
                     <Clock size={28} />
                   </div>
-                  <p className="text-gray-500 font-medium">No attendance records this period</p>
+                  <p className="text-gray-500 font-medium">{t('noAttendanceRecordsThisPeriod')}</p>
                   <p className="text-gray-400 text-sm mt-1">
-                    {isAdmin ? 'Click "Log Attendance" to add records' : 'No records have been logged yet'}
+                    {isAdmin ? t('clickLogAttendanceToAdd') : t('noRecordsLoggedYet')}
                   </p>
                 </div>
               ) : (
@@ -373,14 +375,14 @@ export default function PayrollPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-50/50 dark:bg-gray-800/50 hover:bg-transparent">
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400 pl-6">Date</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Clock In</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Clock Out</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Total</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Official</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">OT</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Type</TableHead>
-                        {isAdmin && <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400 pr-6 text-right">Action</TableHead>}
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400 pl-6">{t('date')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('clockIn')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('clockOut')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('total')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('official')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('ot')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('type')}</TableHead>
+                        {isAdmin && <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400 pr-6 text-right">{t('action')}</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -448,27 +450,29 @@ export default function PayrollPage() {
             /* ── Settlement History ─────────────────────────────────── */
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl overflow-hidden shadow-sm">
               <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-                <h3 className="text-sm font-black text-gray-900 dark:text-white">Settlement History</h3>
-                <p className="text-[10px] text-gray-400 font-medium mt-0.5">{historyRecords.length} settlements</p>
+                <h3 className="text-sm font-black text-gray-900 dark:text-white">{t('settlementHistoryShort')}</h3>
+                <p className="text-[10px] text-gray-400 font-medium mt-0.5">
+                  {t('settlementsCount').replace('{count}', String(historyRecords.length))}
+                </p>
               </div>
 
               {historyRecords.length === 0 ? (
                 <div className="py-16 text-center">
-                  <p className="text-gray-400 font-medium">No settlement history</p>
+                  <p className="text-gray-400 font-medium">{t('settlementReportsEmpty')}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-50/50 dark:bg-gray-800/50 hover:bg-transparent">
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400 pl-6">Period</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Basic</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">OT</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Safety</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Bonus</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Advances</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">Net Paid</TableHead>
-                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400 pr-6">Method</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400 pl-6">{t('period')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('payrollMiniBasic')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('ot')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('payrollMiniSafety')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('bonus')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('advances')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400">{t('netPaid')}</TableHead>
+                        <TableHead className="h-10 text-[10px] font-black uppercase tracking-wider text-gray-400 pr-6">{t('methodLabel')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -502,7 +506,10 @@ export default function PayrollPage() {
                           </TableCell>
                           <TableCell className="pr-6">
                             <span className="text-[10px] font-black uppercase px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">
-                              {s.method}{s.cashSource ? ` / ${s.cashSource === 'SALARY_FUND' ? 'Fund' : 'Drawer'}` : ''}
+                              {s.method}
+                              {s.cashSource
+                                ? ` / ${s.cashSource === 'SALARY_FUND' ? t('fund') : t('drawer')}`
+                                : ''}
                             </span>
                           </TableCell>
                         </TableRow>
