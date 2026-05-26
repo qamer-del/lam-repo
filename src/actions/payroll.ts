@@ -374,3 +374,34 @@ export async function getPayrollHistory(staffId: number) {
     },
   })
 }
+
+// ── ERP Tab Queries ──────────────────────────────────────────────────────
+
+export async function getStaffAdvancesTab(
+  staffId: number,
+  filter: 'all' | 'pending' | 'settled' = 'all',
+  page = 1
+) {
+  const pageSize = 10
+  const where = {
+    staffId,
+    type: { in: ['ADVANCE', 'EXPENSE'] as any[] },
+    ...(filter === 'pending' ? { isSettled: false } : {}),
+    ...(filter === 'settled' ? { isSettled: true } : {}),
+  }
+  const [transactions, total] = await Promise.all([
+    prisma.transaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        salarySettlement: {
+          select: { id: true, month: true, year: true, paidAt: true },
+        },
+      },
+    }),
+    prisma.transaction.count({ where }),
+  ])
+  return { transactions, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+}
