@@ -9,6 +9,18 @@ const s = (text: string | number | null | undefined): string => {
   return shapeArabicText(String(text));
 };
 
+// Safe date formatter — never throws on null/undefined/invalid dates
+const safeDate = (val: any, fmt: string, fallback = '—'): string => {
+  if (!val) return fallback;
+  try {
+    const d = val instanceof Date ? val : new Date(val);
+    if (isNaN(d.getTime())) return fallback;
+    return format(d, fmt);
+  } catch {
+    return fallback;
+  }
+};
+
 Font.register({
   family: 'Cairo',
   fonts: [
@@ -28,6 +40,7 @@ interface SalarySettlementDocumentProps {
     overtimeAllowance?: number;
     transportAllowance?: number;
     otherAllowance?: number;
+    targetSalaryAdjustment?: number;
     advancesTally: number;
     netPaid: number;
     method: string;
@@ -39,7 +52,7 @@ interface SalarySettlementDocumentProps {
 
 export function SalarySettlementDocument({ staffName, idNumber, nationality, settlement, locale = 'en' }: SalarySettlementDocumentProps) {
   if (!settlement) return null;
-  const monthName = format(new Date(settlement.year, (settlement.month || 1) - 1), 'MMMM');
+  const monthName = safeDate(new Date(settlement.year, (settlement.month || 1) - 1), 'MMMM');
   const t = (k: keyof typeof en) => locale === 'ar' ? (ar as any)[k] || en[k] || k : en[k] || k;
   const isRtl = locale === 'ar';
 
@@ -202,7 +215,7 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
               {s(`${monthName} ${settlement.year}`)}
             </Text>
             <Text>{s(`Voucher #: SAL-${settlement.year}-${settlement.month}-${settlement.paidAt.toString().slice(0,4)}`)}</Text>
-            <Text>{s(`${t('date')} ${format(new Date(settlement.paidAt), 'PPP')}`)}</Text>
+            <Text>{s(`${t('date')} ${safeDate(settlement.paidAt, 'PPP')}`)}</Text>
           </View>
         </View>
 
@@ -239,6 +252,13 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
             </View>
           )}
 
+          {(settlement.targetSalaryAdjustment || 0) > 0 && (
+            <View style={styles.summaryItem}>
+              <Text style={styles.label}>{s('Target Salary Adjustment')}</Text>
+              <Text style={[styles.value, { color: '#2563eb' }]}>{s(settlement.targetSalaryAdjustment?.toFixed(2))}</Text>
+            </View>
+          )}
+
           <View style={styles.summaryItem}>
             <Text style={styles.label}>{s(t('deductionsTotal'))}</Text>
             <Text style={[styles.value, { color: '#dc2626' }]}>{s(`- ${settlement.advancesTally.toFixed(2)}`)}</Text>
@@ -271,7 +291,7 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
             </View>
             {settlement.transactions.map((tx, i) => (
               <View key={i} style={styles.tableRow}>
-                <View style={[styles.tableCol, styles.dateCol]}><Text>{s(format(new Date(tx.createdAt), 'dd/MM/yyyy'))}</Text></View>
+                <View style={[styles.tableCol, styles.dateCol]}><Text>{s(safeDate(tx.createdAt, 'dd/MM/yyyy'))}</Text></View>
                 <View style={[styles.tableCol, styles.typeCol]}><Text>{s(t(tx.type.toLowerCase() as any) || tx.type)}</Text></View>
                 <View style={[styles.tableCol, styles.descCol]}><Text>{s(tx.description || '-')}</Text></View>
                 <View style={[styles.tableCol, styles.amountCol]}><Text>{s(tx.amount.toFixed(2))}</Text></View>

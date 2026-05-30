@@ -3,12 +3,13 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Loader2, Info, TrendingUp, Minus, CheckCircle2 } from 'lucide-react'
+import { Loader2, Info, TrendingUp, Minus, CheckCircle2, Clock, DollarSign } from 'lucide-react'
 import {
   getLastSettlement,
   getUnsettledAdvances,
   getAttendanceRecords,
 } from '@/actions/payroll'
+import { getPayrollMode, type PayrollMode } from '@/actions/staff-tabs'
 import {
   calcPayrollBreakdown,
   type AttendanceDay,
@@ -30,6 +31,10 @@ type StaffProfile = {
   nationality: string | null
   isActive: boolean
   userId: string | null
+  payrollStrategy?: string
+  targetSalary?: number
+  useAttendance?: boolean
+  officialDailyHours?: number
   salarySettlements: {
     paidAt: Date
     netPaid: number
@@ -63,8 +68,9 @@ export function PayrollTab({ staff }: { staff: StaffProfile }) {
   const router = useRouter()
   const today = new Date()
   const [loading, setLoading] = useState(true)
+  const [payrollMode, setPayrollMode] = useState<PayrollMode>('ATTENDANCE')
   const [periodFrom, setPeriodFrom] = useState('')
-  const [periodTo] = useState(today.toISOString().split('T')[0])
+  const [periodTo] = useState(format(today, 'yyyy-MM-dd'))
   const [advances, setAdvances] = useState<any[]>([])
   const [advancesTotal, setAdvancesTotal] = useState(0)
   const [deductionsTotal, setDeductionsTotal] = useState(0)
@@ -76,11 +82,13 @@ export function PayrollTab({ staff }: { staff: StaffProfile }) {
     Promise.all([
       getLastSettlement(staff.id),
       getUnsettledAdvances(staff.id),
-    ]).then(([last, advData]) => {
+      getPayrollMode(),
+    ]).then(([last, advData, mode]) => {
       setLastSettlement(last)
       setAdvances(advData.advances)
       setAdvancesTotal(advData.advancesTotal)
       setDeductionsTotal(advData.deductionsTotal)
+      setPayrollMode(mode)
       let from: Date
       if (last?.settledUpToDate) {
         const next = new Date(last.settledUpToDate)
@@ -89,11 +97,11 @@ export function PayrollTab({ staff }: { staff: StaffProfile }) {
       } else {
         from = new Date(today.getFullYear(), today.getMonth(), 1)
       }
-      setPeriodFrom(from.toISOString().split('T')[0])
+      setPeriodFrom(format(from, 'yyyy-MM-dd'))
     }).catch(console.error).finally(() => setLoading(false))
   }, [staff.id])
 
-  // Load attendance when period is known
+  // Load attendance when period is known (only matters in ATTENDANCE mode, but load regardless for display)
   useEffect(() => {
     if (!periodFrom || !periodTo) return
     const from = new Date(periodFrom + 'T00:00:00')
@@ -129,8 +137,13 @@ export function PayrollTab({ staff }: { staff: StaffProfile }) {
       settlementTo: to,
       month: to.getMonth() + 1,
       year: to.getFullYear(),
+      payrollMode,
+      payrollStrategy: (staff.payrollStrategy || 'STANDARD') as any,
+      targetSalary: staff.targetSalary || 0,
+      useAttendance: staff.useAttendance !== undefined ? staff.useAttendance : true,
+      officialDailyHours: staff.officialDailyHours || 8,
     })
-  }, [periodFrom, periodTo, attendanceRecords, staff, advancesTotal, deductionsTotal])
+  }, [periodFrom, periodTo, attendanceRecords, staff, advancesTotal, deductionsTotal, payrollMode])
 
   if (loading) {
     return (
@@ -140,8 +153,22 @@ export function PayrollTab({ staff }: { staff: StaffProfile }) {
     )
   }
 
+  const isFixed = payrollMode === 'FIXED'
+
   return (
     <div className="max-w-2xl space-y-5">
+      {/* Payroll Mode Badge */}
+      <div className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-bold ${
+        isFixed
+          ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400'
+          : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-400'
+      }`}>
+        {isFixed ? <DollarSign size={14} /> : <Clock size={14} />}
+        {isFixed
+          ? 'Fixed Payroll Mode — Full salary paid regardless of attendance. Change this in System Settings.'
+          : 'Attendance-Based Payroll — Salary calculated from actual worked hours and attendance records.'}
+      </div>
+
       {/* Last settlement banner */}
       {lastSettlement && (
         <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl">
@@ -158,8 +185,8 @@ export function PayrollTab({ staff }: { staff: StaffProfile }) {
         </div>
       )}
 
-      {/* Attendance summary */}
-      {breakdown && (
+      {/* Attendance summary — only shown in ATTENDANCE mode */}
+      {!isFixed && breakdown && (
         <div className="bg-gray-50 dark:bg-gray-900/60 rounded-2xl p-4">
           <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">
             Attendance — {attendanceRecords.length} days logged
@@ -198,13 +225,14 @@ export function PayrollTab({ staff }: { staff: StaffProfile }) {
           <div className="p-4 space-y-0">
             <BreakdownRow
               label="Basic Salary"
-              sub={breakdown.isFullMonth ? 'Full month' : `Pro-rated ${breakdown.settlementDays}/${breakdown.monthTotalDays} days`}
+              sub={isFixed ? 'Fixed — Full month' : (breakdown.isFullMonth ? 'Full month' : `Pro-rated ${breakdown.settlementDays}/${breakdown.monthTotalDays} days`)}
               value={`${breakdown.baseSalaryEarned.toFixed(2)} SAR`}
               type="positive"
             />
             {breakdown.safetyAllowance > 0 && <BreakdownRow label="Safety Allowance" value={`+ ${breakdown.safetyAllowance.toFixed(2)} SAR`} type="positive" />}
             {breakdown.transportAllowance > 0 && <BreakdownRow label="Transport Allowance" value={`+ ${breakdown.transportAllowance.toFixed(2)} SAR`} type="positive" />}
             {breakdown.otherAllowance > 0 && <BreakdownRow label="Other Allowance" value={`+ ${breakdown.otherAllowance.toFixed(2)} SAR`} type="positive" />}
+            {breakdown.targetSalaryAdjustment > 0 && <BreakdownRow label="Target Salary Adjustment" sub={`Guaranteed total: ${(staff.targetSalary || 0).toFixed(2)} SAR`} value={`+ ${breakdown.targetSalaryAdjustment.toFixed(2)} SAR`} type="positive" />}
             {breakdown.overtimeHours > 0 && <BreakdownRow label="Overtime" sub={`${breakdown.overtimeHours.toFixed(1)} hrs × ${breakdown.overtimeHourRate.toFixed(2)}`} value={`+ ${breakdown.overtimeAmount.toFixed(2)} SAR`} type="positive" />}
             {breakdown.fridayHours > 0 && <BreakdownRow label="Friday OT" sub={`${breakdown.fridayHours.toFixed(1)} hrs × ${breakdown.overtimeHourRate.toFixed(2)}`} value={`+ ${breakdown.fridayOvertimeAmount.toFixed(2)} SAR`} type="positive" />}
             <div className="flex justify-between items-center py-3 border-t border-gray-100 dark:border-gray-800 mt-2">
@@ -245,6 +273,10 @@ export function PayrollTab({ staff }: { staff: StaffProfile }) {
           otherAllowance: staff.otherAllowance,
           overtimeMultiplier: staff.overtimeMultiplier,
           joiningDate: staff.joiningDate,
+          payrollStrategy: staff.payrollStrategy,
+          targetSalary: staff.targetSalary,
+          useAttendance: staff.useAttendance,
+          officialDailyHours: staff.officialDailyHours,
         }}
         onSettled={() => router.refresh()}
       />

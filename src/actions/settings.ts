@@ -11,14 +11,17 @@ export async function getSystemSettings() {
 
   if (!settings) {
     settings = await prisma.systemSettings.create({
-      data: { id: 1, enableDenominationCounting: true }
+      data: { id: 1, enableDenominationCounting: true, payrollMode: 'ATTENDANCE' }
     })
   }
 
   return settings
 }
 
-export async function updateSystemSettings(data: { enableDenominationCounting: boolean }) {
+export async function updateSystemSettings(data: {
+  enableDenominationCounting?: boolean
+  payrollMode?: string
+}) {
   const session = await auth()
   if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'OWNER') {
     throw new Error("Unauthorized")
@@ -27,10 +30,11 @@ export async function updateSystemSettings(data: { enableDenominationCounting: b
   const settings = await prisma.systemSettings.upsert({
     where: { id: 1 },
     update: data,
-    create: { id: 1, ...data }
+    create: { id: 1, enableDenominationCounting: true, payrollMode: 'ATTENDANCE', ...data }
   })
 
   revalidatePath('/admin/settings')
+  revalidatePath('/staff')
   return settings
 }
 

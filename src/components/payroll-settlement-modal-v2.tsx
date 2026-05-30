@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { settleSalaryV2, getUnsettledAdvances, getLastSettlement, getAttendanceRecords } from '@/actions/payroll'
+import { getPayrollMode, type PayrollMode } from '@/actions/staff-tabs'
 import {
   calcPayrollBreakdown,
   isFridayDate,
@@ -38,6 +39,10 @@ interface StaffData {
   otherAllowance?: number
   overtimeMultiplier?: number
   joiningDate?: Date | null
+  payrollStrategy?: string
+  targetSalary?: number
+  useAttendance?: boolean
+  officialDailyHours?: number
 }
 
 interface PayrollSettlementModalProps {
@@ -89,12 +94,13 @@ export function PayrollSettlementModal({ staff, onSettled }: PayrollSettlementMo
   const [advances, setAdvances] = useState<any[]>([])
   const [advancesTotal, setAdvancesTotal] = useState(0)
   const [deductionsTotal, setDeductionsTotal] = useState(0)
+  const [payrollMode, setPayrollMode] = useState<PayrollMode>('ATTENDANCE')
 
   const today = new Date()
 
   // Settlement period
   const [periodFrom, setPeriodFrom] = useState<string>('')
-  const [periodTo, setPeriodTo] = useState<string>(today.toISOString().split('T')[0])
+  const [periodTo, setPeriodTo] = useState<string>(format(today, 'yyyy-MM-dd'))
 
   // Load data when dialog opens
   useEffect(() => {
@@ -104,7 +110,9 @@ export function PayrollSettlementModal({ staff, onSettled }: PayrollSettlementMo
     Promise.all([
       getLastSettlement(staff.id),
       getUnsettledAdvances(staff.id),
-    ]).then(([lastSettlement, advData]) => {
+      getPayrollMode(),
+    ]).then(([lastSettlement, advData, mode]) => {
+      setPayrollMode(mode)
       // Determine period start
       let from: Date
       if (lastSettlement?.settledUpToDate) {
@@ -115,7 +123,7 @@ export function PayrollSettlementModal({ staff, onSettled }: PayrollSettlementMo
         // Default: start of current month
         from = new Date(today.getFullYear(), today.getMonth(), 1)
       }
-      setPeriodFrom(from.toISOString().split('T')[0])
+      setPeriodFrom(format(from, 'yyyy-MM-dd'))
 
       setAdvances(advData.advances)
       setAdvancesTotal(advData.advancesTotal)
@@ -163,8 +171,13 @@ export function PayrollSettlementModal({ staff, onSettled }: PayrollSettlementMo
       settlementTo: to,
       month,
       year,
+      payrollMode,
+      payrollStrategy: (staff.payrollStrategy || 'STANDARD') as any,
+      targetSalary: staff.targetSalary || 0,
+      useAttendance: staff.useAttendance !== undefined ? staff.useAttendance : true,
+      officialDailyHours: staff.officialDailyHours || 8,
     })
-  }, [periodFrom, periodTo, attendanceRecords, staff, bonus, advancesTotal, deductionsTotal])
+  }, [periodFrom, periodTo, attendanceRecords, staff, bonus, advancesTotal, deductionsTotal, payrollMode])
 
   const netPayable = breakdown?.netSalary ?? 0
 
@@ -209,6 +222,7 @@ export function PayrollSettlementModal({ staff, onSettled }: PayrollSettlementMo
         fridayHours: breakdown.fridayHours,
         overtimeAmount: breakdown.overtimeAmount,
         fridayOvertimeAmount: breakdown.fridayOvertimeAmount,
+        targetSalaryAdjustment: breakdown.targetSalaryAdjustment,
         overtimeMultiplier: breakdown.overtimeMultiplier,
         safetyAllowance: breakdown.safetyAllowance,
         transportAllowance: breakdown.transportAllowance,
@@ -352,6 +366,14 @@ export function PayrollSettlementModal({ staff, onSettled }: PayrollSettlementMo
                           <BreakdownRow
                             label="Safety Allowance"
                             value={`+ ${breakdown.safetyAllowance.toFixed(2)} SAR`}
+                            type="positive"
+                          />
+                        )}
+                        {breakdown.targetSalaryAdjustment > 0 && (
+                          <BreakdownRow
+                            label="Target Salary Adjustment"
+                            sub={`Guaranteed total: ${(staff.targetSalary || 0).toFixed(2)} SAR`}
+                            value={`+ ${breakdown.targetSalaryAdjustment.toFixed(2)} SAR`}
                             type="positive"
                           />
                         )}

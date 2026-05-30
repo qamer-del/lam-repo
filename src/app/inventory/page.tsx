@@ -10,8 +10,12 @@ export default async function InventoryPage() {
   const role = session?.user?.role
 
   // Block cashiers entirely
-  if (!session || role === 'CASHIER') {
+  if (!session) {
     redirect('/')
+  }
+  
+  if (role === 'CASHIER') {
+    return <div className="p-8 text-center text-red-500 font-bold">Access Denied to Inventory Base Page</div>
   }
 
   const [items, purchases, movements] = await Promise.all([

@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Loader2, Plus, ChevronLeft, ChevronRight, CreditCard, DollarSign } from 'lucide-react'
+import { Loader2, Plus, ChevronLeft, ChevronRight, CreditCard, DollarSign, Pencil, X, Check } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { getStaffAdvancesTab } from '@/actions/payroll'
+import { editAdvance } from '@/actions/transactions'
 import { AddTransactionModal } from '@/components/add-transaction-modal'
 
 type Filter = 'all' | 'pending' | 'settled'
@@ -34,7 +36,28 @@ export function AdvancesTab({ staffId, staffName }: { staffId: number; staffName
     total: number
     totalPages: number
   }>({ transactions: [], total: 0, totalPages: 0 })
+  const { data: session } = useSession()
+  const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN'
+
   const [advanceOpen, setAdvanceOpen] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editAmount, setEditAmount] = useState<string>('')
+  const [savingId, setSavingId] = useState<number | null>(null)
+
+  const handleSaveEdit = async (txId: number) => {
+    if (!editAmount || isNaN(parseFloat(editAmount))) return
+    setSavingId(txId)
+    try {
+      await editAdvance(txId, parseFloat(editAmount))
+      setEditingId(null)
+      fetchData()
+      router.refresh()
+    } catch (e: any) {
+      alert(e.message || 'Failed to edit advance')
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   const fetchData = (f = filter, p = page) => {
     setLoading(true)
@@ -130,11 +153,52 @@ export function AdvancesTab({ staffId, staffName }: { staffId: number; staffName
               </div>
 
               {/* Amount */}
-              <p className={`text-sm font-black tabular-nums text-right self-center ${
-                tx.type === 'ADVANCE' ? 'text-amber-600' : 'text-red-500'
-              }`}>
-                {tx.amount.toFixed(2)} SAR
-              </p>
+              <div className="flex items-center justify-end gap-2 self-center">
+                {editingId === tx.id ? (
+                  <div className="flex items-center gap-1">
+                    <input 
+                      type="number"
+                      autoFocus
+                      className="w-20 px-2 py-1 text-sm font-bold border rounded-lg dark:bg-gray-800 dark:border-gray-700 outline-none focus:border-blue-500"
+                      value={editAmount}
+                      onChange={e => setEditAmount(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSaveEdit(tx.id)}
+                      disabled={savingId === tx.id}
+                    />
+                    <button 
+                      onClick={() => handleSaveEdit(tx.id)} 
+                      disabled={savingId === tx.id}
+                      className="p-1 text-emerald-600 hover:bg-emerald-50 rounded dark:hover:bg-emerald-900/30"
+                    >
+                      {savingId === tx.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    </button>
+                    <button 
+                      onClick={() => setEditingId(null)}
+                      disabled={savingId === tx.id}
+                      className="p-1 text-red-600 hover:bg-red-50 rounded dark:hover:bg-red-900/30"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <p className={`text-sm font-black tabular-nums text-right ${
+                      tx.type === 'ADVANCE' ? 'text-amber-600' : 'text-red-500'
+                    }`}>
+                      {tx.amount.toFixed(2)} SAR
+                    </p>
+                    {isSuperAdmin && !tx.isSettled && (
+                      <button 
+                        onClick={() => { setEditingId(tx.id); setEditAmount(tx.amount.toString()) }}
+                        className="p-1 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                        title="Edit Advance"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
 
               {/* Date */}
               <p className="text-xs font-medium text-gray-400 text-right self-center hidden sm:block whitespace-nowrap">

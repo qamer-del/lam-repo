@@ -38,6 +38,12 @@ enum SupplierCaseStatus {
   CLOSED
 }
 
+enum ConsumptionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum PayMethod {
   CASH
   NETWORK
@@ -69,6 +75,7 @@ enum MovementType {
   RETURN_IN
   WARRANTY_RETURN_IN   // defective item returned by customer
   WARRANTY_OUT         // replacement item given to customer
+  INTERNAL_CONSUMPTION
 }
 
 enum PurchaseStatus {
@@ -104,6 +111,12 @@ model User {
   bnplSessions          BnplSession[]         @relation("UserBnplSessions")
   absenceRecords        AbsenceRecord[]       @relation("AbsenceRecordedBy")
   attendanceRecords     AttendanceRecord[]    @relation("AttendanceRecordedBy")
+
+  // Internal Consumption Audit Trails
+  consumptionsCreated   InternalConsumptionRequest[] @relation("ConsumptionCreatedBy")
+  consumptionsApproved  InternalConsumptionRequest[] @relation("ConsumptionApprovedBy")
+  consumptionsRejected  InternalConsumptionRequest[] @relation("ConsumptionRejectedBy")
+  consumptionsModified  InternalConsumptionRequest[] @relation("ConsumptionModifiedBy")
 }
 
 model Staff {
@@ -121,11 +134,17 @@ model Staff {
   joiningDate         DateTime?          // Used to prorate salary for first partial month
   isActive            Boolean            @default(true)
   userId              String?            @unique
+  // ── Payroll Strategy ─────────────────────────────────────
+  payrollStrategy     String             @default("STANDARD") // "STANDARD" | "TARGET_SALARY"
+  targetSalary        Float              @default(0)          // Used only when strategy = TARGET_SALARY
+  useAttendance       Boolean            @default(true)       // Per-employee attendance toggle
+  officialDailyHours  Float              @default(8)          // Hours/day before OT kicks in
   user                User?              @relation(fields: [userId], references: [id])
   transactions        Transaction[]
   salarySettlements   SalarySettlement[]
   absenceRecords      AbsenceRecord[]
   attendanceRecords   AttendanceRecord[]
+  consumptions        InternalConsumptionRequest[]
 }
 
 model Agent {
@@ -183,6 +202,7 @@ model Transaction {
   dueDate             DateTime?         // For tracking overdue credit invoices
   shiftId             Int?
   shift               Shift?            @relation(fields: [shiftId], references: [id])
+  monthlyDeductionLimit Float?           // If set, this advance deducts at most this amount per settlement
   createdAt           DateTime          @default(now())
 }
 
@@ -267,6 +287,7 @@ model SalarySettlement {
   absenceHours          Float         @default(0)  // Legacy: manual absence hours
   absenceDeduction      Float         @default(0)  // Legacy: absence deduction amount
   // ── Payment ──────────────────────────────────────────────
+  targetSalaryAdjustment Float        @default(0)  // Top-up for TARGET_SALARY strategy
   netPaid               Float
   method                PayMethod     @default(CASH)
   cashSource            String?       // CASH_DRAWER | SALARY_FUND (when method=CASH)
@@ -345,6 +366,7 @@ model InventoryItem {
   replacementsGiven       WarrantyReplacement[] @relation("ReplacementItem")
   replacementsDefective   WarrantyReplacement[] @relation("DefectiveItem")
   supplierCaseItems       SupplierWarrantyCaseItem[]
+  consumptions            InternalConsumptionRequest[]
 }
 
 model StockMovement {
@@ -478,6 +500,7 @@ model SupplierWarrantyCaseItem {
 model SystemSettings {
   id                         Int      @id @default(1)
   enableDenominationCounting Boolean  @default(true)
+  payrollMode                String   @default("ATTENDANCE") // "ATTENDANCE" | "FIXED"
   updatedAt                  DateTime @updatedAt
 }
 
@@ -563,5 +586,43 @@ model BnplSession {
   @@index([invoiceNumber])
   @@index([status])
   @@index([provider])
+}
+
+// ── Internal Consumption ────────────────────────────────────
+
+model InternalConsumptionRequest {
+  id              Int               @id @default(autoincrement())
+  itemId          Int
+  item            InventoryItem     @relation(fields: [itemId], references: [id])
+  quantity        Float
+  
+  staffId         Int?
+  staff           Staff?            @relation(fields: [staffId], references: [id])
+  employeeName    String?           // Free-text fallback
+  
+  reason          String
+  notes           String?
+  status          ConsumptionStatus @default(PENDING)
+  
+  createdById     String
+  createdBy       User              @relation("ConsumptionCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime          @default(now())
+
+  approvedById    String?
+  approvedBy      User?             @relation("ConsumptionApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime?
+
+  rejectedById    String?
+  rejectedBy      User?             @relation("ConsumptionRejectedBy", fields: [rejectedById], references: [id])
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  modifiedById    String?
+  modifiedBy      User?             @relation("ConsumptionModifiedBy", fields: [modifiedById], references: [id])
+  updatedAt       DateTime          @updatedAt
+
+  @@index([status])
+  @@index([itemId])
+  @@index([staffId])
 }
 

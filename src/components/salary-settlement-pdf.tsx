@@ -10,6 +10,18 @@ const s = (text: string | number | null | undefined): string => {
   return shapeArabicText(String(text));
 };
 
+// Safe date formatter — never throws on null/undefined/invalid dates
+const safeDate = (val: any, fmt: string, fallback = '—'): string => {
+  if (!val) return fallback;
+  try {
+    const d = val instanceof Date ? val : new Date(val);
+    if (isNaN(d.getTime())) return fallback;
+    return format(d, fmt);
+  } catch {
+    return fallback;
+  }
+};
+
 Font.register({
   family: 'Cairo',
   fonts: [
@@ -170,7 +182,7 @@ export function SalarySettlementDocument({
           </View>
           {advances.map((adv, i) => (
             <View key={i} style={styles.tableRow}>
-              <Text style={[styles.col1, { fontSize: 10 }]}>{s(format(new Date(adv.createdAt), 'PP'))}</Text>
+              <Text style={[styles.col1, { fontSize: 10 }]}>{s(safeDate(adv.createdAt, 'PP'))}</Text>
               <Text style={[styles.col2, { fontSize: 10 }]}>{s(adv.amount.toFixed(2))}</Text>
             </View>
           ))}

@@ -23,6 +23,7 @@ type Settlement = {
   fridayHours: number
   overtimeAmount: number
   fridayOvertimeAmount: number
+  targetSalaryAdjustment: number
   advancesTally: number
   absenceHours: number
   absenceDeduction: number
@@ -164,6 +165,12 @@ export function HistoryTab({ staffId, staffName, idNumber, nationality }: { staf
                         <div className="flex justify-between py-1 border-b border-gray-200 dark:border-gray-800">
                           <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Overtime Pay ({(s.overtimeHours + s.fridayHours).toFixed(1)}h)</span>
                           <span className="text-xs font-bold text-gray-900 dark:text-white">{(s.overtimeAmount + s.fridayOvertimeAmount).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {(s.targetSalaryAdjustment ?? 0) > 0 && (
+                        <div className="flex justify-between py-1 border-b border-gray-200 dark:border-gray-800">
+                          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Target Salary Adjustment</span>
+                          <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{s.targetSalaryAdjustment.toFixed(2)}</span>
                         </div>
                       )}
                       {s.bonus > 0 && (

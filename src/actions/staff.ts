@@ -170,6 +170,10 @@ export async function updateStaff(id: number, data: {
   idNumber?: string;
   nationality?: string;
   userId?: string;
+  payrollStrategy?: string;
+  targetSalary?: number;
+  useAttendance?: boolean;
+  officialDailyHours?: number;
 }) {
   const session = await auth()
   if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
@@ -190,6 +194,10 @@ export async function updateStaff(id: number, data: {
       idNumber: data.idNumber,
       nationality: data.nationality,
       userId: data.userId === 'none' ? null : (data.userId || null),
+      payrollStrategy: data.payrollStrategy || 'STANDARD',
+      targetSalary: data.targetSalary || 0,
+      useAttendance: data.useAttendance !== undefined ? data.useAttendance : true,
+      officialDailyHours: data.officialDailyHours || 8,
     }
   })
   revalidatePath('/staff')

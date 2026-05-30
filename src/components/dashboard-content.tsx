@@ -49,6 +49,8 @@ export function DashboardContent({
     tamaraBalance: number,
     salaryFundRemaining: number, 
     totalOutstandingCredit: number,
+    internalConsumptionMonthQty: number,
+    internalConsumptionMonthValue: number,
     transactions: Transaction[],
     allStaffTransactions?: Transaction[],
     internalTransactions?: Transaction[],
@@ -83,6 +85,8 @@ export function DashboardContent({
   useEffect(() => {
     setVaultData(initialData)
   }, [initialData, setVaultData])
+
+  const { internalConsumptionMonthQty = 0, internalConsumptionMonthValue = 0 } = initialData
 
   const paginatedTransactions = transactions.slice(0, 15) // Show top 15 on dashboard
 
@@ -213,7 +217,7 @@ export function DashboardContent({
                 { label: t('cashInDrawer'), val: cashInDrawer, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-500/20', icon: <DollarSign size={18} /> },
                 { label: t('networkSales'), val: networkSales, color: 'text-blue-600 bg-blue-100 dark:bg-blue-500/20', icon: <Wifi size={18} /> },
                 { label: 'Salary Funds', val: salaryFundRemaining, color: 'text-indigo-600 bg-indigo-100 dark:bg-indigo-500/20', icon: <Landmark size={18} /> },
-                { label: 'Inventory Value', val: inventorySummary?.totalValue || 0, color: 'text-violet-600 bg-violet-100 dark:bg-violet-500/20', icon: <Package size={18} /> },
+                { label: 'Internal Consumption', val: internalConsumptionMonthValue, color: 'text-orange-600 bg-orange-100 dark:bg-orange-500/20', icon: <Package size={18} /> },
               ].map((stat, i) => (
                 <Card key={i} className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
                   <CardContent className="p-4 flex flex-col gap-3">

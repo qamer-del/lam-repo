@@ -139,7 +139,8 @@ export async function getLastSettlement(staffId: number) {
 }
 
 /**
- * Get unsettled advances and expense transactions for a staff member
+ * Get unsettled advances and expense transactions for a staff member.
+ * Respects monthlyDeductionLimit — if set, only deducts up to that amount this settlement.
  */
 export async function getUnsettledAdvances(staffId: number) {
   const txs = await prisma.transaction.findMany({
@@ -153,10 +154,25 @@ export async function getUnsettledAdvances(staffId: number) {
 
   const advances = txs.filter(t => t.type === 'ADVANCE')
   const deductions = txs.filter(t => t.type === 'EXPENSE')
-  const advancesTotal = advances.reduce((s, t) => s + t.amount, 0)
-  const deductionsTotal = deductions.reduce((s, t) => s + t.amount, 0)
 
-  return { advances, deductions, advancesTotal, deductionsTotal }
+  // Compute effective deduction per transaction (respecting installment cap)
+  const effectiveAdvances = advances.map(t => ({
+    ...t,
+    effectiveDeduction: t.monthlyDeductionLimit
+      ? Math.min(t.amount, t.monthlyDeductionLimit)
+      : t.amount,
+  }))
+  const effectiveDeductions = deductions.map(t => ({
+    ...t,
+    effectiveDeduction: t.monthlyDeductionLimit
+      ? Math.min(t.amount, t.monthlyDeductionLimit)
+      : t.amount,
+  }))
+
+  const advancesTotal = effectiveAdvances.reduce((s, t) => s + t.effectiveDeduction, 0)
+  const deductionsTotal = effectiveDeductions.reduce((s, t) => s + t.effectiveDeduction, 0)
+
+  return { advances: effectiveAdvances, deductions: effectiveDeductions, advancesTotal, deductionsTotal }
 }
 
 // ── ERP Salary Settlement ────────────────────────────────────────────────────
@@ -176,6 +192,7 @@ export async function settleSalaryV2(data: {
   fridayHours: number
   overtimeAmount: number
   fridayOvertimeAmount: number
+  targetSalaryAdjustment: number
   overtimeMultiplier: number
   safetyAllowance: number
   transportAllowance: number
@@ -199,7 +216,7 @@ export async function settleSalaryV2(data: {
     throw new Error('Unauthorized')
   }
 
-  // Fetch staff and unsettled transactions
+  // Fetch staff and unsettled transactions (with effective deduction amounts)
   const staff = await prisma.staff.findUnique({
     where: { id: data.staffId },
     include: {
@@ -256,24 +273,44 @@ export async function settleSalaryV2(data: {
       overtimeAmount: data.overtimeAmount,
       fridayOvertimeAmount: data.fridayOvertimeAmount,
       overtimeMultiplier: data.overtimeMultiplier,
+      targetSalaryAdjustment: data.targetSalaryAdjustment,
       advancesTally: data.advancesTotal + data.otherDeductions,
       absenceHours: 0,
       absenceDeduction: data.absenceDeduction,
       netPaid: data.netPaid,
       method: data.method === 'SPLIT' ? 'CASH' : data.method,
       cashSource: data.method === 'CASH' ? (data.cashSource || 'SALARY_FUND') : null,
-      transactions: {
-        connect: staff.transactions.map(tx => ({ id: tx.id })),
-      },
     },
   })
 
-  // Mark all unsettled advances/expenses as settled
-  if (staff.transactions.length > 0) {
-    await prisma.transaction.updateMany({
-      where: { id: { in: staff.transactions.map(t => t.id) } },
-      data: { isSettled: true, salarySettlementId: salarySettlement.id },
-    })
+  // Handle advance settlement — respecting monthlyDeductionLimit (installments)
+  for (const tx of staff.transactions) {
+    const effectiveDeduction = tx.monthlyDeductionLimit
+      ? Math.min(tx.amount, tx.monthlyDeductionLimit)
+      : tx.amount
+
+    if (effectiveDeduction >= tx.amount) {
+      // Fully settle this transaction
+      await prisma.transaction.update({
+        where: { id: tx.id },
+        data: { isSettled: true, salarySettlementId: salarySettlement.id },
+      })
+    } else {
+      // Installment: create a deduction record linked to settlement, keep original open
+      await prisma.transaction.create({
+        data: {
+          type: 'ADVANCE',
+          amount: -effectiveDeduction, // negative = deduction credit
+          method: 'CASH',
+          description: `Installment deduction — Advance #${tx.id} (${effectiveDeduction.toFixed(2)} of ${tx.amount.toFixed(2)} SAR)`,
+          staffId: data.staffId,
+          recordedById: session.user.id,
+          isSettled: true,
+          salarySettlementId: salarySettlement.id,
+          linkedTransactionId: tx.id,
+        },
+      })
+    }
   }
 
   // Record payment transaction(s)

@@ -2,6 +2,17 @@
 
 import { prisma } from '@/lib/prisma'
 
+export type PayrollMode = 'ATTENDANCE' | 'FIXED'
+
+export async function getPayrollMode(): Promise<PayrollMode> {
+  const settings = await prisma.systemSettings.findFirst({
+    where: { id: 1 },
+    select: { payrollMode: true },
+  })
+  return (settings?.payrollMode ?? 'ATTENDANCE') as PayrollMode
+}
+
+
 /**
  * Lightweight overview data for the current month — used by the OverviewTab.
  * Avoids loading everything at once by scoping to a single employee + current month.

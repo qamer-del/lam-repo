@@ -149,6 +149,19 @@ export async function getDashboardData() {
   // Final available pool is total monthly sales minus what was paid out as salary
   const salaryFundRemaining = monthlySalaryPool - salaryPayouts
 
+  // Calculate Internal Consumption for this month
+  const firstDayOfMonth = new Date(curYear, curMonth, 1)
+  const consumptions = await prisma.internalConsumptionRequest.findMany({
+    where: {
+      status: 'APPROVED',
+      approvedAt: { gte: firstDayOfMonth }
+    },
+    include: { item: true }
+  })
+  
+  const internalConsumptionMonthQty = consumptions.reduce((sum, c) => sum + c.quantity, 0)
+  const internalConsumptionMonthValue = consumptions.reduce((sum, c) => sum + (c.quantity * c.item.unitCost), 0)
+
   // Fetch or create active shift for the current user
   const activeShift = session?.user?.id ? await prisma.shift.findFirst({
     where: { openedById: session.user.id, status: 'OPEN' }
@@ -165,6 +178,8 @@ export async function getDashboardData() {
     activeShift,
     allStaffTransactions: allTxs, // Complete list including internal corrections
     internalTransactions, // Passed to the client for Super Admin view
+    internalConsumptionMonthQty,
+    internalConsumptionMonthValue,
     recentSettlements: await prisma.settlement.findMany({
       orderBy: { reportDate: 'desc' },
       take: 5,
