@@ -1,12 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
-import { Plus, Check, X, Pencil, RotateCcw, Loader2, Package, ChevronLeft, ChevronRight, FilterIcon } from 'lucide-react'
-import { CreateConsumptionModal } from './create-consumption-modal'
-import { approveConsumptionRequest, rejectConsumptionRequest, reverseConsumptionRequest, editConsumptionRequest } from '@/actions/inventory-consumption'
+import {
+  Plus, Check, X, Pencil, RotateCcw, Loader2, Package,
+  ChevronLeft, ChevronRight, FilterIcon, ChevronDown,
+  User, FileText, Hash, Calculator, Layers, AlertCircle
+} from 'lucide-react'
+import { createConsumptionRequest, approveConsumptionRequest, rejectConsumptionRequest, reverseConsumptionRequest, editConsumptionRequest } from '@/actions/inventory-consumption'
 import { toast } from 'sonner'
 import { useLanguage } from '@/providers/language-provider'
 import { cn } from '@/lib/utils'
@@ -15,6 +18,321 @@ type StatusFilter = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'
 
 const PAGE_SIZE = 10
 
+const PREDEFINED_REASONS_KEYS = [
+  'reasonStaffUsage',
+  'reasonCleaning',
+  'reasonInternalOps',
+  'reasonMaintenance',
+  'reasonDamagedReplacement',
+] as const
+
+// ─── Inline Request Form ───────────────────────────────────────────────────────
+function InlineRequestForm({
+  inventoryItems,
+  staffMembers,
+  onSuccess,
+}: {
+  inventoryItems: any[]
+  staffMembers: any[]
+  onSuccess: () => void
+}) {
+  const { t } = useLanguage()
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [itemId, setItemId] = useState('')
+  const [quantity, setQuantity] = useState('1')
+  const [staffId, setStaffId] = useState('')
+  const [employeeName, setEmployeeName] = useState('')
+  const [reasonKey, setReasonKey] = useState<typeof PREDEFINED_REASONS_KEYS[number]>('reasonStaffUsage')
+  const [notes, setNotes] = useState('')
+
+  const selectedItem = inventoryItems.find(i => i.id === parseInt(itemId))
+  const totalCost = selectedItem && quantity && !isNaN(parseFloat(quantity))
+    ? parseFloat(quantity) * (selectedItem.unitCost || 0)
+    : 0
+
+  const reset = () => {
+    setItemId(''); setQuantity('1'); setStaffId('')
+    setEmployeeName(''); setReasonKey('reasonStaffUsage'); setNotes('')
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const qty = parseFloat(quantity)
+    if (!itemId || isNaN(qty) || qty <= 0) return
+    if (!staffId && !employeeName.trim()) {
+      toast.error(t('eitherStaffOrName'))
+      return
+    }
+    setLoading(true)
+    try {
+      await createConsumptionRequest({
+        itemId: parseInt(itemId),
+        quantity: qty,
+        staffId: staffId ? parseInt(staffId) : null,
+        employeeName: employeeName.trim() || null,
+        reason: t(reasonKey),
+        notes: notes.trim() || null
+      })
+      toast.success(t('submitRequest') + ' ✓')
+      reset()
+      router.refresh()
+      onSuccess()
+    } catch (error: any) {
+      toast.error(error.message || t('operationFailed'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Step indicator bar */}
+      <div className="flex items-center gap-0 mb-8">
+        {[
+          { icon: Package, label: t('item') },
+          { icon: Hash, label: t('quantity') },
+          { icon: User, label: t('staffOrName') },
+          { icon: FileText, label: t('notesOptional') },
+        ].map((step, i) => (
+          <div key={i} className="flex items-center flex-1">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-center justify-center flex-shrink-0">
+                <step.icon size={13} className="text-blue-500" />
+              </div>
+              <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:block">{step.label}</span>
+            </div>
+            {i < 3 && <div className="w-8 h-px bg-gray-200 dark:bg-gray-700 mx-1 flex-shrink-0" />}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* LEFT COLUMN */}
+        <div className="space-y-5">
+          {/* Item selector */}
+          <div className="group">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
+              <Package size={11} />
+              {t('item')} <span className="text-red-400">*</span>
+            </label>
+            <div className="relative">
+              <select
+                value={itemId}
+                onChange={e => setItemId(e.target.value)}
+                required
+                className="w-full appearance-none px-4 py-3.5 pr-10 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-semibold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 dark:focus:border-blue-500 transition-all outline-none cursor-pointer"
+              >
+                <option value="" disabled>{t('selectConsumptionItem')}</option>
+                {inventoryItems.map(i => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} — {i.currentStock} {i.unit}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+            {/* Item info chip */}
+            {selectedItem ? (
+              <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-xl">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300">
+                  {t('unitCost')}: {selectedItem.unitCost?.toLocaleString()} SAR
+                </span>
+                <span className="ml-auto text-[11px] font-semibold text-blue-500">
+                  {selectedItem.currentStock} {selectedItem.unit} {t('filterApproved') === 'Approved' ? 'in stock' : 'متوفر'}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-2 h-[30px]" />
+            )}
+          </div>
+
+          {/* Quantity */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
+              <Calculator size={11} />
+              {t('quantity')} <span className="text-red-400">*</span>
+            </label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setQuantity(q => Math.max(0.5, parseFloat(q || '1') - 0.5).toString())}
+                className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-lg flex-shrink-0"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+                value={quantity}
+                onChange={e => setQuantity(e.target.value)}
+                className="flex-1 text-center px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-lg font-black text-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setQuantity(q => (parseFloat(q || '1') + 0.5).toString())}
+                className="w-11 h-11 rounded-2xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-bold text-lg flex-shrink-0"
+              >
+                +
+              </button>
+            </div>
+            {/* Total cost preview */}
+            {totalCost > 0 && (
+              <div className="mt-2 flex items-center justify-between px-3 py-2 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/40 rounded-xl">
+                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  {t('filterApproved') === 'Approved' ? 'Total Cost' : 'التكلفة الإجمالية'}
+                </span>
+                <span className="text-sm font-black text-emerald-700 dark:text-emerald-300 tabular-nums">
+                  {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SAR
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
+              <Layers size={11} />
+              {t('reasonLabel')} <span className="text-red-400">*</span>
+            </label>
+            <div className="grid grid-cols-1 gap-2">
+              {PREDEFINED_REASONS_KEYS.map(rk => (
+                <button
+                  key={rk}
+                  type="button"
+                  onClick={() => setReasonKey(rk)}
+                  className={cn(
+                    'px-4 py-2.5 rounded-xl text-sm font-semibold text-left transition-all border',
+                    reasonKey === rk
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                      : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-blue-50/50 dark:hover:border-blue-700'
+                  )}
+                >
+                  {t(rk)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div className="space-y-5 flex flex-col">
+          {/* Staff selector */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
+              <User size={11} />
+              {t('staffOrName')} <span className="text-red-400">*</span>
+            </label>
+            <p className="text-[11px] text-gray-400 mb-3">{t('filterApproved') === 'Approved' ? 'Select a staff member or type an employee name' : 'اختر موظفاً أو اكتب اسماً'}</p>
+
+            <div className="relative mb-3">
+              <select
+                value={staffId}
+                onChange={e => { setStaffId(e.target.value); setEmployeeName('') }}
+                className="w-full appearance-none px-4 py-3.5 pr-10 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-semibold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all outline-none cursor-pointer"
+              >
+                <option value="">{t('selectStaff')}</option>
+                {staffMembers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+
+            <div className="relative flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex-shrink-0">{t('filterApproved') === 'Approved' ? 'or' : 'أو'}</span>
+              <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+            </div>
+
+            <div className="relative mt-3">
+              <input
+                type="text"
+                placeholder={t('orTypeName')}
+                value={employeeName}
+                onChange={e => { setEmployeeName(e.target.value); setStaffId('') }}
+                className="w-full px-4 py-3.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-semibold text-gray-800 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all outline-none"
+              />
+            </div>
+
+            {/* Validation hint */}
+            {!staffId && !employeeName && (
+              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
+                <AlertCircle size={11} />
+                {t('eitherStaffOrName')}
+              </div>
+            )}
+          </div>
+
+          {/* Notes */}
+          <div className="flex-1 flex flex-col">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
+              <FileText size={11} />
+              {t('notesOptional')}
+            </label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={4}
+              placeholder={t('filterApproved') === 'Approved' ? 'Any additional context or details...' : 'أي تفاصيل إضافية...'}
+              className="flex-1 w-full px-4 py-3.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-semibold text-gray-800 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 transition-all outline-none resize-none"
+            />
+          </div>
+
+          {/* Summary card */}
+          {selectedItem && (
+            <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-3">
+                {t('filterApproved') === 'Approved' ? 'Request Summary' : 'ملخص الطلب'}
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-semibold">{t('item')}</span>
+                <span className="text-xs font-black text-gray-800 dark:text-gray-100 max-w-[60%] text-right">{selectedItem.name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-semibold">{t('quantity')}</span>
+                <span className="text-xs font-black text-gray-800 dark:text-gray-100">{quantity || '—'} {selectedItem.unit}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-semibold">{t('reasonLabel')}</span>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-400">{t(reasonKey)}</span>
+              </div>
+              {totalCost > 0 && (
+                <div className="flex items-center justify-between pt-2 border-t border-blue-100 dark:border-blue-900/40">
+                  <span className="text-xs text-gray-500 font-semibold">{t('filterApproved') === 'Approved' ? 'Est. Cost' : 'التكلفة'}</span>
+                  <span className="text-sm font-black text-blue-600 dark:text-blue-400 tabular-nums">{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SAR</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => { reset(); onSuccess() }}
+              className="flex-1 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !itemId}
+              className="flex-[2] flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-black rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98]"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+              {t('submitRequest')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  )
+}
+
+// ─── Main Client Component ─────────────────────────────────────────────────────
 export function ConsumptionClient({
   requests,
   inventoryItems,
@@ -30,16 +348,24 @@ export function ConsumptionClient({
   const { t, locale } = useLanguage()
   const isRTL = locale === 'ar'
 
-  const [modalOpen, setModalOpen] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const [loadingAction, setLoadingAction] = useState<number | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editQty, setEditQty] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
   const [currentPage, setCurrentPage] = useState(1)
+  const formRef = useRef<HTMLDivElement>(null)
 
   const isCashier = userRole === 'CASHIER'
   const isSuperAdmin = userRole === 'SUPER_ADMIN'
   const canManage = !isCashier
+
+  // Scroll into view when form opens
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+    }
+  }, [showForm])
 
   // Filter
   const filtered = statusFilter === 'ALL'
@@ -64,9 +390,7 @@ export function ConsumptionClient({
       router.refresh()
     } catch (e: any) {
       toast.error(e.message || t('operationFailed'))
-    } finally {
-      setLoadingAction(null)
-    }
+    } finally { setLoadingAction(null) }
   }
 
   const handleReject = async (id: number) => {
@@ -79,9 +403,7 @@ export function ConsumptionClient({
       router.refresh()
     } catch (e: any) {
       toast.error(e.message || t('operationFailed'))
-    } finally {
-      setLoadingAction(null)
-    }
+    } finally { setLoadingAction(null) }
   }
 
   const handleReverse = async (id: number) => {
@@ -93,9 +415,7 @@ export function ConsumptionClient({
       router.refresh()
     } catch (e: any) {
       toast.error(e.message || t('operationFailed'))
-    } finally {
-      setLoadingAction(null)
-    }
+    } finally { setLoadingAction(null) }
   }
 
   const handleSaveEdit = async (id: number) => {
@@ -109,9 +429,7 @@ export function ConsumptionClient({
       router.refresh()
     } catch (e: any) {
       toast.error(e.message || t('operationFailed'))
-    } finally {
-      setLoadingAction(null)
-    }
+    } finally { setLoadingAction(null) }
   }
 
   const statusBadge = (status: string) => {
@@ -154,7 +472,8 @@ export function ConsumptionClient({
 
   return (
     <div className={cn('min-h-screen bg-[#F8F9FC] dark:bg-[#0A0A0A]', isRTL && 'rtl')}>
-      {/* Header */}
+
+      {/* ── Page Header ─────────────────────────────────────────────── */}
       <div className="border-b border-gray-200/70 dark:border-gray-800 bg-white dark:bg-gray-950 px-6 py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <div>
@@ -164,18 +483,56 @@ export function ConsumptionClient({
             <p className="text-sm text-gray-500 mt-0.5">{t('internalConsumptionSubtitle')}</p>
           </div>
           <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+            onClick={() => setShowForm(v => !v)}
+            className={cn(
+              'flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-2xl shadow-lg transition-all active:scale-95',
+              showForm
+                ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-none'
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+            )}
           >
-            <Plus size={16} />
-            {t('newRequest')}
+            {showForm ? (
+              <><X size={16} /> {t('cancel')}</>
+            ) : (
+              <><Plus size={16} /> {t('newRequest')}</>
+            )}
           </button>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-        {/* KPI Cards */}
+        {/* ── Inline Form Panel (slide-in) ─────────────────────────── */}
+        <div
+          ref={formRef}
+          className={cn(
+            'overflow-hidden transition-all duration-500 ease-in-out',
+            showForm ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+          )}
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-3xl border border-blue-100 dark:border-blue-900/40 shadow-xl shadow-blue-500/5 overflow-hidden mb-2">
+            {/* Panel header */}
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                <Package size={18} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-black text-white">{t('newRequest')}</h2>
+                <p className="text-xs text-blue-100 mt-0.5">{t('internalConsumptionSubtitle')}</p>
+              </div>
+            </div>
+            {/* Form body */}
+            <div className="p-6">
+              <InlineRequestForm
+                inventoryItems={inventoryItems}
+                staffMembers={staffMembers}
+                onSuccess={() => setShowForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── KPI Cards ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4">
           {[
             {
@@ -224,7 +581,7 @@ export function ConsumptionClient({
           ))}
         </div>
 
-        {/* Filters */}
+        {/* ── Filters ────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 flex-wrap">
           <FilterIcon size={14} className="text-gray-400" />
           {filterLabels.map(f => (
@@ -251,7 +608,7 @@ export function ConsumptionClient({
           ))}
         </div>
 
-        {/* Table Card */}
+        {/* ── Table Card ─────────────────────────────────────────────── */}
         <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
           {paged.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -276,7 +633,6 @@ export function ConsumptionClient({
                   <tbody className="divide-y divide-gray-50 dark:divide-gray-800/60">
                     {paged.map(req => (
                       <tr key={req.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-900/5 transition-colors">
-                        {/* Req # / Date */}
                         <td className="px-5 py-4 align-top">
                           <div className="font-black text-gray-900 dark:text-white text-sm">
                             <span className="text-blue-600 dark:text-blue-400">#</span>{req.id}
@@ -285,15 +641,12 @@ export function ConsumptionClient({
                             {formatDate(req.createdAt)}
                           </div>
                         </td>
-
-                        {/* Item & Qty */}
                         <td className="px-5 py-4 align-top">
                           <div className="font-bold text-gray-800 dark:text-gray-100 text-sm">{req.item.name}</div>
                           {editingId === req.id ? (
                             <div className="flex items-center gap-1.5 mt-1.5">
                               <input
-                                type="number"
-                                step="0.01"
+                                type="number" step="0.01"
                                 className="w-20 px-2 py-1 text-xs border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-gray-800 font-bold focus:ring-2 focus:ring-blue-500/30"
                                 value={editQty}
                                 onChange={e => setEditQty(e.target.value)}
@@ -303,12 +656,8 @@ export function ConsumptionClient({
                                 <Loader2 size={12} className="animate-spin text-gray-400" />
                               ) : (
                                 <>
-                                  <button onClick={() => handleSaveEdit(req.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors">
-                                    <Check size={13} />
-                                  </button>
-                                  <button onClick={() => setEditingId(null)} className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
-                                    <X size={13} />
-                                  </button>
+                                  <button onClick={() => handleSaveEdit(req.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"><Check size={13} /></button>
+                                  <button onClick={() => setEditingId(null)} className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><X size={13} /></button>
                                 </>
                               )}
                             </div>
@@ -332,19 +681,11 @@ export function ConsumptionClient({
                             {(req.quantity * (req.item.unitCost || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SAR
                           </div>
                         </td>
-
-                        {/* Employee / Reason */}
                         <td className="px-5 py-4 align-top hidden sm:table-cell">
-                          <div className="font-bold text-gray-800 dark:text-gray-100 text-sm">
-                            {req.staff?.name || req.employeeName || '—'}
-                          </div>
+                          <div className="font-bold text-gray-800 dark:text-gray-100 text-sm">{req.staff?.name || req.employeeName || '—'}</div>
                           <div className="text-xs font-semibold text-gray-500 mt-0.5">{req.reason}</div>
-                          {req.notes && (
-                            <div className="text-[10px] text-gray-400 mt-1 italic leading-relaxed">{req.notes}</div>
-                          )}
+                          {req.notes && <div className="text-[10px] text-gray-400 mt-1 italic leading-relaxed">{req.notes}</div>}
                         </td>
-
-                        {/* Status */}
                         <td className="px-5 py-4 align-top">
                           {statusBadge(req.status)}
                           <div className="text-[9px] text-gray-400 mt-2 space-y-0.5 font-semibold leading-relaxed">
@@ -360,14 +701,10 @@ export function ConsumptionClient({
                             )}
                           </div>
                         </td>
-
-                        {/* Actions */}
                         {canManage && (
                           <td className="px-5 py-4 align-top text-right">
                             {loadingAction === req.id ? (
-                              <div className="flex justify-end">
-                                <Loader2 size={16} className="animate-spin text-gray-400" />
-                              </div>
+                              <div className="flex justify-end"><Loader2 size={16} className="animate-spin text-gray-400" /></div>
                             ) : (
                               <div className="flex items-center justify-end gap-1">
                                 {req.status === 'PENDING' && (
@@ -377,8 +714,7 @@ export function ConsumptionClient({
                                       className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/50 dark:border-emerald-800/50 rounded-lg transition-colors"
                                       title={t('approveRequest')}
                                     >
-                                      <Check size={11} />
-                                      {t('approveRequest')}
+                                      <Check size={11} />{t('approveRequest')}
                                     </button>
                                     <button
                                       onClick={() => handleReject(req.id)}
@@ -453,13 +789,6 @@ export function ConsumptionClient({
           )}
         </div>
       </div>
-
-      <CreateConsumptionModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        inventoryItems={inventoryItems}
-        staffMembers={staffMembers}
-      />
     </div>
   )
 }
