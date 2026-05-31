@@ -27,11 +27,18 @@ export async function proxy(request: NextRequest) {
   const role = session?.user?.role;
 
   if (role === 'CASHIER') {
+    const path = request.nextUrl.pathname
+    // Allow Cashiers to access internal consumption page
+    const cashierAllowedInventoryPaths = ['/inventory/consumption']
+    const isAllowedInventoryPath = cashierAllowedInventoryPaths.some(p => path.startsWith(p))
+
     if (
-      request.nextUrl.pathname.startsWith('/admin') ||
-      request.nextUrl.pathname.startsWith('/staff') ||
-      request.nextUrl.pathname.startsWith('/agents') ||
-      request.nextUrl.pathname.startsWith('/inventory')
+      !isAllowedInventoryPath && (
+        path.startsWith('/admin') ||
+        path.startsWith('/staff') ||
+        path.startsWith('/agents') ||
+        path.startsWith('/inventory')
+      )
     ) {
       return NextResponse.redirect(new URL('/sales', request.url))
     }
