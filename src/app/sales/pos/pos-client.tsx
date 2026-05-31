@@ -1043,23 +1043,48 @@ export function PosClient({
                 ) : (
                   <div className="divide-y divide-gray-100">
                     {cart.map(item => (
-                      <div key={item.itemId} className="bg-white px-3 py-2.5 flex items-center gap-2">
-                        <button onClick={() => removeFromCart(item.itemId)} className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-0.5">
-                          <Trash2 size={12} />
+                      <div key={item.itemId} className="bg-white px-3 py-3 flex items-center gap-2">
+                        <button onClick={() => removeFromCart(item.itemId)} className="shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1">
+                          <Trash2 size={13} />
                         </button>
                         <p className="text-[13px] font-semibold text-gray-800 truncate flex-1 min-w-0">{item.name}</p>
                         {/* Qty */}
-                        <div className="flex items-center bg-gray-50 rounded-md border border-gray-200 h-8 shrink-0">
-                          <button onClick={() => setQty(item.itemId, item.quantity - 1)} className="w-7 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors rounded-s-md"><Minus size={10} strokeWidth={3} /></button>
-                          <input type="number" min="0" value={item.quantity === 0 ? '' : item.quantity} onChange={e => setQty(item.itemId, parseInt(e.target.value) || 0)} className="w-8 h-full text-center text-xs font-black tabular-nums bg-transparent border-none outline-none text-gray-900 p-0" />
-                          <button onClick={() => setQty(item.itemId, item.quantity + 1)} className="w-7 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors rounded-e-md"><Plus size={10} strokeWidth={3} /></button>
+                        <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 h-9 shrink-0 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400/30 transition-all">
+                          <button onClick={() => setQty(item.itemId, item.quantity - 1)} className="w-8 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-s-lg"><Minus size={11} strokeWidth={3} /></button>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            dir="ltr"
+                            min="0"
+                            value={item.quantity === 0 ? '' : item.quantity}
+                            onChange={e => {
+                              const v = e.target.value.replace(/[^0-9.]/g, '')
+                              setQty(item.itemId, parseFloat(v) || 0)
+                            }}
+                            onFocus={e => e.target.select()}
+                            className="w-10 h-full text-center text-sm font-black tabular-nums bg-transparent border-none outline-none text-gray-900 p-0"
+                          />
+                          <button onClick={() => setQty(item.itemId, item.quantity + 1)} className="w-8 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-e-lg"><Plus size={11} strokeWidth={3} /></button>
                         </div>
                         <span className="text-[10px] text-gray-400 font-bold shrink-0">×</span>
                         {/* Price */}
-                        <div className="flex items-center bg-gray-50 rounded-md border border-gray-200 h-7 w-20 shrink-0 px-1.5 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
-                          <input type="number" step="0.01" min="0" value={item.price === 0 ? '' : item.price} onChange={e => updatePrice(item.itemId, parseFloat(e.target.value) || 0)} className="w-full text-[11px] font-bold tabular-nums text-end bg-transparent border-none outline-none text-gray-900 h-full p-0" />
+                        <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 h-9 w-24 shrink-0 px-2 focus-within:border-emerald-400 focus-within:ring-1 focus-within:ring-emerald-400/30 transition-all">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            dir="ltr"
+                            step="0.01"
+                            min="0"
+                            value={item.price === 0 ? '' : item.price}
+                            onChange={e => {
+                              const v = e.target.value.replace(/[^0-9.]/g, '')
+                              updatePrice(item.itemId, parseFloat(v) || 0)
+                            }}
+                            onFocus={e => e.target.select()}
+                            className="w-full text-sm font-bold tabular-nums text-end bg-transparent border-none outline-none text-gray-900 h-full p-0"
+                          />
                         </div>
-                        <span className="text-[11px] font-bold text-gray-500 tabular-nums shrink-0 w-12 sm:w-16 text-end">
+                        <span className="text-[12px] font-bold text-gray-600 tabular-nums shrink-0 w-14 sm:w-18 text-end">
                           {(item.quantity * item.price).toFixed(2)}
                         </span>
                       </div>
@@ -1078,10 +1103,19 @@ export function PosClient({
                       <span className="font-bold text-gray-400 uppercase text-[10px]">{t('subtotal')}</span>
                       <span className="font-black text-gray-800 tabular-nums">{cartSubtotal.toFixed(2)}</span>
                     </div>
-                    <div className="flex items-center gap-1 bg-gray-50 rounded-md border border-gray-200 h-7 px-2 w-28">
-                      <Percent size={10} className="text-gray-400 shrink-0" />
-                      <input type="number" step="0.5" min="0" max="100" placeholder="0" value={discountPct} onChange={e => setDiscountPct(e.target.value)} className="flex-1 text-[11px] font-bold tabular-nums bg-transparent border-none outline-none text-gray-900 h-full p-0 text-end" />
-                      <span className="text-[8px] font-bold text-gray-400 shrink-0">%</span>
+                    <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg border border-gray-200 h-9 px-2.5 w-32 focus-within:border-rose-400 focus-within:ring-1 focus-within:ring-rose-400/20 transition-all">
+                      <Percent size={11} className="text-gray-400 shrink-0" />
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        dir="ltr"
+                        placeholder="0"
+                        value={discountPct}
+                        onChange={e => setDiscountPct(e.target.value.replace(/[^0-9.]/g, ''))}
+                        onFocus={e => e.target.select()}
+                        className="flex-1 text-sm font-bold tabular-nums bg-transparent border-none outline-none text-gray-900 h-full p-0 text-end"
+                      />
+                      <span className="text-[10px] font-bold text-gray-400 shrink-0">%</span>
                     </div>
                     {parseFloat(discountPct) > 0 && (
                       <span className="text-[10px] font-black text-rose-500 tabular-nums shrink-0">-{discountAmt.toFixed(2)}</span>
@@ -1107,10 +1141,17 @@ export function PosClient({
                 {/* Total amount input */}
                 <div className="relative">
                   <span className="absolute start-3 top-1/2 -translate-y-1/2 text-sm font-black text-gray-400">{t('sar')}</span>
-                  <Input ref={amountRef} type="number" step="0.01" min="0" placeholder="0.00"
+                  <input
+                    ref={amountRef}
+                    type="text"
+                    inputMode="decimal"
+                    dir="ltr"
+                    placeholder="0.00"
                     value={totalOverride !== '' ? totalOverride : finalTotal > 0 ? finalTotal.toFixed(2) : ''}
-                    onChange={e => setTotalOverride(e.target.value)}
-                    className="h-12 ps-12 pe-10 text-xl font-black rounded-lg border-gray-200 focus:border-emerald-500 tabular-nums bg-gray-50 focus:bg-white" />
+                    onChange={e => setTotalOverride(e.target.value.replace(/[^0-9.]/g, ''))}
+                    onFocus={e => e.target.select()}
+                    className="h-12 w-full ps-12 pe-10 text-xl font-black rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 tabular-nums bg-gray-50 focus:bg-white outline-none transition-all"
+                  />
                   <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[8px] font-bold text-gray-300 pointer-events-none">F4</span>
                 </div>
 
