@@ -36,7 +36,7 @@ interface InventoryItem {
   hasWarranty?: boolean; warrantyDuration?: number | null; warrantyUnit?: string | null
   barcode?: string | null; barcodeType?: string | null
 }
-interface CartItem { itemId: number; name: string; unit: string; quantity: number; price: number }
+interface CartItem { itemId: number; name: string; unit: string; quantity: number | string; price: number | string; totalInput?: string }
 interface CustomerOption { id: number; name: string; phone: string | null }
 
 interface PosClientProps {
@@ -112,20 +112,39 @@ export function PosClient({
     if (item.currentStock <= 0) return
     setCart(prev => {
       const ex = prev.find(c => c.itemId === item.id)
-      if (ex) return prev.map(c => c.itemId === item.id ? { ...c, quantity: c.quantity + 1 } : c)
+      if (ex) return prev.map(c => c.itemId === item.id ? { ...c, quantity: (parseFloat(c.quantity as string) || 0) + 1 } : c)
       return [...prev, { itemId: item.id, name: item.name, unit: item.unit, quantity: 1, price: item.sellingPrice }]
     })
+    setTimeout(() => {
+      document.getElementById(`price-input-${item.id}`)?.focus()
+    }, 50)
   }, [])
 
-  const setQty = (id: number, qty: number) => {
-    if (qty <= 0) { setCart(prev => prev.filter(c => c.itemId !== id)); return }
-    setCart(prev => prev.map(c => c.itemId === id ? { ...c, quantity: qty } : c))
+  const setQty = (id: number, qty: number | string) => {
+    if (typeof qty === 'number' && qty <= 0) { setCart(prev => prev.filter(c => c.itemId !== id)); return }
+    setCart(prev => prev.map(c => c.itemId === id ? { ...c, quantity: qty, totalInput: undefined } : c))
   }
-  const updatePrice = (id: number, price: number) =>
-    setCart(prev => prev.map(c => c.itemId === id ? { ...c, price: Math.max(0, price) } : c))
+  const updatePrice = (id: number, price: number | string) =>
+    setCart(prev => prev.map(c => c.itemId === id ? { ...c, price, totalInput: undefined } : c))
+  
+  const updateTotalInput = (id: number, val: string) => {
+    setCart(prev => prev.map(c => {
+      if (c.itemId === id) {
+        const total = parseFloat(val)
+        if (!isNaN(total)) {
+          const qty = parseFloat(c.quantity as string) || 1
+          const price = Number((total / qty).toFixed(2)).toString()
+          return { ...c, totalInput: val, price }
+        }
+        return { ...c, totalInput: val, price: '' }
+      }
+      return c
+    }))
+  }
+
   const removeFromCart = (id: number) => setCart(prev => prev.filter(c => c.itemId !== id))
 
-  const cartSubtotal = cart.reduce((s, c) => s + c.quantity * c.price, 0)
+  const cartSubtotal = cart.reduce((s, c) => s + (parseFloat(c.quantity as string) || 0) * (parseFloat(c.price as string) || 0), 0)
 
   const [payMode, setPayMode] = useState<PayMode>('CASH')
   const [totalOverride, setTotalOverride] = useState('')
@@ -169,7 +188,7 @@ export function PosClient({
   }
 
   const handleSubmit = useCallback(async () => {
-    const validItems = cart.filter(c => c.quantity > 0)
+    const validItems = cart.filter(c => (parseFloat(c.quantity as string) || 0) > 0)
     if (!validItems.length) { toast.warning(t('selectAtLeastOneItem')); return }
     if (finalTotal <= 0) { toast.warning(t('enterValidTotal')); return }
     if (payMode === 'SPLIT') {
@@ -196,7 +215,7 @@ export function PosClient({
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
         dueDate: payMode === 'CREDIT' && dueDate ? new Date(dueDate) : undefined,
-        consumedItems: validItems.map(ci => ({ itemId: ci.itemId, quantity: ci.quantity })),
+        consumedItems: validItems.map(ci => ({ itemId: ci.itemId, quantity: parseFloat(ci.quantity as string) || 0 })),
       })
       if (results) {
         useStore.getState().addTransactions(results as Transaction[])
@@ -205,7 +224,7 @@ export function PosClient({
             invoiceNumber: results[0].invoiceNumber || '',
             createdAt: results[0].createdAt ? new Date(results[0].createdAt) : new Date(),
             cashierName: (results[0] as any).recordedBy?.name || cashierName,
-            items: validItems.map(ci => ({ name: ci.name, quantity: ci.quantity, price: ci.price, unit: ci.unit })),
+            items: validItems.map(ci => ({ name: ci.name, quantity: parseFloat(ci.quantity as string) || 0, price: parseFloat(ci.price as string) || 0, unit: ci.unit })),
             totalAmount: finalTotal, paymentMethod: payMode,
             cashAmount: payMode === 'SPLIT' ? (parseFloat(cashAmt) || 0) : undefined,
             networkAmount: payMode === 'SPLIT' ? (parseFloat(netAmt) || 0) : undefined,
@@ -266,6 +285,14 @@ export function PosClient({
         setPayMode(modes[parseInt(e.key) - 1])
         return
       }
+      if (e.key === 'Home' && activeTab === 'pos') {
+        e.preventDefault()
+        setPayMode(prev => {
+          const modes: PayMode[] = ['CASH','NETWORK','SPLIT','TABBY','TAMARA','CREDIT']
+          return modes[(modes.indexOf(prev) + 1) % modes.length]
+        })
+        return
+      }
       if (e.key === 'F4' && activeTab === 'pos') { e.preventDefault(); amountRef.current?.focus(); return }
       if ((e.key === 'F9' || (e.ctrlKey && e.key === 'Enter')) && activeTab === 'pos') {
         e.preventDefault(); submitRef.current(); return
@@ -312,11 +339,11 @@ export function PosClient({
         <BnplCheckoutModal
           provider={bnplModal.provider}
           amount={finalTotal}
-          cart={cart.filter(c => c.quantity > 0).map(c => ({
+          cart={cart.filter(c => (parseFloat(c.quantity as string) || 0) > 0).map(c => ({
             itemId: c.itemId,
             name: c.name,
-            quantity: c.quantity,
-            price: c.price,
+            quantity: parseFloat(c.quantity as string) || 0,
+            price: parseFloat(c.price as string) || 0,
             unit: c.unit,
           }))}
           customerName={customerName || undefined}
@@ -332,7 +359,7 @@ export function PosClient({
                 invoiceNumber,
                 createdAt: new Date(),
                 cashierName,
-                items: cart.filter(c => c.quantity > 0).map(ci => ({ name: ci.name, quantity: ci.quantity, price: ci.price, unit: ci.unit })),
+                items: cart.filter(c => (parseFloat(c.quantity as string) || 0) > 0).map(ci => ({ name: ci.name, quantity: parseFloat(ci.quantity as string) || 0, price: parseFloat(ci.price as string) || 0, unit: ci.unit })),
                 totalAmount: finalTotal,
                 paymentMethod: bnplModal.provider,
                 customerName: customerName || undefined,
@@ -872,8 +899,6 @@ export function PosClient({
                     value={search}
                     onChange={e => { setSearch(e.target.value); setFocusedIdx(-1) }}
                     onKeyDown={e => {
-                      if (e.key === 'ArrowDown') { e.preventDefault(); setFocusedIdx(i => Math.min(i + 1, filteredItems.length - 1)) }
-                      if (e.key === 'ArrowUp') { e.preventDefault(); setFocusedIdx(i => Math.max(i - 1, -1)) }
                       if (e.key === 'Enter') { 
                         e.preventDefault()
                         if (focusedIdx >= 0 && filteredItems[focusedIdx]) {
@@ -911,7 +936,7 @@ export function PosClient({
                 </div>
                 <div className="flex items-center justify-between mt-1 px-0.5">
                   <p className="text-[9px] text-gray-400 font-medium">{filteredItems.length} {t('items')}</p>
-                  {cart.length > 0 && <p className="text-[9px] font-bold text-emerald-600">{cart.reduce((s,c)=>s+c.quantity,0)} {t('inCart')}</p>}
+                  {cart.length > 0 && <p className="text-[9px] font-bold text-emerald-600">{cart.reduce((s,c)=>s+(parseFloat(c.quantity as string)||0),0)} {t('inCart')}</p>}
                 </div>
               </div>
 
@@ -941,7 +966,7 @@ export function PosClient({
                         className={cn(
                           'relative flex flex-col lg:flex-row lg:items-center p-4 lg:px-3 lg:py-[7px] text-start transition-all rounded-2xl lg:rounded-none border lg:border-0 lg:border-b border-gray-200 lg:border-gray-50 shadow-sm lg:shadow-none mb-1 lg:mb-0',
                           oos ? 'opacity-35 cursor-not-allowed bg-gray-50' :
-                          isFocused ? 'bg-blue-50 border-blue-300 lg:border-s-[3px] lg:border-s-blue-500' :
+                          isFocused ? 'bg-gradient-to-r from-blue-100/80 to-transparent border-blue-300 shadow-[0_4px_20px_rgba(59,130,246,0.25)] ring-1 ring-blue-400/20 lg:border-s-[4px] lg:border-s-blue-600 relative z-20 scale-[1.015] transition-all duration-300' :
                           inCart ? 'bg-emerald-50/40 border-emerald-200' : 'bg-white hover:bg-gray-50 active:bg-gray-100'
                         )}>
                         <div className="flex-1 min-w-0 flex flex-col lg:flex-row lg:items-center gap-2">
@@ -986,7 +1011,7 @@ export function PosClient({
                       <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center relative">
                         <ShoppingCart size={22} />
                         <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
-                          {cart.reduce((s,c)=>s+c.quantity,0)}
+                          {cart.reduce((s,c)=>s+(parseFloat(c.quantity as string)||0),0)}
                         </span>
                       </div>
                       <span className="font-black text-sm uppercase tracking-widest">{t('reviewOrder') || 'Review Order'}</span>
@@ -1022,7 +1047,7 @@ export function PosClient({
                   <ShoppingCart size={13} className="text-gray-400" />
                   <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t('currentOrder')}</span>
                   {cart.length > 0 && (
-                    <span className="bg-emerald-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">{cart.reduce((s,c)=>s+c.quantity,0)}</span>
+                    <span className="bg-emerald-500 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">{cart.reduce((s,c)=>s+(parseFloat(c.quantity as string)||0),0)}</span>
                   )}
                 </div>
                 {cart.length > 0 && (
@@ -1050,7 +1075,7 @@ export function PosClient({
                         <p className="text-[13px] font-semibold text-gray-800 truncate flex-1 min-w-0">{item.name}</p>
                         {/* Qty */}
                         <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 h-9 shrink-0 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400/30 transition-all">
-                          <button onClick={() => setQty(item.itemId, item.quantity - 1)} className="w-8 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-s-lg"><Minus size={11} strokeWidth={3} /></button>
+                          <button onClick={() => setQty(item.itemId, (parseFloat(item.quantity as string) || 0) - 1)} className="w-8 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-s-lg"><Minus size={11} strokeWidth={3} /></button>
                           <input
                             type="text"
                             inputMode="decimal"
@@ -1059,17 +1084,18 @@ export function PosClient({
                             value={item.quantity === 0 ? '' : item.quantity}
                             onChange={e => {
                               const v = e.target.value.replace(/[^0-9.]/g, '')
-                              setQty(item.itemId, parseFloat(v) || 0)
+                              setQty(item.itemId, v)
                             }}
                             onFocus={e => e.target.select()}
                             className="w-10 h-full text-center text-sm font-black tabular-nums bg-transparent border-none outline-none text-gray-900 p-0"
                           />
-                          <button onClick={() => setQty(item.itemId, item.quantity + 1)} className="w-8 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-e-lg"><Plus size={11} strokeWidth={3} /></button>
+                          <button onClick={() => setQty(item.itemId, (parseFloat(item.quantity as string) || 0) + 1)} className="w-8 h-full flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors rounded-e-lg"><Plus size={11} strokeWidth={3} /></button>
                         </div>
                         <span className="text-[10px] text-gray-400 font-bold shrink-0">×</span>
                         {/* Price */}
                         <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 h-9 w-24 shrink-0 px-2 focus-within:border-emerald-400 focus-within:ring-1 focus-within:ring-emerald-400/30 transition-all">
                           <input
+                            id={`price-input-${item.itemId}`}
                             type="text"
                             inputMode="decimal"
                             dir="ltr"
@@ -1078,15 +1104,34 @@ export function PosClient({
                             value={item.price === 0 ? '' : item.price}
                             onChange={e => {
                               const v = e.target.value.replace(/[^0-9.]/g, '')
-                              updatePrice(item.itemId, parseFloat(v) || 0)
+                              updatePrice(item.itemId, v)
                             }}
                             onFocus={e => e.target.select()}
                             className="w-full text-sm font-bold tabular-nums text-end bg-transparent border-none outline-none text-gray-900 h-full p-0"
                           />
                         </div>
-                        <span className="text-[12px] font-bold text-gray-600 tabular-nums shrink-0 w-14 sm:w-18 text-end">
-                          {(item.quantity * item.price).toFixed(2)}
-                        </span>
+                        <span className="text-[10px] text-gray-400 font-bold shrink-0">=</span>
+                        {/* Total Price */}
+                        <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 h-9 w-24 shrink-0 px-2 focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-400/30 transition-all">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            dir="ltr"
+                            value={
+                              item.totalInput !== undefined
+                                ? item.totalInput
+                                : (item.quantity !== '' && item.price !== '' 
+                                    ? ((parseFloat(item.quantity as string) || 0) * (parseFloat(item.price as string) || 0)).toFixed(2)
+                                    : '')
+                            }
+                            onChange={e => {
+                              const v = e.target.value.replace(/[^0-9.]/g, '')
+                              updateTotalInput(item.itemId, v)
+                            }}
+                            onFocus={e => e.target.select()}
+                            className="w-full text-sm font-bold tabular-nums text-end bg-transparent border-none outline-none text-indigo-700 h-full p-0"
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1113,7 +1158,7 @@ export function PosClient({
                         value={discountPct}
                         onChange={e => setDiscountPct(e.target.value.replace(/[^0-9.]/g, ''))}
                         onFocus={e => e.target.select()}
-                        className="flex-1 text-sm font-bold tabular-nums bg-transparent border-none outline-none text-gray-900 h-full p-0 text-end"
+                        className="flex-1 min-w-0 text-sm font-bold tabular-nums bg-transparent border-none outline-none text-gray-900 h-full p-0 text-end"
                       />
                       <span className="text-[10px] font-bold text-gray-400 shrink-0">%</span>
                     </div>

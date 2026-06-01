@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 import {
   Plus, Check, X, Pencil, RotateCcw, Loader2, Package,
-  ChevronLeft, ChevronRight, FilterIcon, ChevronDown,
+  ChevronLeft, ChevronRight, FilterIcon, ChevronDown, Search,
   User, FileText, Hash, Calculator, Layers, AlertCircle
 } from 'lucide-react'
 import { createConsumptionRequest, approveConsumptionRequest, rejectConsumptionRequest, reverseConsumptionRequest, editConsumptionRequest } from '@/actions/inventory-consumption'
@@ -46,6 +46,26 @@ function InlineRequestForm({
   const [reasonKey, setReasonKey] = useState<typeof PREDEFINED_REASONS_KEYS[number]>('reasonStaffUsage')
   const [notes, setNotes] = useState('')
 
+  const [itemSearch, setItemSearch] = useState('')
+  const [itemDropdownOpen, setItemDropdownOpen] = useState(false)
+  const itemSearchRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (itemSearchRef.current && !itemSearchRef.current.contains(e.target as Node)) {
+        setItemDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const filteredItems = inventoryItems.filter(i => 
+    i.name.toLowerCase().includes(itemSearch.toLowerCase()) || 
+    (i.sku && i.sku.toLowerCase().includes(itemSearch.toLowerCase())) ||
+    (i.barcode && i.barcode.toLowerCase().includes(itemSearch.toLowerCase()))
+  )
+
   const selectedItem = inventoryItems.find(i => i.id === parseInt(itemId))
   const totalCost = selectedItem && quantity && !isNaN(parseFloat(quantity))
     ? parseFloat(quantity) * (selectedItem.unitCost || 0)
@@ -54,6 +74,7 @@ function InlineRequestForm({
   const reset = () => {
     setItemId(''); setQuantity('1'); setStaffId('')
     setEmployeeName(''); setReasonKey('reasonStaffUsage'); setNotes('')
+    setItemSearch('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -117,21 +138,83 @@ function InlineRequestForm({
               <Package size={11} />
               {t('item')} <span className="text-red-400">*</span>
             </label>
-            <div className="relative">
-              <select
-                value={itemId}
-                onChange={e => setItemId(e.target.value)}
-                required
-                className="w-full appearance-none px-4 py-3.5 pr-10 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-semibold text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500/25 focus:border-blue-400 dark:focus:border-blue-500 transition-all outline-none cursor-pointer"
+            <div className="relative" ref={itemSearchRef}>
+              <div 
+                className="w-full px-4 py-3.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-2xl flex items-center justify-between cursor-pointer focus-within:ring-2 focus-within:ring-blue-500/25 focus-within:border-blue-400 transition-all"
+                onClick={() => setItemDropdownOpen(true)}
               >
-                <option value="" disabled>{t('selectConsumptionItem')}</option>
-                {inventoryItems.map(i => (
-                  <option key={i.id} value={i.id}>
-                    {i.name} — {i.currentStock} {i.unit}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                {selectedItem ? (
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{selectedItem.name}</span>
+                    {selectedItem.sku && <span className="text-[10px] text-gray-400 font-mono">{selectedItem.sku}</span>}
+                  </div>
+                ) : (
+                  <span className="text-sm font-semibold text-gray-400">{t('selectConsumptionItem')}</span>
+                )}
+                <div className="flex items-center gap-2">
+                  {selectedItem && (
+                    <button 
+                      type="button"
+                      className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setItemId(''); setItemSearch(''); }}
+                    >
+                      <X size={13} className="text-gray-500" />
+                    </button>
+                  )}
+                  <ChevronDown size={15} className="text-gray-400" />
+                </div>
+              </div>
+
+              {itemDropdownOpen && (
+                <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden">
+                  <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by name, SKU, or barcode..."
+                        value={itemSearch}
+                        onChange={e => setItemSearch(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border-none rounded-xl text-sm outline-none"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto p-1">
+                    {filteredItems.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-gray-400">No items found</div>
+                    ) : (
+                      filteredItems.map(i => (
+                        <button
+                          key={i.id}
+                          type="button"
+                          disabled={i.currentStock <= 0}
+                          onClick={() => {
+                            setItemId(i.id.toString())
+                            setItemDropdownOpen(false)
+                            setItemSearch('')
+                          }}
+                          className={cn(
+                            "w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between transition-colors",
+                            i.currentStock <= 0 ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{i.name}</p>
+                            {i.sku && <p className="text-[10px] text-gray-400 font-mono mt-0.5">{i.sku}</p>}
+                          </div>
+                          <div className="text-right ml-2 shrink-0">
+                            <p className={cn("text-xs font-bold", i.currentStock <= 0 ? "text-red-500" : "text-emerald-600")}>
+                              {i.currentStock} {i.unit}
+                            </p>
+                            <p className="text-[10px] text-gray-400">{i.unitCost?.toLocaleString()} SAR</p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             {/* Item info chip */}
             {selectedItem ? (
