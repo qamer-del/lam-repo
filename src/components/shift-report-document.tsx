@@ -1,5 +1,14 @@
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import { en, ar } from '@/lib/translations';
+import { shapeArabicVisual } from 'naqqash';
+
+// react-pdf v4 does NOT support direction:rtl in its layout engine.
+// shapeArabicVisual reverses the character order for LTR renderers — correct for react-pdf.
+const s = (text: string | number | null | undefined, isRtl = false): string => {
+  if (text === null || text === undefined) return '';
+  const str = String(text);
+  return isRtl ? shapeArabicVisual(str) : str;
+};
 
 Font.register({
   family: 'Cairo',
@@ -34,6 +43,8 @@ export function ShiftReportDocument({
       fontFamily: 'Cairo',
       color: '#1a1a1a',
       backgroundColor: '#ffffff',
+      // direction is intentionally NOT set — react-pdf v4 does not support it.
+      // RTL layout is achieved via flexDirection:row-reverse and textAlign:right.
     },
     header: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
@@ -206,7 +217,7 @@ export function ShiftReportDocument({
   });
 
   const formatCurrency = (val: number) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' SAR';
-  const formatDate = (date: any) => date ? new Date(date).toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US') : 'N/A';
+  const formatDate = (date: any) => date ? new Date(date).toLocaleString('en-US') : 'N/A';
 
   return (
     <Document>
@@ -214,90 +225,90 @@ export function ShiftReportDocument({
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.storeInfo}>
-            <Text style={styles.storeName}>{storeName}</Text>
-            <Text style={styles.storePhone}>{storePhone}</Text>
+            <Text style={styles.storeName}>{s(storeName, isRtl)}</Text>
+            <Text style={styles.storePhone}>{s(storePhone)}</Text>
           </View>
           <View>
-            <Text style={styles.reportTitle}>{t('shiftReport')}</Text>
-            <Text style={styles.reportId}>#{shift.id}</Text>
+            <Text style={styles.reportTitle}>{s(t('shiftReport'), isRtl)}</Text>
+            <Text style={styles.reportId}>{s(`#${shift.id}`)}</Text>
           </View>
         </View>
 
         {/* Shift Info Grid */}
         <View style={styles.grid}>
           <View style={styles.gridItem}>
-            <Text style={styles.label}>{t('cashier')}</Text>
-            <Text style={styles.value}>{shift.openedBy?.name || 'N/A'}</Text>
+            <Text style={styles.label}>{s(t('cashier'), isRtl)}</Text>
+            <Text style={styles.value}>{s(shift.openedBy?.name || 'N/A', isRtl)}</Text>
           </View>
           <View style={styles.gridItem}>
-            <Text style={styles.label}>{t('status')}</Text>
-            <Text style={styles.value}>{shift.status}</Text>
+            <Text style={styles.label}>{s(t('status'), isRtl)}</Text>
+            <Text style={styles.value}>{s(shift.status)}</Text>
           </View>
           <View style={styles.gridItem}>
-            <Text style={styles.label}>{t('shiftOpened')}</Text>
-            <Text style={styles.value}>{formatDate(shift.openedAt)}</Text>
+            <Text style={styles.label}>{s(t('shiftOpened'), isRtl)}</Text>
+            <Text style={styles.value}>{s(formatDate(shift.openedAt))}</Text>
           </View>
           <View style={styles.gridItem}>
-            <Text style={styles.label}>{t('shiftClosed')}</Text>
-            <Text style={styles.value}>{formatDate(shift.closedAt)}</Text>
+            <Text style={styles.label}>{s(t('shiftClosed'), isRtl)}</Text>
+            <Text style={styles.value}>{s(formatDate(shift.closedAt))}</Text>
           </View>
         </View>
 
         <View style={styles.divider} />
 
         {/* Sales Summary */}
-        <Text style={styles.sectionTitle}>{t('salesSummary')}</Text>
+        <Text style={styles.sectionTitle}>{s(t('salesSummary'), isRtl)}</Text>
         
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{t('cashSales')}</Text>
+          <Text style={styles.summaryLabel}>{s(t('cashSales'), isRtl)}</Text>
           <Text style={styles.summaryValue}>{formatCurrency(shift.cashSales)}</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{t('cardSales')}</Text>
+          <Text style={styles.summaryLabel}>{s(t('cardSales'), isRtl)}</Text>
           <Text style={styles.summaryValue}>{formatCurrency(shift.cardSales)}</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{t('tamara')}</Text>
+          <Text style={styles.summaryLabel}>{s(t('tamara'), isRtl)}</Text>
           <Text style={styles.summaryValue}>{formatCurrency(shift.tamaraSales)}</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{t('tabby')}</Text>
+          <Text style={styles.summaryLabel}>{s(t('tabby'), isRtl)}</Text>
           <Text style={styles.summaryValue}>{formatCurrency(shift.tabbySales)}</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{t('creditSales')}</Text>
+          <Text style={styles.summaryLabel}>{s(t('creditSales'), isRtl)}</Text>
           <Text style={styles.summaryValue}>{formatCurrency(shift.creditSales)}</Text>
         </View>
         
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>{t('totalSales')}</Text>
+          <Text style={styles.totalLabel}>{s(t('totalSales'), isRtl)}</Text>
           <Text style={styles.totalValue}>{formatCurrency(shift.totalSales)}</Text>
         </View>
 
         <View style={[styles.summaryRow, { marginTop: 10 }]}>
-          <Text style={styles.summaryLabel}>{t('totalInvoices')}</Text>
-          <Text style={styles.summaryValue}>{shift.invoiceCount}</Text>
+          <Text style={styles.summaryLabel}>{s(t('totalInvoices'), isRtl)}</Text>
+          <Text style={styles.summaryValue}>{s(shift.invoiceCount)}</Text>
         </View>
 
         {/* Cash Reconciliation */}
         <View style={styles.reconciliationSection}>
           <Text style={[styles.sectionTitle, { backgroundColor: 'transparent', padding: 0, marginBottom: 10 }]}>
-            {t('cashReconciliation')}
+            {s(t('cashReconciliation'), isRtl)}
           </Text>
           <View style={styles.reconciliationRow}>
-            <Text style={styles.summaryLabel}>{t('expectedCash')}</Text>
+            <Text style={styles.summaryLabel}>{s(t('expectedCash'), isRtl)}</Text>
             <Text style={styles.summaryValue}>{formatCurrency(shift.expectedCash)}</Text>
           </View>
           <View style={styles.reconciliationRow}>
-            <Text style={styles.summaryLabel}>{t('actualCash')}</Text>
+            <Text style={styles.summaryLabel}>{s(t('actualCash'), isRtl)}</Text>
             <Text style={styles.summaryValue}>{formatCurrency(shift.actualCash)}</Text>
           </View>
           <View style={styles.differenceRow}>
             <Text style={[styles.totalLabel, { color: shift.difference < 0 ? '#b91c1c' : shift.difference > 0 ? '#059669' : '#1e40af' }]}>
-              {t('difference')}
+              {s(t('difference'), isRtl)}
             </Text>
             <Text style={[styles.differenceValue, { color: shift.difference < 0 ? '#b91c1c' : shift.difference > 0 ? '#059669' : '#1e40af' }]}>
-              {shift.difference > 0 ? '+' : ''}{formatCurrency(shift.difference)}
+              {`${shift.difference > 0 ? '+' : ''}${formatCurrency(shift.difference)}`}
             </Text>
           </View>
         </View>
@@ -311,17 +322,17 @@ export function ShiftReportDocument({
           <View style={{ width: '60%' }}>
             <View style={styles.signatures}>
               <View style={styles.signatureLine}>
-                <Text style={styles.signatureLabel}>{t('cashierSignature')}</Text>
+                <Text style={styles.signatureLabel}>{s(t('cashierSignature'), isRtl)}</Text>
               </View>
               <View style={styles.signatureLine}>
-                <Text style={styles.signatureLabel}>{t('managerSignature')}</Text>
+                <Text style={styles.signatureLabel}>{s(t('managerSignature'), isRtl)}</Text>
               </View>
             </View>
           </View>
         </View>
 
         <Text style={styles.footer}>
-          {t('officialRecordFooter')} {new Date().toLocaleString()}.
+          {s(`${t('officialRecordFooter')} ${new Date().toLocaleString()}.`, isRtl)}
         </Text>
       </Page>
     </Document>

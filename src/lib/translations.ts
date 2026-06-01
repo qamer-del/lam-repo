@@ -634,6 +634,21 @@ export const en = {
   thisMonthConsumption: 'This Month',
   staffOrName: 'Staff / Employee Name',
   eitherStaffOrName: 'Either Staff or Employee Name must be provided',
+
+  // Payroll Report — bilingual
+  payrollReport: 'Payroll Report',
+  reportPeriod: 'Report Period',
+  viewReportAr: 'View in Arabic',
+  viewReportEn: 'View in English',
+  printReportAr: 'Print (Arabic)',
+  printReportEn: 'Print (English)',
+  selectReportLanguage: 'Select Report Language',
+  downloadPdf: 'Download PDF',
+  storeName: 'Store Name',
+  generatedOn: 'Generated on',
+  transportAllowanceHeader: 'Transport',
+  otherAllowanceHeader: 'Other Allow.',
+  totalSalaryHeader: 'Total Salary',
 }
 
 export const ar = {
@@ -1272,4 +1287,19 @@ export const ar = {
   thisMonthConsumption: 'هذا الشهر',
   staffOrName: 'الموظف / الاسم',
   eitherStaffOrName: 'يجب تحديد موظف أو إدخال اسم',
+
+  // Payroll Report — bilingual
+  payrollReport: 'تقرير الرواتب',
+  reportPeriod: 'فترة التقرير',
+  viewReportAr: 'عرض بالعربية',
+  viewReportEn: 'View in English',
+  printReportAr: 'طباعة (عربي)',
+  printReportEn: 'Print (English)',
+  selectReportLanguage: 'اختر لغة التقرير',
+  downloadPdf: 'تحميل PDF',
+  storeName: 'اسم المتجر',
+  generatedOn: 'تاريخ الإنشاء',
+  transportAllowanceHeader: 'بدل نقل',
+  otherAllowanceHeader: 'بدلات أخرى',
+  totalSalaryHeader: 'إجمالي الراتب',
 }

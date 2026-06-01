@@ -17,7 +17,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { username: credentials.username as string }
         })
 
-        if (!user || user.isActive === false) return null
+        // Block inactive users and any non-ACTIVE status (PENDING / REJECTED)
+        if (!user || user.isActive === false || (user as any).status !== 'ACTIVE') return null
 
         const passwordsMatch = await bcrypt.compare(
           credentials.password as string,

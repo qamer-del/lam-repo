@@ -128,24 +128,22 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
     .filter(tx => tx.staffId != null && Number(tx.staffId) === Number(selected) && (tx.type === 'ADVANCE' || tx.type === 'EXPENSE'))
     .map(tx => ({ ...tx }))
 
-  // For non-super admins, merge corrections into original transactions and hide internal ones
-  if (!isSuperAdmin) {
-    const corrections = staffTxs.filter(tx => tx.isInternal)
-    const originals = staffTxs.filter(tx => !tx.isInternal)
+  // Merge corrections into original transactions and hide internal ones for all views
+  const corrections = staffTxs.filter(tx => tx.isInternal)
+  const originals = staffTxs.filter(tx => !tx.isInternal)
 
-    corrections.forEach(c => {
-      const match = c.description?.match(/\[CORRECTION FOR #(\d+)\]/)
-      if (match) {
-        const targetId = parseInt(match[1])
-        const target = originals.find(o => o.id === targetId)
-        if (target) {
-          target.amount += c.amount
-        }
+  corrections.forEach(c => {
+    const match = c.description?.match(/\[CORRECTION FOR #(\d+)\]/)
+    if (match) {
+      const targetId = parseInt(match[1])
+      const target = originals.find(o => o.id === targetId)
+      if (target) {
+        target.amount += c.amount
       }
-    })
+    }
+  })
 
-    staffTxs = originals
-  }
+  staffTxs = originals
 
   const selectedAdvances = staffTxs.filter(tx => tx.type === 'ADVANCE').reduce((sum, tx) => {
     return !tx.isSettled ? sum + tx.amount : sum
@@ -456,7 +454,7 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
                             {(isSuperAdmin || isOwner) && tx.isInternal && (
                               <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase">Correction</span>
                             )}
-                            {isSuperAdmin && !isOwner && !tx.isInternal && (
+                            {isSuperAdmin && !tx.isSettled && !tx.isInternal && (
                               <button 
                                 onClick={() => { setEditingRow(tx.id); setEditAmount(tx.amount.toString()); }}
                                 className="text-xs text-blue-500 hover:underline"
@@ -540,7 +538,7 @@ export function StaffLedger({ staff, transactions, onRefresh }: StaffLedgerProps
                     </p>
                   </div>
 
-                  {isSuperAdmin && !tx.isInternal && (
+                  {isSuperAdmin && !tx.isSettled && !tx.isInternal && (
                     <div className="pt-2">
                     {editingRow === tx.id ? (
                       <div className="flex gap-2">

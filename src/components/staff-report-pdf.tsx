@@ -1,5 +1,13 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 import { en, ar } from '@/lib/translations'
+import { shapeArabicVisual } from 'naqqash'
+
+// react-pdf v4 does NOT support direction:rtl. Use shapeArabicVisual for visual (reversed) order.
+const s = (text: string | number | null | undefined, isRtl = false): string => {
+  if (text === null || text === undefined) return '';
+  const str = String(text);
+  return isRtl ? shapeArabicVisual(str) : str;
+};
 
 Font.register({
   family: 'Cairo',
@@ -15,7 +23,7 @@ export const StaffReportPDF = ({ staffSummary = [], totals = { base: 0, advances
   const isRtl = locale === 'ar';
 
   const styles = StyleSheet.create({
-    page: { padding: 20, fontSize: 8, fontFamily: 'Cairo' },
+    page: { padding: 20, fontSize: 8, fontFamily: 'Cairo', direction: isRtl ? 'rtl' : 'ltr' },
     header: { fontSize: 16, marginBottom: 15, textAlign: 'center', fontWeight: 'bold' },
     table: { display: 'flex', flexDirection: 'column', width: 'auto', borderStyle: 'solid', borderWidth: 1, borderColor: '#ccc', borderRightWidth: isRtl ? 1 : 0, borderLeftWidth: isRtl ? 0 : 1, borderBottomWidth: 0 },
     tableRow: { flexDirection: isRtl ? 'row-reverse' : 'row' },
@@ -39,40 +47,40 @@ export const StaffReportPDF = ({ staffSummary = [], totals = { base: 0, advances
   return (
     <Document>
       <Page size="A4" style={styles.page} orientation="landscape">
-        <Text style={styles.header}>{t('staffSalaryReport')}</Text>
+        <Text style={styles.header}>{s(t('staffSalaryReport'))}</Text>
         
         <View style={styles.table}>
           <View style={styles.tableRow}>
-            <View style={[styles.tableColHeader, styles.colEmployee]}><Text>{t('employee')}</Text></View>
-            <View style={[styles.tableColHeader, styles.colBase]}><Text>Base</Text></View>
-            <View style={[styles.tableColHeader, styles.colOT]}><Text>O.T.</Text></View>
-            <View style={[styles.tableColHeader, styles.colTrans]}><Text>Trans.</Text></View>
-            <View style={[styles.tableColHeader, styles.colOther]}><Text>Other</Text></View>
-            <View style={[styles.tableColHeader, styles.colTotal]}><Text>Total</Text></View>
-            <View style={[styles.tableColHeader, styles.colAdv]}><Text>Adv.</Text></View>
-            <View style={[styles.tableColHeader, styles.colDed]}><Text>Ded.</Text></View>
-            <View style={[styles.tableColHeader, styles.colNet]}><Text>{t('netSalary')}</Text></View>
+            <View style={[styles.tableColHeader, styles.colEmployee]}><Text>{s(t('employee'))}</Text></View>
+            <View style={[styles.tableColHeader, styles.colBase]}><Text>{s(t('baseSalary'))}</Text></View>
+            <View style={[styles.tableColHeader, styles.colOT]}><Text>{s(t('overtime'))}</Text></View>
+            <View style={[styles.tableColHeader, styles.colTrans]}><Text>{s(t('transport'))}</Text></View>
+            <View style={[styles.tableColHeader, styles.colOther]}><Text>{s(t('otherAllowance'))}</Text></View>
+            <View style={[styles.tableColHeader, styles.colTotal]}><Text>{s(t('totalSalary'))}</Text></View>
+            <View style={[styles.tableColHeader, styles.colAdv]}><Text>{s(t('advances'))}</Text></View>
+            <View style={[styles.tableColHeader, styles.colDed]}><Text>{s(t('deductions'))}</Text></View>
+            <View style={[styles.tableColHeader, styles.colNet]}><Text>{s(t('netSalary'))}</Text></View>
           </View>
-          {staffSummary.map((s: any) => (
-            <View style={styles.tableRow} key={s.id}>
-              <View style={[styles.tableCol, styles.colEmployee]}><Text>{s.name}</Text></View>
-              <View style={[styles.tableCol, styles.colBase]}><Text>{s.baseSalary.toFixed(2)}</Text></View>
-              <View style={[styles.tableCol, styles.colOT]}><Text>{(s.overtimeAllowance || 0).toFixed(2)}</Text></View>
-              <View style={[styles.tableCol, styles.colTrans]}><Text>{(s.transportAllowance || 0).toFixed(2)}</Text></View>
-              <View style={[styles.tableCol, styles.colOther]}><Text>{(s.otherAllowance || 0).toFixed(2)}</Text></View>
-              <View style={[styles.tableCol, styles.colTotal]}><Text>{s.totalSalary.toFixed(2)}</Text></View>
-              <View style={[styles.tableCol, styles.colAdv]}><Text>{s.advances.toFixed(2)}</Text></View>
-              <View style={[styles.tableCol, styles.colDed]}><Text>{s.deductions.toFixed(2)}</Text></View>
-              <View style={[styles.tableCol, styles.colNet]}><Text>{s.netSalary.toFixed(2)}</Text></View>
+          {staffSummary.map((item: any) => (
+            <View style={styles.tableRow} key={item.id}>
+              <View style={[styles.tableCol, styles.colEmployee]}><Text>{s(item.name)}</Text></View>
+              <View style={[styles.tableCol, styles.colBase]}><Text>{s(item.baseSalary.toFixed(2))}</Text></View>
+              <View style={[styles.tableCol, styles.colOT]}><Text>{s((item.overtimeAllowance || 0).toFixed(2))}</Text></View>
+              <View style={[styles.tableCol, styles.colTrans]}><Text>{s((item.transportAllowance || 0).toFixed(2))}</Text></View>
+              <View style={[styles.tableCol, styles.colOther]}><Text>{s((item.otherAllowance || 0).toFixed(2))}</Text></View>
+              <View style={[styles.tableCol, styles.colTotal]}><Text>{s(item.totalSalary.toFixed(2))}</Text></View>
+              <View style={[styles.tableCol, styles.colAdv]}><Text>{s(item.advances.toFixed(2))}</Text></View>
+              <View style={[styles.tableCol, styles.colDed]}><Text>{s(item.deductions.toFixed(2))}</Text></View>
+              <View style={[styles.tableCol, styles.colNet]}><Text>{s(item.netSalary.toFixed(2))}</Text></View>
             </View>
           ))}
         </View>
 
         <View style={styles.summary}>
-          <Text style={styles.summaryText}>{t('totalBaseSalaries')}: {totals.base.toFixed(2)}</Text>
-          <Text style={styles.summaryText}>{t('totalAdvances')}: {totals.advances.toFixed(2)}</Text>
-          <Text style={styles.summaryText}>{t('totalDeductions')}: {totals.deductions.toFixed(2)}</Text>
-          <Text style={styles.summaryText}>{t('totalNetSalaries')}: {totals.net.toFixed(2)}</Text>
+          <Text style={styles.summaryText}>{s(`${t('totalBaseSalaries')}: ${totals.base.toFixed(2)}`)}</Text>
+          <Text style={styles.summaryText}>{s(`${t('totalAdvances')}: ${totals.advances.toFixed(2)}`)}</Text>
+          <Text style={styles.summaryText}>{s(`${t('totalDeductions')}: ${totals.deductions.toFixed(2)}`)}</Text>
+          <Text style={styles.summaryText}>{s(`${t('totalNetSalaries')}: ${totals.net.toFixed(2)}`)}</Text>
         </View>
       </Page>
     </Document>

@@ -89,15 +89,23 @@ enum ShiftStatus {
   CLOSED
 }
 
+enum UserStatus {
+  ACTIVE
+  PENDING
+  REJECTED
+}
+
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
+  id        String     @id @default(cuid())
+  username  String     @unique
   password  String
   name      String
-  role      Role     @default(CASHIER)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      Role       @default(CASHIER)
+  isActive  Boolean    @default(true)
+  status    UserStatus @default(ACTIVE)
+  phone     String?    // optional — collected during self-registration
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   records               Transaction[]         @relation("UserRecords")
   settlements           Settlement[]          @relation("UserSettlements")

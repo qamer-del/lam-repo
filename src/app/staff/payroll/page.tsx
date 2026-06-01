@@ -4,9 +4,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import {
   Users, Clock, TrendingUp, Sun, Wallet, Plus, Trash2, Loader2,
-  Calendar, ChevronRight, Shield, AlertCircle, BarChart3, History
+  Calendar, ChevronRight, Shield, AlertCircle, BarChart3, History,
+  Download, Printer, Globe
 } from 'lucide-react'
 import { format } from 'date-fns'
+import dynamic from 'next/dynamic'
 import {
   Table,
   TableBody,
@@ -33,6 +35,13 @@ import {
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useLanguage } from '@/providers/language-provider'
+import { getStaffSalaryForReport } from '@/actions/payroll-reports'
+import { PayrollReportDocument } from '@/components/payroll-report-document'
+
+const PDFDownloadLink = dynamic(
+  () => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink),
+  { ssr: false, loading: () => <span className="text-xs text-gray-400">Loading...</span> }
+)
 
 type StaffWithSettlements = {
   id: number
@@ -64,6 +73,33 @@ export default function PayrollPage() {
   const [advances, setAdvances] = useState<{ advancesTotal: number; deductionsTotal: number }>({ advancesTotal: 0, deductionsTotal: 0 })
   const [lastSettlement, setLastSettlement] = useState<any>(null)
   const [attendanceLoading, setAttendanceLoading] = useState(false)
+
+  // PDF Report state
+  const [pdfData, setPdfData] = useState<any>(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfLocale, setPdfLocale] = useState<'en' | 'ar'>('en')
+  const [showPdfPanel, setShowPdfPanel] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => { setIsClient(true) }, [])
+
+  const loadPdfData = useCallback(async () => {
+    setPdfLoading(true)
+    try {
+      const result = await getStaffSalaryForReport(today.getFullYear())
+      setPdfData(result)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setPdfLoading(false)
+    }
+  }, [])
+
+  const handleOpenPdf = async (lang: 'en' | 'ar') => {
+    setPdfLocale(lang)
+    setShowPdfPanel(true)
+    if (!pdfData) await loadPdfData()
+  }
 
   const loadStaff = useCallback(async () => {
     setLoading(true)
@@ -179,13 +215,123 @@ export default function PayrollPage() {
             {t('payrollSubtitle')}
           </p>
         </div>
-        <Link href="/staff">
-          <Button variant="outline" className="gap-2 rounded-xl border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300">
-            <Users size={15} />
-            {t('backToStaff')}
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Payroll Report PDF Buttons */}
+          {isAdmin && (
+            <>
+              <button
+                id="payroll-report-ar"
+                onClick={() => handleOpenPdf('ar')}
+                disabled={pdfLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-sm transition-all disabled:opacity-60"
+              >
+                {pdfLoading && pdfLocale === 'ar' ? <Loader2 size={14} className="animate-spin" /> : <span className="text-base leading-none">🇸🇦</span>}
+                {pdfLoading && pdfLocale === 'ar' ? 'جاري...' : 'تقرير عربي'}
+              </button>
+              <button
+                id="payroll-report-en"
+                onClick={() => handleOpenPdf('en')}
+                disabled={pdfLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-black dark:bg-gray-700 dark:hover:bg-gray-600 text-white text-sm font-bold rounded-xl shadow-sm transition-all disabled:opacity-60"
+              >
+                {pdfLoading && pdfLocale === 'en' ? <Loader2 size={14} className="animate-spin" /> : <span className="text-base leading-none">🇬🇧</span>}
+                {pdfLoading && pdfLocale === 'en' ? 'Loading...' : 'English Report'}
+              </button>
+            </>
+          )}
+          <Link href="/staff">
+            <Button variant="outline" className="gap-2 rounded-xl border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300">
+              <Users size={15} />
+              {t('backToStaff')}
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      {/* ── PDF Download Panel ───────────────────────────────────────── */}
+      {showPdfPanel && isClient && (
+        <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl">
+          {pdfLoading ? (
+            <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+              <Loader2 size={16} className="animate-spin" />
+              {pdfLocale === 'ar' ? 'جاري إعداد بيانات التقرير...' : 'Preparing report data...'}
+            </div>
+          ) : pdfData ? (
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div className="flex items-center gap-2">
+                <Globe size={16} className="text-blue-500" />
+                <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                  {pdfLocale === 'ar' ? 'تقرير الرواتب — عربي' : 'Payroll Report — English'}
+                  {' '}· {pdfData.staffSummary?.length ?? 0} {pdfLocale === 'ar' ? 'موظف' : 'employees'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <PDFDownloadLink
+                  document={
+                    <PayrollReportDocument
+                      staffSummary={pdfData.staffSummary}
+                      totals={pdfData.totals}
+                      locale={pdfLocale}
+                      storeName="Lamaha Car Care"
+                      storePhone="+966 50 000 0000"
+                      reportYear={today.getFullYear()}
+                    />
+                  }
+                  fileName={`payroll-report-${pdfLocale}-${today.getFullYear()}.pdf`}
+                >
+                  {({ loading: busy }) => (
+                    <button
+                      id={`payroll-download-${pdfLocale}`}
+                      disabled={busy}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50"
+                    >
+                      {busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                      {busy
+                        ? (pdfLocale === 'ar' ? 'جاري...' : 'Preparing...')
+                        : (pdfLocale === 'ar' ? 'تحميل PDF' : 'Download PDF')}
+                    </button>
+                  )}
+                </PDFDownloadLink>
+
+                <PDFDownloadLink
+                  document={
+                    <PayrollReportDocument
+                      staffSummary={pdfData.staffSummary}
+                      totals={pdfData.totals}
+                      locale={pdfLocale}
+                      storeName="Lamaha Car Care"
+                      storePhone="+966 50 000 0000"
+                      reportYear={today.getFullYear()}
+                    />
+                  }
+                  fileName={`payroll-report-${pdfLocale}-${today.getFullYear()}.pdf`}
+                >
+                  {({ loading: busy, url }) => (
+                    <button
+                      id={`payroll-print-${pdfLocale}`}
+                      disabled={busy || !url}
+                      onClick={() => { if (url) { const w = window.open(url); w?.print() } }}
+                      className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-sm font-bold rounded-xl transition-all disabled:opacity-50 hover:bg-blue-50"
+                    >
+                      <Printer size={14} />
+                      {busy ? '...' : (pdfLocale === 'ar' ? 'طباعة' : 'Print')}
+                    </button>
+                  )}
+                </PDFDownloadLink>
+
+                <button
+                  onClick={() => setShowPdfPanel(false)}
+                  className="px-3 py-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-red-500">Failed to load payroll data.</p>
+          )}
+        </div>
+      )}
 
       {/* ── Staff Selector ───────────────────────────────────────────── */}
       <div className="overflow-x-auto hide-scrollbar -mb-1 pb-1">

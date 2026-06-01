@@ -426,19 +426,37 @@ export async function getStaffAdvancesTab(
     ...(filter === 'pending' ? { isSettled: false } : {}),
     ...(filter === 'settled' ? { isSettled: true } : {}),
   }
-  const [transactions, total] = await Promise.all([
-    prisma.transaction.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: {
-        salarySettlement: {
-          select: { id: true, month: true, year: true, paidAt: true },
-        },
+
+  // Fetch all matching transactions including internal corrections
+  const allTxs = await prisma.transaction.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      salarySettlement: {
+        select: { id: true, month: true, year: true, paidAt: true },
       },
-    }),
-    prisma.transaction.count({ where }),
-  ])
+    },
+  })
+
+  // Split out corrections and merge their amounts into the original transaction
+  // so the UI shows the current effective value, not the raw original DB value.
+  const corrections = allTxs.filter(tx => tx.isInternal)
+  const originals = allTxs.filter(tx => !tx.isInternal).map(tx => ({ ...tx }))
+
+  corrections.forEach(c => {
+    const match = c.description?.match(/\[CORRECTION FOR #(\d+)\]/)
+    if (match) {
+      const targetId = parseInt(match[1])
+      const target = originals.find(o => o.id === targetId)
+      if (target) {
+        target.amount += c.amount
+      }
+    }
+  })
+
+  // Paginate on the merged originals
+  const total = originals.length
+  const transactions = originals.slice((page - 1) * pageSize, page * pageSize)
+
   return { transactions, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
 }

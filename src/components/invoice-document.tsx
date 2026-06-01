@@ -2,6 +2,14 @@ import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/
 import { format } from 'date-fns'
 import { en, ar } from '@/lib/translations'
 import { calcVat15, buildZatcaQrString } from '@/lib/zatca-qr'
+import { shapeArabicVisual } from 'naqqash'
+
+// react-pdf v4 does NOT support direction:rtl. Use shapeArabicVisual for visual (reversed) order.
+const s = (text: string | number | null | undefined, isRtl = false): string => {
+  if (text === null || text === undefined) return '';
+  const str = String(text);
+  return isRtl ? shapeArabicVisual(str) : str;
+};
 
 Font.register({
   family: 'Cairo',
@@ -50,13 +58,13 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
 
   const row = (a: string, b: string, bold = false) => (
     <View style={[styles.totalsRow, bold ? styles.totalsRowBold : {}]}>
-      <Text style={[styles.totalsLabel, bold ? styles.bold : {}]}>{a}</Text>
-      <Text style={[styles.totalsValue, bold ? styles.bold : {}]}>{b}</Text>
+      <Text style={[styles.totalsLabel, bold ? styles.bold : {}]}>{s(a)}</Text>
+      <Text style={[styles.totalsValue, bold ? styles.bold : {}]}>{s(b)}</Text>
     </View>
   )
 
   const styles = StyleSheet.create({
-    page: { fontFamily: 'Cairo', fontSize: 10, color: '#111827', backgroundColor: '#ffffff' },
+    page: { fontFamily: 'Cairo', fontSize: 10, color: '#111827', backgroundColor: '#ffffff', direction: isRtl ? 'rtl' : 'ltr' },
     bold: { fontWeight: 700 },
 
     // ── Header band ──
@@ -140,16 +148,16 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
         {/* ── Header Band ── */}
         <View style={styles.headerBand}>
           <View style={{ flex: 1, alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-            <Text style={styles.shopName}>{isRtl ? SHOP.nameAr : SHOP.name}</Text>
-            <Text style={styles.shopNameAr}>{isRtl ? SHOP.name : SHOP.nameAr}</Text>
-            <Text style={styles.shopMeta}>{t('vatNumber')}: {SHOP.vatNumber}</Text>
-            <Text style={styles.shopMeta}>CR: {SHOP.crNumber}  |  {SHOP.phone}</Text>
-            <Text style={styles.shopMeta}>{isRtl ? SHOP.addressAr : SHOP.address}</Text>
+            <Text style={styles.shopName}>{s(isRtl ? SHOP.nameAr : SHOP.name)}</Text>
+            <Text style={styles.shopNameAr}>{s(isRtl ? SHOP.name : SHOP.nameAr)}</Text>
+            <Text style={styles.shopMeta}>{s(`${t('vatNumber')}: ${SHOP.vatNumber}`)}</Text>
+            <Text style={styles.shopMeta}>{s(`CR: ${SHOP.crNumber}  |  ${SHOP.phone}`)}</Text>
+            <Text style={styles.shopMeta}>{s(isRtl ? SHOP.addressAr : SHOP.address)}</Text>
           </View>
           <View style={{ alignItems: 'flex-end', marginLeft: 20 }}>
             <View style={styles.invoiceTag}>
-              <Text style={styles.invoiceTagText}>{t('simplifiedTaxInvoice')}</Text>
-              <Text style={styles.invoiceTagSubtext}>فاتورة ضريبية مبسطة</Text>
+              <Text style={styles.invoiceTagText}>{s(t('simplifiedTaxInvoice'))}</Text>
+              <Text style={styles.invoiceTagSubtext}>{s('فاتورة ضريبية مبسطة')}</Text>
             </View>
           </View>
         </View>
@@ -158,28 +166,28 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
         <View style={styles.infoSection}>
           {/* Invoice metadata */}
           <View style={styles.infoBlock}>
-            <Text style={styles.infoLabel}>{t('taxInvoiceNumber')}</Text>
-            <Text style={styles.infoValue}>{details.invoiceNumber}</Text>
-            <Text style={styles.infoLabel}>{t('date')}</Text>
-            <Text style={styles.infoValue}>{format(new Date(details.createdAt), 'dd/MM/yyyy HH:mm')}</Text>
-            <Text style={styles.infoLabel}>{t('salesperson')}</Text>
-            <Text style={styles.infoValue}>{details.salesperson}</Text>
+            <Text style={styles.infoLabel}>{s(t('taxInvoiceNumber'))}</Text>
+            <Text style={styles.infoValue}>{s(details.invoiceNumber)}</Text>
+            <Text style={styles.infoLabel}>{s(t('date'))}</Text>
+            <Text style={styles.infoValue}>{s(format(new Date(details.createdAt), 'dd/MM/yyyy HH:mm'))}</Text>
+            <Text style={styles.infoLabel}>{s(t('salesperson'))}</Text>
+            <Text style={styles.infoValue}>{s(details.salesperson)}</Text>
           </View>
 
           {/* Bill To */}
           {(details.customerName || details.customerPhone) && (
             <View style={[styles.infoBlock, { marginLeft: isRtl ? 0 : 30, marginRight: isRtl ? 30 : 0 }]}>
-              <Text style={styles.infoLabel}>{t('billTo')}</Text>
-              {details.customerName && <Text style={styles.infoValue}>{details.customerName}</Text>}
-              {details.customerPhone && <Text style={styles.infoValueSm}>{details.customerPhone}</Text>}
+              <Text style={styles.infoLabel}>{s(t('billTo'))}</Text>
+              {details.customerName && <Text style={styles.infoValue}>{s(details.customerName)}</Text>}
+              {details.customerPhone && <Text style={styles.infoValueSm}>{s(details.customerPhone)}</Text>}
             </View>
           )}
 
           {/* Payment method */}
           <View style={[styles.infoBlock, { alignItems: isRtl ? 'flex-start' : 'flex-end' }]}>
-            <Text style={styles.infoLabel}>{t('paymentMethod')}</Text>
+            <Text style={styles.infoLabel}>{s(t('paymentMethod'))}</Text>
             {details.transactions?.map((tx: any, i: number) => (
-              <Text key={i} style={styles.infoValue}>{tx.method}</Text>
+              <Text key={i} style={styles.infoValue}>{s(tx.method)}</Text>
             ))}
           </View>
         </View>
@@ -189,27 +197,27 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
         {/* ── Items Table ── */}
         <View style={styles.tableSection}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.thText, styles.colNo]}>#</Text>
-            <Text style={[styles.thText, styles.colItem]}>{t('description')}</Text>
-            <Text style={[styles.thText, styles.colQty]}>{t('qty')}</Text>
-            <Text style={[styles.thText, styles.colUnit]}>{t('unit')}</Text>
-            <Text style={[styles.thText, styles.colPrice]}>{t('unitPrice')}</Text>
-            <Text style={[styles.thText, styles.colTotal]}>{t('lineTotal')}</Text>
+            <Text style={[styles.thText, styles.colNo]}>{s('#')}</Text>
+            <Text style={[styles.thText, styles.colItem]}>{s(t('description'))}</Text>
+            <Text style={[styles.thText, styles.colQty]}>{s(t('qty'))}</Text>
+            <Text style={[styles.thText, styles.colUnit]}>{s(t('unit'))}</Text>
+            <Text style={[styles.thText, styles.colPrice]}>{s(t('unitPrice'))}</Text>
+            <Text style={[styles.thText, styles.colTotal]}>{s(t('lineTotal'))}</Text>
           </View>
 
           {details.items?.map((item: any, i: number) => {
             const lineTotal = (item.sellingPrice || 0) * item.quantitySold
             return (
               <View key={i} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
-                <Text style={[styles.tdText, styles.colNo]}>{i + 1}</Text>
+                <Text style={[styles.tdText, styles.colNo]}>{s(i + 1)}</Text>
                 <View style={styles.colItem}>
-                  <Text style={[styles.tdText, { fontWeight: 700 }]}>{item.name}</Text>
-                  {item.sku && <Text style={[styles.tdText, { color: '#9ca3af', fontSize: 7.5 }]}>{item.sku}</Text>}
+                  <Text style={[styles.tdText, { fontWeight: 700 }]}>{s(item.name)}</Text>
+                  {item.sku && <Text style={[styles.tdText, { color: '#9ca3af', fontSize: 7.5 }]}>{s(item.sku)}</Text>}
                 </View>
-                <Text style={[styles.tdText, styles.colQty]}>{item.quantitySold}</Text>
-                <Text style={[styles.tdText, styles.colUnit]}>{item.unit}</Text>
-                <Text style={[styles.tdText, styles.colPrice]}>{(item.sellingPrice || 0).toFixed(2)}</Text>
-                <Text style={[styles.tdText, styles.colTotal, { fontWeight: 700 }]}>{lineTotal.toFixed(2)}</Text>
+                <Text style={[styles.tdText, styles.colQty]}>{s(item.quantitySold)}</Text>
+                <Text style={[styles.tdText, styles.colUnit]}>{s(item.unit)}</Text>
+                <Text style={[styles.tdText, styles.colPrice]}>{s((item.sellingPrice || 0).toFixed(2))}</Text>
+                <Text style={[styles.tdText, styles.colTotal, { fontWeight: 700 }]}>{s(lineTotal.toFixed(2))}</Text>
               </View>
             )
           })}
@@ -220,16 +228,16 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
         {/* ── Tax Summary Strip ── */}
         <View style={styles.taxStrip}>
           <View style={styles.taxStripItem}>
-            <Text style={styles.taxStripLabel}>{t('subtotalExclVat')}</Text>
-            <Text style={styles.taxStripValue}>{subtotal.toFixed(2)} SAR</Text>
+            <Text style={styles.taxStripLabel}>{s(t('subtotalExclVat'))}</Text>
+            <Text style={styles.taxStripValue}>{s(`${subtotal.toFixed(2)} SAR`)}</Text>
           </View>
           <View style={styles.taxStripItem}>
-            <Text style={styles.taxStripLabel}>{t('vatAmount')} (15%)</Text>
-            <Text style={styles.taxStripValue}>{vatAmount.toFixed(2)} SAR</Text>
+            <Text style={styles.taxStripLabel}>{s(`${t('vatAmount')} (15%)`)}</Text>
+            <Text style={styles.taxStripValue}>{s(`${vatAmount.toFixed(2)} SAR`)}</Text>
           </View>
           <View style={styles.taxStripItem}>
-            <Text style={styles.taxStripLabel}>{t('totalInclVat')}</Text>
-            <Text style={[styles.taxStripValue, { fontSize: 12 }]}>{totalInclVat.toFixed(2)} SAR</Text>
+            <Text style={styles.taxStripLabel}>{s(t('totalInclVat'))}</Text>
+            <Text style={[styles.taxStripValue, { fontSize: 12 }]}>{s(`${totalInclVat.toFixed(2)} SAR`)}</Text>
           </View>
         </View>
 
@@ -244,12 +252,12 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
               ) : (
                 /* Fallback: show QR string as tiny text if image not available */
                 <View style={{ width: 112, height: 112, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f9fafb' }}>
-                  <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>QR Code{'\n'}(ZATCA TLV)</Text>
+                  <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>{s(`QR Code\n(ZATCA TLV)`)}</Text>
                 </View>
               )}
             </View>
-            <Text style={styles.qrLabel}>{t('scanToVerify')}</Text>
-            <Text style={[styles.qrLabel, { fontSize: 6.5, color: '#9ca3af', marginTop: 2 }]}>{SHOP.vatNumber}</Text>
+            <Text style={styles.qrLabel}>{s(t('scanToVerify'))}</Text>
+            <Text style={[styles.qrLabel, { fontSize: 6.5, color: '#9ca3af', marginTop: 2 }]}>{s(SHOP.vatNumber)}</Text>
           </View>
 
           {/* Totals breakdown */}
@@ -257,8 +265,8 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
             {row(t('subtotalExclVat'), `${subtotal.toFixed(2)} SAR`)}
             {row(t('vatAmount'), `${vatAmount.toFixed(2)} SAR`)}
             <View style={styles.grandTotalRow}>
-              <Text style={styles.grandLabel}>{t('totalInclVat')}</Text>
-              <Text style={styles.grandValue}>{totalInclVat.toFixed(2)} SAR</Text>
+              <Text style={styles.grandLabel}>{s(t('totalInclVat'))}</Text>
+              <Text style={styles.grandValue}>{s(`${totalInclVat.toFixed(2)} SAR`)}</Text>
             </View>
           </View>
         </View>
@@ -266,10 +274,10 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
         {/* ── Warranty Section ── */}
         {warranties && warranties.length > 0 && (
           <View style={styles.warrantyBox}>
-            <Text style={styles.warrantyTitle}>{t('warrantyCoverageIncluded')}</Text>
+            <Text style={styles.warrantyTitle}>{s(t('warrantyCoverageIncluded'))}</Text>
             {warranties.map((w: any, i: number) => (
               <Text key={i} style={styles.warrantyItem}>
-                • {w.item?.name}: {t('warranty')} ({w.item?.warrantyDuration} {w.item?.warrantyUnit}) — {t('validUntil')} {format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}
+                {s(`• ${w.item?.name}: ${t('warranty')} (${w.item?.warrantyDuration} ${w.item?.warrantyUnit}) — ${t('validUntil')} ${format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}`)}
               </Text>
             ))}
           </View>
@@ -278,10 +286,10 @@ export function InvoiceDocument({ details, warranties = [], locale = 'en', qrDat
         {/* ── Footer ── */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            {t('taxInvoiceNumber')}: {details.invoiceNumber}  |  {format(new Date(details.createdAt), 'dd/MM/yyyy HH:mm')}
+            {s(`${t('taxInvoiceNumber')}: ${details.invoiceNumber}  |  ${format(new Date(details.createdAt), 'dd/MM/yyyy HH:mm')}`)}
           </Text>
           <Text style={styles.footerText}>
-            {SHOP.vatNumber}  |  {t('taxInvoice')}
+            {s(`${SHOP.vatNumber}  |  ${t('taxInvoice')}`)}
           </Text>
         </View>
 

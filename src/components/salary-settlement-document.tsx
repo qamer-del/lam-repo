@@ -1,12 +1,13 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import { format } from 'date-fns';
 import { en, ar } from '@/lib/translations';
-import { shapeArabicText } from 'naqqash';
+import { shapeArabicVisual } from 'naqqash';
 
-// A safe wrapper to shape Arabic text if any, passing other text through unchanged.
-const s = (text: string | number | null | undefined): string => {
+// react-pdf v4 does NOT support direction:rtl. Use shapeArabicVisual for visual (reversed) order.
+const s = (text: string | number | null | undefined, isRtl = false): string => {
   if (text === null || text === undefined) return '';
-  return shapeArabicText(String(text));
+  const str = String(text);
+  return isRtl ? shapeArabicVisual(str) : str;
 };
 
 // Safe date formatter — never throws on null/undefined/invalid dates
@@ -73,6 +74,7 @@ export function SalarySettlementDocument({ staffName, idNumber, nationality, set
       fontSize: 10,
       fontFamily: 'Cairo',
       color: '#333',
+      direction: isRtl ? 'rtl' : 'ltr',
     },
     header: {
       flexDirection: isRtl ? 'row-reverse' : 'row',

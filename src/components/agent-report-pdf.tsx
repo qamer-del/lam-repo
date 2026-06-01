@@ -5,6 +5,15 @@ import dynamic from 'next/dynamic'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 import { en, ar } from '@/lib/translations'
 
+import { shapeArabicVisual } from 'naqqash'
+
+// react-pdf v4 does NOT support direction:rtl. Use shapeArabicVisual for visual (reversed) order.
+const s = (text: string | number | null | undefined, isRtl = false): string => {
+  if (text === null || text === undefined) return '';
+  const str = String(text);
+  return isRtl ? shapeArabicVisual(str) : str;
+};
+
 Font.register({
   family: 'Cairo',
   fonts: [
@@ -33,33 +42,33 @@ const AgentReportPDF = ({ agent, netBalance = 0, locale = 'en' }: any) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <Text style={styles.header}>{t('agentReport')}</Text>
-        <Text style={styles.info}>{t('employee')} / {t('company')}: {agent.name}</Text>
-        <Text style={styles.info}>{t('company')}: {agent.companyName || 'N/A'}</Text>
+        <Text style={styles.header}>{s(t('agentReport'))}</Text>
+        <Text style={styles.info}>{s(`${t('employee')} / ${t('company')}: ${agent.name}`)}</Text>
+        <Text style={styles.info}>{s(`${t('company')}: ${agent.companyName || 'N/A'}`)}</Text>
 
         <View style={styles.summary}>
-          <Text style={styles.summaryText}>{t('openingBalanceDebt')}: {agent.openingBalance.toFixed(2)}</Text>
-          <Text style={styles.summaryText}>{t('currentNetBalance')}: {netBalance.toFixed(2)}</Text>
+          <Text style={styles.summaryText}>{s(`${t('openingBalanceDebt')}: ${agent.openingBalance.toFixed(2)}`)}</Text>
+          <Text style={styles.summaryText}>{s(`${t('currentNetBalance')}: ${netBalance.toFixed(2)}`)}</Text>
         </View>
         
         <View style={styles.table}>
           <View style={styles.tableRow}>
-            <View style={styles.tableColHeader}><Text>{t('date')}</Text></View>
-            <View style={styles.tableColHeader}><Text>{t('type')}</Text></View>
-            <View style={styles.tableColHeader}><Text>{t('amount')}</Text></View>
-            <View style={styles.tableColHeader}><Text>{t('description')}</Text></View>
+            <View style={styles.tableColHeader}><Text>{s(t('date'))}</Text></View>
+            <View style={styles.tableColHeader}><Text>{s(t('type'))}</Text></View>
+            <View style={styles.tableColHeader}><Text>{s(t('amount'))}</Text></View>
+            <View style={styles.tableColHeader}><Text>{s(t('description'))}</Text></View>
           </View>
           {agent.transactions?.map((tx: any) => (
             <View style={styles.tableRow} key={tx.id}>
-              <View style={styles.tableCol}><Text>{new Date(tx.createdAt).toLocaleDateString()}</Text></View>
-              <View style={styles.tableCol}><Text>{t(tx.type.toLowerCase() as any) || tx.type}</Text></View>
-              <View style={styles.tableCol}><Text>{tx.amount.toFixed(2)}</Text></View>
-              <View style={styles.tableCol}><Text>{tx.description || '-'}</Text></View>
+              <View style={styles.tableCol}><Text>{s(new Date(tx.createdAt).toLocaleDateString())}</Text></View>
+              <View style={styles.tableCol}><Text>{s(t(tx.type.toLowerCase() as any) || tx.type)}</Text></View>
+              <View style={styles.tableCol}><Text>{s(tx.amount.toFixed(2))}</Text></View>
+              <View style={styles.tableCol}><Text>{s(tx.description || '-')}</Text></View>
             </View>
           ))}
           {(!agent.transactions || agent.transactions.length === 0) && (
             <View style={styles.tableRow}>
-               <View style={{...styles.tableCol, width: '100%', textAlign: 'center'}}><Text>{t('noTransactionsFound')}</Text></View>
+               <View style={{...styles.tableCol, width: '100%', textAlign: 'center'}}><Text>{s(t('noTransactionsFound'))}</Text></View>
             </View>
           )}
         </View>

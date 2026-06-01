@@ -2,17 +2,21 @@ import { LoginForm } from './login-form'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
-// Automatically seed a default admin if none exists
+// Automatically seed a default Super Admin if no active Super Admin exists
 async function ensureAdminExists() {
-  const adminExists = await prisma.user.findFirst({ where: { role: 'ADMIN' } })
-  if (!adminExists) {
+  const superAdminExists = await prisma.user.findFirst({
+    where: { role: 'SUPER_ADMIN', status: 'ACTIVE' }
+  })
+  if (!superAdminExists) {
     const hashedPassword = await bcrypt.hash('admin123', 10)
     await prisma.user.create({
       data: {
         name: 'Super Admin',
         username: 'admin',
         password: hashedPassword,
-        role: 'ADMIN',
+        role: 'SUPER_ADMIN',
+        status: 'ACTIVE',
+        isActive: true,
       }
     })
   }

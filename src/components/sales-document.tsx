@@ -3,8 +3,15 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 import { format } from 'date-fns'
 import { en, ar } from '@/lib/translations'
+import { shapeArabicVisual } from 'naqqash'
 
-// Font setup matching the previous PDF builder
+// react-pdf v4 does NOT support direction:rtl. Use shapeArabicVisual for visual (reversed) order.
+const s = (text: string | number | null | undefined, isRtl = false): string => {
+  if (text === null || text === undefined) return '';
+  const str = String(text);
+  return isRtl ? shapeArabicVisual(str) : str;
+};
+
 Font.register({
   family: 'Cairo',
   fonts: [
@@ -32,7 +39,7 @@ export function SalesDocument({ sales = [], totalCash = 0, totalNetwork = 0, tot
   const isRtl = locale === 'ar';
   
   const styles = StyleSheet.create({
-    page: { padding: 40, fontFamily: 'Cairo' },
+    page: { padding: 40, fontFamily: 'Cairo', direction: isRtl ? 'rtl' : 'ltr' },
     header: { marginBottom: 30, borderBottomWidth: 2, borderBottomColor: '#10b981', paddingBottom: 15, alignItems: isRtl ? 'flex-end' : 'flex-start' },
     title: { fontSize: 24, fontWeight: 700, color: '#111827' },
     subtitle: { fontSize: 10, color: '#6b7280', marginTop: 4 },
@@ -75,59 +82,59 @@ export function SalesDocument({ sales = [], totalCash = 0, totalNetwork = 0, tot
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>{summaryOnly ? t('officialSalesReportSummary') : t('officialSalesReport')}</Text>
-          <Text style={styles.subtitle}>{t('generatedAt')} {currentDate}</Text>
+          <Text style={styles.title}>{s(summaryOnly ? t('officialSalesReportSummary') : t('officialSalesReport'))}</Text>
+          <Text style={styles.subtitle}>{s(`${t('generatedAt')} ${currentDate}`)}</Text>
         </View>
 
         <View style={styles.summaryBox}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>{t('grossSales')}</Text>
-            <Text style={styles.summaryValue}>{(totalCash + totalNetwork + totalCredit).toFixed(2)}</Text>
+            <Text style={styles.summaryLabel}>{s(t('grossSales'))}</Text>
+            <Text style={styles.summaryValue}>{s((totalCash + totalNetwork + totalCredit).toFixed(2))}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>{t('netCash')}</Text>
-            <Text style={styles.summaryValue}>{totalCash.toFixed(2)}</Text>
+            <Text style={styles.summaryLabel}>{s(t('netCash'))}</Text>
+            <Text style={styles.summaryValue}>{s(totalCash.toFixed(2))}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>{t('netNetwork')}</Text>
-            <Text style={styles.summaryValue}>{totalNetwork.toFixed(2)}</Text>
+            <Text style={styles.summaryLabel}>{s(t('netNetwork'))}</Text>
+            <Text style={styles.summaryValue}>{s(totalNetwork.toFixed(2))}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>{t('netCredit')}</Text>
-            <Text style={styles.summaryValue}>{totalCredit.toFixed(2)}</Text>
+            <Text style={styles.summaryLabel}>{s(t('netCredit'))}</Text>
+            <Text style={styles.summaryValue}>{s(totalCredit.toFixed(2))}</Text>
           </View>
         </View>
 
         <View style={[styles.summaryBox, { marginTop: -20 }]}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>{t('vat15')}</Text>
-            <Text style={[styles.summaryValue, { color: '#f59e0b' }]}>{vatAmount.toFixed(2)}</Text>
+            <Text style={styles.summaryLabel}>{s(t('vat15'))}</Text>
+            <Text style={[styles.summaryValue, { color: '#f59e0b' }]}>{s(vatAmount.toFixed(2))}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>{t('netProfit')}</Text>
-            <Text style={[styles.summaryValue, { color: '#059669' }]}>{manualProfit.toFixed(2)}</Text>
+            <Text style={styles.summaryLabel}>{s(t('netProfit'))}</Text>
+            <Text style={[styles.summaryValue, { color: '#059669' }]}>{s(manualProfit.toFixed(2))}</Text>
           </View>
         </View>
 
         {!summaryOnly && (
           <View style={styles.table}>
             <View style={styles.tableHeader}>
-              <Text style={styles.colMethod}>{t('method')}</Text>
-              <Text style={styles.colAmount}>{t('amount')}</Text>
-              <Text style={styles.colDesc}>{t('description')}</Text>
-              <Text style={styles.colDate}>{t('reportDate')}</Text>
+              <Text style={styles.colMethod}>{s(t('method'))}</Text>
+              <Text style={styles.colAmount}>{s(t('amount'))}</Text>
+              <Text style={styles.colDesc}>{s(t('description'))}</Text>
+              <Text style={styles.colDate}>{s(t('reportDate'))}</Text>
             </View>
 
             {sales.map((sale) => {
               const saleMethodText = sale.type === 'RETURN' ? t('refund') : t((sale.method as string).toLowerCase() as any) || sale.method;
               return (
               <View key={sale.id} style={[styles.tableRow, sale.type === 'RETURN' ? { backgroundColor: '#fef2f2' } : {}]}>
-                <Text style={styles.colMethod}>{saleMethodText || ''}</Text>
+                <Text style={styles.colMethod}>{s(saleMethodText || '')}</Text>
                 <Text style={[styles.colAmount, sale.type === 'RETURN' ? { color: '#b91c1c', fontWeight: 'bold' } : {}]}>
-                  {sale.type === 'RETURN' ? '-' : ''}{(sale.amount || 0).toFixed(2)}
+                  {s(`${sale.type === 'RETURN' ? '-' : ''}${(sale.amount || 0).toFixed(2)}`)}
                 </Text>
-                <Text style={styles.colDesc}>{String(sale.description || '-')}</Text>
-                <Text style={styles.colDate}>{sale.createdAt ? format(new Date(sale.createdAt), 'MM/dd/yy HH:mm') : ''}</Text>
+                <Text style={styles.colDesc}>{s(String(sale.description || '-'))}</Text>
+                <Text style={styles.colDate}>{s(sale.createdAt ? format(new Date(sale.createdAt), 'MM/dd/yy HH:mm') : '')}</Text>
               </View>
             )})}
           </View>

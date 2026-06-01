@@ -14,14 +14,19 @@ const TABS = [
 
 export function SettingsClient({ 
   initialUsers, 
+  initialPendingUsers,
   initialSettings, 
-  initialTemplates 
+  initialTemplates,
+  userRole,
 }: { 
   initialUsers: any
+  initialPendingUsers: any[]
   initialSettings: any
   initialTemplates: any
+  userRole: string
 }) {
   const [activeTab, setActiveTab] = useState('general')
+  const pendingCount = initialPendingUsers?.length || 0
 
   return (
     <div className="flex flex-col md:flex-row items-start gap-8 max-w-[1400px] mx-auto">
@@ -48,6 +53,11 @@ export function SettingsClient({
               >
                 <tab.icon size={18} className={isActive ? 'text-blue-100' : 'text-gray-400'} />
                 {tab.label}
+                {tab.id === 'users' && pendingCount > 0 && (
+                  <span className="ml-auto min-w-[20px] h-5 rounded-full bg-amber-500 text-white text-[10px] font-black flex items-center justify-center px-1.5">
+                    {pendingCount}
+                  </span>
+                )}
               </button>
             )
           })}
@@ -83,7 +93,7 @@ export function SettingsClient({
                 <h2 className="text-2xl font-bold tracking-tight">User Management</h2>
                 <p className="text-gray-500 text-sm mt-1">Add, remove, or modify employee access permissions.</p>
               </div>
-              <UsersClient initialUsers={initialUsers} />
+              <UsersClient initialUsers={initialUsers} initialPendingUsers={initialPendingUsers} userRole={userRole} />
             </div>
           )}
         </div>

@@ -212,3 +212,79 @@ export async function getActiveStaffList() {
     orderBy: { name: 'asc' },
   })
 }
+
+/**
+ * Fetch all active staff with their salary breakdown for the payroll PDF report.
+ * Returns staffSummary (per employee) and totals.
+ */
+export async function getStaffSalaryForReport(year: number) {
+  await assertAdmin()
+
+  const staff = await prisma.staff.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      baseSalary: true,
+      safetyAllowance: true,
+      transportAllowance: true,
+      otherAllowance: true,
+      salarySettlements: {
+        where: { year },
+        select: {
+          advancesTally: true,
+          netPaid: true,
+          earnedSalary: true,
+          overtimeAmount: true,
+          fridayOvertimeAmount: true,
+        },
+      },
+    },
+    orderBy: { name: 'asc' },
+  })
+
+  const staffSummary = staff.map(s => {
+    const settlements = s.salarySettlements
+    const totalAdvances = settlements.reduce((sum, ss) => sum + ss.advancesTally, 0)
+    const totalNet = settlements.reduce((sum, ss) => sum + ss.netPaid, 0)
+    const totalOT = settlements.reduce((sum, ss) => sum + ss.overtimeAmount + ss.fridayOvertimeAmount, 0)
+
+    const baseSalary = s.baseSalary
+    const overtimeAllowance = totalOT
+    const transportAllowance = s.transportAllowance || 0
+    const otherAllowance = (s.safetyAllowance || 0) + (s.otherAllowance || 0)
+    const totalSalary = baseSalary + overtimeAllowance + transportAllowance + otherAllowance
+    const advances = totalAdvances
+    const deductions = 0
+    const netSalary = settlements.length > 0 ? totalNet : totalSalary - advances
+
+    return {
+      id: s.id,
+      name: s.name,
+      baseSalary,
+      overtimeAllowance,
+      transportAllowance,
+      otherAllowance,
+      totalSalary,
+      advances,
+      deductions,
+      netSalary,
+    }
+  })
+
+  const totals = staffSummary.reduce(
+    (acc, s) => ({
+      base: acc.base + s.baseSalary,
+      overtime: acc.overtime + s.overtimeAllowance,
+      transport: acc.transport + s.transportAllowance,
+      other: acc.other + s.otherAllowance,
+      total: acc.total + s.totalSalary,
+      advances: acc.advances + s.advances,
+      deductions: acc.deductions + s.deductions,
+      net: acc.net + s.netSalary,
+    }),
+    { base: 0, overtime: 0, transport: 0, other: 0, total: 0, advances: 0, deductions: 0, net: 0 }
+  )
+
+  return { staffSummary, totals }
+}

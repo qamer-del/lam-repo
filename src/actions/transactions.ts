@@ -207,6 +207,12 @@ export async function getOrCreateActiveShift() {
   })
 
   if (!shift) {
+    // Verify user still exists before creating a shift (prevents FK errors from stale sessions)
+    const userExists = await prisma.user.findUnique({ where: { id: session.user.id } })
+    if (!userExists || !userExists.isActive || userExists.status !== 'ACTIVE') {
+      throw new Error("Your account has been deleted or deactivated. Please log in again.")
+    }
+
     shift = await prisma.shift.create({
       data: {
         openedById: session.user.id,
@@ -719,43 +725,70 @@ export async function editAdvance(transactionId: number, newAmount: number) {
     throw new Error('Unauthorized. Only Super Admins can modify advances.')
   }
   
-  // 1. Get existing original transaction
+  // 1. Get the original transaction — we will NEVER mutate its amount field
+  //    so that the Dashboard Activity feed always shows the original issuance value.
   const originalTx = await prisma.transaction.findUnique({
     where: { id: transactionId },
-    include: { staff: true }
   })
-  if (!originalTx) throw new Error("Transaction not found")
+  if (!originalTx) throw new Error('Transaction not found')
 
-  // 2. Clear any previous internal corrections for this specific advance to keep it clean
-  await prisma.transaction.deleteMany({
+  // 2. Determine the TRUE original amount by reversing any previous corrections
+  //    (handles the case where the advance was edited before using the old approach
+  //    that modified the original record directly)
+  const oldStyleCorrections = await prisma.transaction.findMany({
     where: {
       description: { contains: `[CORRECTION FOR #${transactionId}]` },
-      isInternal: true
-    }
+      isInternal: true,
+    },
+    select: { amount: true },
+  })
+  const oldStyleAdjustmentTotal = oldStyleCorrections.reduce((sum, tx) => sum + tx.amount, 0)
+  // If the original was mutated directly (old approach), its "true" original is current - old corrections
+  const trueOriginalAmount = originalTx.amount - oldStyleAdjustmentTotal
+
+  // 3. Clear ALL previous corrections for this advance (old-style and new-style)
+  await prisma.transaction.deleteMany({
+    where: {
+      OR: [
+        { description: { contains: `[CORRECTION FOR #${transactionId}]` }, isInternal: true },
+        { linkedTransactionId: transactionId, description: { contains: '[DRAWER_BALANCE_ADJUSTMENT]' } },
+      ],
+    },
   })
 
-  // 3. Calculate the difference relative to the ORIGINAL amount
-  // We don't modify the original record as per user request for audit trail
-  const diff = originalTx.amount - newAmount
-  
-  if (Math.abs(diff) > 0.01) {
-    // 4. Create the correction entry (marked as internal so it's hidden from dashboard)
+  // 4. If the original record was directly mutated by a previous edit, restore it to the true original.
+  if (Math.abs(originalTx.amount - trueOriginalAmount) > 0.01) {
+    await prisma.transaction.update({
+      where: { id: transactionId },
+      data: { amount: trueOriginalAmount },
+    })
+  }
+
+  // 5. Create a hidden correction entry that carries the delta.
+  //    - isInternal: true  → filtered from Dashboard activity feed
+  //    - [DRAWER_NEUTRAL]  → skipped in cash-drawer calculation in getDashboardData
+  //    - staffId set       → counted in the employee's outstanding advance balance and payroll
+  const delta = newAmount - trueOriginalAmount
+  if (Math.abs(delta) > 0.01) {
     await prisma.transaction.create({
       data: {
         type: 'ADVANCE',
-        amount: -diff, // Negative if we are reducing the advance, positive if increasing
+        amount: delta,
         method: originalTx.method,
-        description: `[CORRECTION FOR #${transactionId}] [DRAWER_NEUTRAL] Adjusted from ${originalTx.amount} to ${newAmount}`,
+        description: `[CORRECTION FOR #${transactionId}] [DRAWER_NEUTRAL] Adjusted from ${trueOriginalAmount} to ${newAmount}`,
         isInternal: true,
         staffId: originalTx.staffId,
-        recordedById: session.user.id
-      }
+        isSettled: false,
+        recordedById: session.user.id,
+        linkedTransactionId: transactionId,
+      },
     })
   }
 
   revalidatePath('/')
   revalidatePath('/staff')
-  return originalTx
+  // Return the original (unmutated) record
+  return await prisma.transaction.findUnique({ where: { id: transactionId } })
 }
 
 export async function createSettlement(actualCashCounted: number) {

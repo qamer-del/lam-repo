@@ -53,7 +53,8 @@ export async function getActivityData(filters: ActivityFilter = {}) {
     createdAt: {
       gte: start,
       lte: end
-    }
+    },
+    isInternal: false
   }
 
   if (type !== 'ALL') {
@@ -103,24 +104,36 @@ export async function getActivityData(filters: ActivityFilter = {}) {
     skip,
     take: limit,
     include: {
-      recordedBy: { select: { name: true } }
+      recordedBy: { select: { name: true } },
+      linkedBy: {
+        where: { description: { contains: '[DRAWER_BALANCE_ADJUSTMENT]' } },
+        select: { amount: true }
+      }
     }
   })
 
   const total = await prisma.transaction.count({ where })
 
   return {
-    data: transactions.map(tx => ({
-      id: tx.id,
-      type: tx.type,
-      title: tx.type === 'SALE' ? 'Sale Completed' : tx.type === 'RETURN' ? 'Refund Processed' : tx.type,
-      amount: tx.amount,
-      user: tx.recordedBy?.name || 'System',
-      timestamp: tx.createdAt,
-      status: 'SUCCESS',
-      description: tx.description,
-      method: tx.method
-    })),
+    data: transactions.map(tx => {
+      let displayAmount = tx.amount
+      if (tx.linkedBy && tx.linkedBy.length > 0) {
+        const adjustmentOffset = tx.linkedBy.reduce((sum, adj) => sum + adj.amount, 0)
+        displayAmount = tx.amount + adjustmentOffset
+      }
+
+      return {
+        id: tx.id,
+        type: tx.type,
+        title: tx.type === 'SALE' ? 'Sale Completed' : tx.type === 'RETURN' ? 'Refund Processed' : tx.type,
+        amount: displayAmount,
+        user: tx.recordedBy?.name || 'System',
+        timestamp: tx.createdAt,
+        status: 'SUCCESS',
+        description: tx.description,
+        method: tx.method
+      }
+    }),
     total
   }
 }

@@ -10,13 +10,14 @@ export default async function InternalConsumptionPage() {
   if (!session?.user) redirect('/login')
 
   const userRole = session.user.role
+  const isCashier = userRole === 'CASHIER'
 
   try {
-    const [inventoryItems, staffMembers, requests] = await Promise.all([
+    const [inventoryItemsRaw, staffMembers, requests] = await Promise.all([
       prisma.inventoryItem.findMany({
         where: { isActive: true },
         orderBy: { name: 'asc' },
-        select: { id: true, name: true, unit: true, currentStock: true, unitCost: true }
+        select: { id: true, name: true, unit: true, currentStock: true, unitCost: true, sku: true, barcode: true }
       }),
       prisma.staff.findMany({
         where: { isActive: true },
@@ -24,7 +25,7 @@ export default async function InternalConsumptionPage() {
         select: { id: true, name: true }
       }),
       prisma.internalConsumptionRequest.findMany({
-        where: userRole === 'CASHIER' ? { createdById: session.user.id } : {},
+        where: isCashier ? { createdById: session.user.id } : {},
         include: {
           item: { select: { id: true, name: true, unit: true, unitCost: true } },
           staff: { select: { id: true, name: true } },
@@ -35,6 +36,12 @@ export default async function InternalConsumptionPage() {
         orderBy: { createdAt: 'desc' }
       })
     ])
+
+    // Strip cost info from Cashier view
+    const inventoryItems = inventoryItemsRaw.map(item => ({
+      ...item,
+      unitCost: isCashier ? null : item.unitCost,
+    }))
 
     return (
       <ConsumptionClient
