@@ -688,6 +688,15 @@ export function PosClient({
                                         <div className="min-w-0">
                                           <p className="text-sm font-bold text-gray-900 truncate leading-tight">{tx.description || (tx.type === 'SALE' ? t('sale') : t('refund'))}</p>
                                           <p className="text-[10px] text-gray-400 font-bold font-mono mt-0.5">{tx.invoiceNumber || `#${tx.id}`} · {format(new Date(tx.createdAt), 'h:mm a')}</p>
+                                          {tx.items && tx.items.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-1.5">
+                                              {tx.items.map((prod: any, idx: number) => (
+                                                <span key={idx} className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[8px] font-bold">
+                                                  {prod.quantity}x {prod.name}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-3 shrink-0 ps-3">

@@ -24,8 +24,48 @@ export default async function PosPage() {
 
   const userId = session?.user?.id
 
-  // Parallel data fetch
-  const [inventoryItems, customers, unsettledSales, allTodaySales, unpaidCreditSales, activeShift] = await Promise.all([
+  const rawAllTodaySales = userId ? await prisma.transaction.findMany({
+    where: { recordedById: userId, type: { in: ['SALE', 'RETURN'] }, createdAt: { gte: startOfDay(new Date()) } },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true, amount: true, method: true, type: true,
+      invoiceNumber: true, description: true, customerName: true,
+      createdAt: true, isSettled: true, settlementId: true,
+      shiftId: true,
+      shift: {
+        select: {
+          id: true,
+          status: true,
+          openedAt: true,
+          closedAt: true,
+        }
+      },
+      recordedBy: { select: { name: true } },
+    },
+  }) : []
+
+  const invoiceNumbers = rawAllTodaySales.map(t => t.invoiceNumber).filter(Boolean) as string[]
+  const stockMovements = userId && invoiceNumbers.length > 0 ? await prisma.stockMovement.findMany({
+    where: { invoiceNumber: { in: invoiceNumbers }, type: 'SALE_OUT' },
+    include: { item: { select: { name: true } } }
+  }) : []
+  
+  const itemsByInvoice = stockMovements.reduce((acc, sm) => {
+    if (!sm.invoiceNumber) return acc
+    if (!acc[sm.invoiceNumber]) acc[sm.invoiceNumber] = []
+    acc[sm.invoiceNumber].push({
+      name: sm.item?.name || 'Unknown',
+      quantity: Math.abs(sm.quantity)
+    })
+    return acc
+  }, {} as Record<string, any[]>)
+
+  const allTodaySales = rawAllTodaySales.map(tx => ({
+    ...tx,
+    items: tx.invoiceNumber ? itemsByInvoice[tx.invoiceNumber] || [] : []
+  }))
+
+  const [inventoryItems, customers, unsettledSales, unpaidCreditSales, activeShift] = await Promise.all([
     prisma.inventoryItem.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
@@ -43,26 +83,6 @@ export default async function PosPage() {
     userId ? prisma.transaction.findMany({
       where: { recordedById: userId, type: { in: ['SALE', 'RETURN'] }, isSettled: false, settlementId: null, createdAt: { gte: startOfDay(new Date()) } },
       select: { id: true, amount: true, method: true, type: true },
-    }) : Promise.resolve([]),
-    // All of today's transactions for the "Today's Sales" tab
-    userId ? prisma.transaction.findMany({
-      where: { recordedById: userId, type: { in: ['SALE', 'RETURN'] }, createdAt: { gte: startOfDay(new Date()) } },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true, amount: true, method: true, type: true,
-        invoiceNumber: true, description: true, customerName: true,
-        createdAt: true, isSettled: true, settlementId: true,
-        shiftId: true,
-        shift: {
-          select: {
-            id: true,
-            status: true,
-            openedAt: true,
-            closedAt: true,
-          }
-        },
-        recordedBy: { select: { name: true } },
-      },
     }) : Promise.resolve([]),
     // Unpaid credit sales this cashier recorded
     userId ? prisma.transaction.findMany({
