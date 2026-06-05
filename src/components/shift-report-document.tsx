@@ -1,35 +1,25 @@
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
+import '@/lib/pdf-fonts';
 import { en, ar } from '@/lib/translations';
-import { shapeArabicVisual } from 'naqqash';
-
-// react-pdf v4 does NOT support direction:rtl in its layout engine.
-// shapeArabicVisual reverses the character order for LTR renderers — correct for react-pdf.
-const s = (text: string | number | null | undefined, isRtl = false): string => {
+// Pass text as-is; Noto Naskh Arabic font handles Arabic shaping via GSUB tables
+const s = (text: string | number | null | undefined): string => {
   if (text === null || text === undefined) return '';
-  const str = String(text);
-  return isRtl ? shapeArabicVisual(str) : str;
+  return String(text);
 };
-
-Font.register({
-  family: 'Cairo',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hOA-W1Q.ttf', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hAc5W1Q.ttf', fontWeight: 700 }
-  ]
-});
-
 export function ShiftReportDocument({ 
   shift, 
   qrCodeDataUrl, 
   locale = 'en',
   storeName = 'Lamaha Car Care',
-  storePhone = '+966 50 000 0000'
+  storePhone = '+966 50 000 0000',
+  fontOrigin = ''
 }: { 
   shift: any, 
   qrCodeDataUrl?: string | null,
   locale?: 'en' | 'ar' | string,
   storeName?: string,
-  storePhone?: string
+  storePhone?: string,
+  fontOrigin?: string
 }) {
   if (!shift) return null;
 
@@ -38,149 +28,208 @@ export function ShiftReportDocument({
 
   const styles = StyleSheet.create({
     page: {
-      padding: 40,
+      padding: 30,
       fontSize: 10,
       fontFamily: 'Cairo',
-      color: '#1a1a1a',
+      color: '#0f172a',
       backgroundColor: '#ffffff',
-      // direction is intentionally NOT set — react-pdf v4 does not support it.
-      // RTL layout is achieved via flexDirection:row-reverse and textAlign:right.
     },
-    header: {
+    // Header
+    headerContainer: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
-      borderBottomWidth: 2,
-      borderBottomColor: '#1e40af',
-      paddingBottom: 20,
+      alignItems: 'center',
+      borderBottomWidth: 3,
+      borderBottomColor: '#1e293b',
+      paddingBottom: 15,
       marginBottom: 20,
     },
-    storeInfo: {
-      flexDirection: 'column',
-      alignItems: isRtl ? 'flex-end' : 'flex-start',
-    },
-    storeName: {
-      fontSize: 18,
+    storeTitle: {
+      fontSize: 24,
       fontWeight: 'bold',
-      color: '#1e40af',
+      color: '#0f172a',
     },
     storePhone: {
       fontSize: 10,
-      color: '#666',
-      marginTop: 2,
+      color: '#64748b',
+      marginTop: 4,
     },
-    reportTitle: {
-      fontSize: 14,
+    reportTitleBlock: {
+      alignItems: isRtl ? 'flex-start' : 'flex-end',
+    },
+    reportTitleText: {
+      fontSize: 18,
       fontWeight: 'bold',
-      color: '#333',
-      textAlign: isRtl ? 'left' : 'right',
+      color: '#3b82f6',
     },
-    reportId: {
-      fontSize: 9,
-      color: '#999',
-      textAlign: isRtl ? 'left' : 'right',
-      marginTop: 2,
+    reportIdContainer: {
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      marginTop: 4,
     },
-    grid: {
+    reportIdLabel: {
+      fontSize: 10,
+      color: '#64748b',
+    },
+    reportIdValue: {
+      fontSize: 10,
+      fontWeight: 'bold',
+      color: '#0f172a',
+      marginHorizontal: 4,
+    },
+
+    // Grid details
+    detailsGrid: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
       flexWrap: 'wrap',
-      marginBottom: 20,
+      backgroundColor: '#f8fafc',
+      borderRadius: 6,
+      padding: 15,
+      marginBottom: 25,
+      borderWidth: 1,
+      borderColor: '#e2e8f0',
     },
-    gridItem: {
+    detailBox: {
       width: '50%',
       marginBottom: 10,
       paddingRight: isRtl ? 0 : 10,
       paddingLeft: isRtl ? 10 : 0,
     },
-    label: {
+    detailLabel: {
       fontSize: 8,
-      color: '#666',
+      fontWeight: 'bold',
+      color: '#64748b',
       textTransform: 'uppercase',
-      letterSpacing: 1,
       textAlign: isRtl ? 'right' : 'left',
+      marginBottom: 2,
     },
-    value: {
+    detailValue: {
       fontSize: 11,
       fontWeight: 'bold',
-      marginTop: 2,
+      color: '#0f172a',
       textAlign: isRtl ? 'right' : 'left',
     },
-    divider: {
-      borderBottomWidth: 1,
-      borderBottomColor: '#e5e7eb',
-      marginBottom: 20,
+
+    // Section Titles
+    sectionTitleBlock: {
+      backgroundColor: '#1e293b',
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 4,
+      marginBottom: 10,
+      flexDirection: isRtl ? 'row-reverse' : 'row',
     },
-    sectionTitle: {
+    sectionTitleText: {
       fontSize: 12,
       fontWeight: 'bold',
-      backgroundColor: '#f8fafc',
-      padding: 8,
-      marginBottom: 15,
-      textAlign: isRtl ? 'right' : 'left',
-      borderRadius: 4,
+      color: '#ffffff',
+    },
+
+    // Summary Rows
+    summaryTable: {
+      marginBottom: 20,
     },
     summaryRow: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
-      paddingVertical: 6,
+      paddingVertical: 8,
       borderBottomWidth: 1,
       borderBottomColor: '#f1f5f9',
     },
+    summaryRowAlt: {
+      backgroundColor: '#fafafa',
+    },
     summaryLabel: {
-      color: '#475569',
-      textAlign: isRtl ? 'right' : 'left',
+      fontSize: 10,
+      color: '#334155',
     },
     summaryValue: {
+      fontSize: 11,
       fontWeight: 'bold',
-      textAlign: isRtl ? 'left' : 'right',
+      color: '#0f172a',
     },
-    totalRow: {
+
+    // Grand Total
+    grandTotalBox: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
-      marginTop: 10,
-      paddingTop: 10,
-      borderTopWidth: 2,
-      borderTopColor: '#1e40af',
+      alignItems: 'center',
+      backgroundColor: '#eff6ff',
+      borderWidth: 2,
+      borderColor: '#3b82f6',
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 25,
     },
-    totalLabel: {
-      fontSize: 12,
-      fontWeight: 'bold',
-      color: '#1e40af',
-    },
-    totalValue: {
+    grandTotalLabel: {
       fontSize: 14,
       fontWeight: 'bold',
-      color: '#1e40af',
+      color: '#1e3a8a',
     },
-    reconciliationSection: {
-      marginTop: 30,
-      padding: 15,
-      backgroundColor: '#f0f9ff',
+    grandTotalValue: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: '#1d4ed8',
+    },
+
+    // Reconciliation
+    reconBox: {
+      borderWidth: 2,
+      borderColor: '#e2e8f0',
       borderRadius: 8,
-      borderWidth: 1,
-      borderColor: '#bae6fd',
+      overflow: 'hidden',
+      marginBottom: 30,
     },
-    reconciliationRow: {
+    reconHeader: {
+      backgroundColor: '#f1f5f9',
+      padding: 10,
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+    },
+    reconHeaderText: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: '#334155',
+    },
+    reconBody: {
+      padding: 15,
+    },
+    reconRow: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
       marginBottom: 8,
     },
-    differenceRow: {
+    reconDiffRowMatch: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
-      marginTop: 8,
-      paddingTop: 8,
+      marginTop: 10,
+      paddingTop: 10,
       borderTopWidth: 1,
-      borderTopColor: '#bae6fd',
+      borderTopColor: '#e2e8f0',
+      backgroundColor: '#ecfdf5',
+      padding: 8,
+      borderRadius: 4,
     },
-    differenceValue: {
-      fontSize: 12,
-      fontWeight: 'bold',
-    },
-    qrSection: {
+    reconDiffRowShort: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
       justifyContent: 'space-between',
-      marginTop: 40,
+      marginTop: 10,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: '#e2e8f0',
+      backgroundColor: '#fef2f2',
+      padding: 8,
+      borderRadius: 4,
+    },
+    reconDiffLabelMatch: { fontSize: 12, fontWeight: 'bold', color: '#059669' },
+    reconDiffValueMatch: { fontSize: 14, fontWeight: 'bold', color: '#059669' },
+    reconDiffLabelShort: { fontSize: 12, fontWeight: 'bold', color: '#dc2626' },
+    reconDiffValueShort: { fontSize: 14, fontWeight: 'bold', color: '#dc2626' },
+
+    // Footer
+    footerBlock: {
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      justifyContent: 'space-between',
       alignItems: 'flex-end',
+      marginTop: 20,
     },
     qrImage: {
       width: 80,
@@ -188,153 +237,177 @@ export function ShiftReportDocument({
     },
     signatures: {
       flexDirection: isRtl ? 'row-reverse' : 'row',
-      justifyContent: 'space-between',
-      marginTop: 60,
+      justifyContent: 'space-around',
+      flexGrow: 1,
+      paddingHorizontal: 20,
     },
-    signatureLine: {
-      width: '40%',
-      borderTopWidth: 1,
-      borderTopColor: '#333',
-      textAlign: 'center',
-      paddingTop: 5,
+    sigBox: {
+      width: 120,
+      alignItems: 'center',
     },
-    signatureLabel: {
+    sigLine: {
+      width: '100%',
+      height: 1,
+      backgroundColor: '#94a3b8',
+      marginBottom: 8,
+    },
+    sigLabel: {
       fontSize: 9,
       fontWeight: 'bold',
+      color: '#64748b',
     },
-    footer: {
+
+    pageFooter: {
       position: 'absolute',
-      bottom: 30,
-      left: 40,
-      right: 40,
+      bottom: 20,
+      left: 30,
+      right: 30,
+      flexDirection: isRtl ? 'row-reverse' : 'row',
+      justifyContent: 'center',
+      borderTopWidth: 1,
+      borderTopColor: '#e2e8f0',
+      paddingTop: 10,
+    },
+    pageFooterText: {
       fontSize: 8,
       color: '#94a3b8',
-      textAlign: 'center',
-      borderTopWidth: 1,
-      borderTopColor: '#f1f5f9',
-      paddingTop: 10,
+      marginHorizontal: 2,
     }
   });
 
-  const formatCurrency = (val: number) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' SAR';
+  const formatCurrency = (val: number) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatDate = (date: any) => date ? new Date(date).toLocaleString('en-US') : 'N/A';
+  const diff = shift.difference || 0;
+  const isMatch = diff >= 0;
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.storeInfo}>
-            <Text style={styles.storeName}>{s(storeName, isRtl)}</Text>
-            <Text style={styles.storePhone}>{s(storePhone)}</Text>
-          </View>
+        <View style={styles.headerContainer}>
           <View>
-            <Text style={styles.reportTitle}>{s(t('shiftReport'), isRtl)}</Text>
-            <Text style={styles.reportId}>{s(`#${shift.id}`)}</Text>
+            <Text style={styles.storeTitle}>{s(storeName)}</Text>
+            <Text style={[styles.storePhone, { textAlign: isRtl ? 'right' : 'left' }]}>{storePhone}</Text>
           </View>
-        </View>
-
-        {/* Shift Info Grid */}
-        <View style={styles.grid}>
-          <View style={styles.gridItem}>
-            <Text style={styles.label}>{s(t('cashier'), isRtl)}</Text>
-            <Text style={styles.value}>{s(shift.openedBy?.name || 'N/A', isRtl)}</Text>
-          </View>
-          <View style={styles.gridItem}>
-            <Text style={styles.label}>{s(t('status'), isRtl)}</Text>
-            <Text style={styles.value}>{s(shift.status)}</Text>
-          </View>
-          <View style={styles.gridItem}>
-            <Text style={styles.label}>{s(t('shiftOpened'), isRtl)}</Text>
-            <Text style={styles.value}>{s(formatDate(shift.openedAt))}</Text>
-          </View>
-          <View style={styles.gridItem}>
-            <Text style={styles.label}>{s(t('shiftClosed'), isRtl)}</Text>
-            <Text style={styles.value}>{s(formatDate(shift.closedAt))}</Text>
-          </View>
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* Sales Summary */}
-        <Text style={styles.sectionTitle}>{s(t('salesSummary'), isRtl)}</Text>
-        
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{s(t('cashSales'), isRtl)}</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(shift.cashSales)}</Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{s(t('cardSales'), isRtl)}</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(shift.cardSales)}</Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{s(t('tamara'), isRtl)}</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(shift.tamaraSales)}</Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{s(t('tabby'), isRtl)}</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(shift.tabbySales)}</Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{s(t('creditSales'), isRtl)}</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(shift.creditSales)}</Text>
-        </View>
-        
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>{s(t('totalSales'), isRtl)}</Text>
-          <Text style={styles.totalValue}>{formatCurrency(shift.totalSales)}</Text>
-        </View>
-
-        <View style={[styles.summaryRow, { marginTop: 10 }]}>
-          <Text style={styles.summaryLabel}>{s(t('totalInvoices'), isRtl)}</Text>
-          <Text style={styles.summaryValue}>{s(shift.invoiceCount)}</Text>
-        </View>
-
-        {/* Cash Reconciliation */}
-        <View style={styles.reconciliationSection}>
-          <Text style={[styles.sectionTitle, { backgroundColor: 'transparent', padding: 0, marginBottom: 10 }]}>
-            {s(t('cashReconciliation'), isRtl)}
-          </Text>
-          <View style={styles.reconciliationRow}>
-            <Text style={styles.summaryLabel}>{s(t('expectedCash'), isRtl)}</Text>
-            <Text style={styles.summaryValue}>{formatCurrency(shift.expectedCash)}</Text>
-          </View>
-          <View style={styles.reconciliationRow}>
-            <Text style={styles.summaryLabel}>{s(t('actualCash'), isRtl)}</Text>
-            <Text style={styles.summaryValue}>{formatCurrency(shift.actualCash)}</Text>
-          </View>
-          <View style={styles.differenceRow}>
-            <Text style={[styles.totalLabel, { color: shift.difference < 0 ? '#b91c1c' : shift.difference > 0 ? '#059669' : '#1e40af' }]}>
-              {s(t('difference'), isRtl)}
-            </Text>
-            <Text style={[styles.differenceValue, { color: shift.difference < 0 ? '#b91c1c' : shift.difference > 0 ? '#059669' : '#1e40af' }]}>
-              {`${shift.difference > 0 ? '+' : ''}${formatCurrency(shift.difference)}`}
-            </Text>
-          </View>
-        </View>
-
-        {/* QR & Signatures */}
-        <View style={styles.qrSection}>
-          <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
-            {qrCodeDataUrl && <Image src={qrCodeDataUrl} style={styles.qrImage} />}
-          </View>
-          
-          <View style={{ width: '60%' }}>
-            <View style={styles.signatures}>
-              <View style={styles.signatureLine}>
-                <Text style={styles.signatureLabel}>{s(t('cashierSignature'), isRtl)}</Text>
-              </View>
-              <View style={styles.signatureLine}>
-                <Text style={styles.signatureLabel}>{s(t('managerSignature'), isRtl)}</Text>
-              </View>
+          <View style={styles.reportTitleBlock}>
+            <Text style={styles.reportTitleText}>{s(t('shiftReport'))}</Text>
+            <View style={styles.reportIdContainer}>
+              <Text style={styles.reportIdLabel}>{s(t('idHash'))}</Text>
+              <Text style={styles.reportIdValue}>#{shift.id}</Text>
             </View>
           </View>
         </View>
 
-        <Text style={styles.footer}>
-          {s(`${t('officialRecordFooter')} ${new Date().toLocaleString()}.`, isRtl)}
-        </Text>
+        {/* Shift Details Grid */}
+        <View style={styles.detailsGrid}>
+          <View style={styles.detailBox}>
+            <Text style={styles.detailLabel}>{s(t('cashier'))}</Text>
+            <Text style={styles.detailValue}>{s(shift.openedBy?.name || 'N/A')}</Text>
+          </View>
+          <View style={styles.detailBox}>
+            <Text style={styles.detailLabel}>{s(t('status'))}</Text>
+            <Text style={styles.detailValue}>{s(shift.status)}</Text>
+          </View>
+          <View style={styles.detailBox}>
+            <Text style={styles.detailLabel}>{s(t('shiftOpened'))}</Text>
+            <Text style={styles.detailValue}>{formatDate(shift.openedAt)}</Text>
+          </View>
+          <View style={styles.detailBox}>
+            <Text style={styles.detailLabel}>{s(t('shiftClosed'))}</Text>
+            <Text style={styles.detailValue}>{formatDate(shift.closedAt)}</Text>
+          </View>
+        </View>
+
+        {/* Sales Summary */}
+        <View style={styles.sectionTitleBlock}>
+          <Text style={styles.sectionTitleText}>{s(t('salesSummary'))}</Text>
+        </View>
+
+        <View style={styles.summaryTable}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>{s(t('cashSales'))}</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(shift.cashSales)} SAR</Text>
+          </View>
+          <View style={[styles.summaryRow, styles.summaryRowAlt]}>
+            <Text style={styles.summaryLabel}>{s(t('cardSales'))}</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(shift.cardSales)} SAR</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>{s(t('tamara'))}</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(shift.tamaraSales)} SAR</Text>
+          </View>
+          <View style={[styles.summaryRow, styles.summaryRowAlt]}>
+            <Text style={styles.summaryLabel}>{s(t('tabby'))}</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(shift.tabbySales)} SAR</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>{s(t('creditSales'))}</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(shift.creditSales)} SAR</Text>
+          </View>
+          <View style={[styles.summaryRow, styles.summaryRowAlt]}>
+            <Text style={styles.summaryLabel}>{s(t('totalInvoices'))}</Text>
+            <Text style={styles.summaryValue}>{shift.invoiceCount}</Text>
+          </View>
+        </View>
+
+        {/* Grand Total */}
+        <View style={styles.grandTotalBox}>
+          <Text style={styles.grandTotalLabel}>{s(t('totalSales'))}</Text>
+          <Text style={styles.grandTotalValue}>{formatCurrency(shift.totalSales)} SAR</Text>
+        </View>
+
+        {/* Cash Reconciliation */}
+        <View style={styles.reconBox}>
+          <View style={styles.reconHeader}>
+            <Text style={styles.reconHeaderText}>{s(t('cashReconciliation'))}</Text>
+          </View>
+          <View style={styles.reconBody}>
+            <View style={styles.reconRow}>
+              <Text style={styles.summaryLabel}>{s(t('expectedCash'))}</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(shift.expectedCash)} SAR</Text>
+            </View>
+            <View style={styles.reconRow}>
+              <Text style={styles.summaryLabel}>{s(t('actualCash'))}</Text>
+              <Text style={styles.summaryValue}>{formatCurrency(shift.actualCash)} SAR</Text>
+            </View>
+            <View style={isMatch ? styles.reconDiffRowMatch : styles.reconDiffRowShort}>
+              <Text style={isMatch ? styles.reconDiffLabelMatch : styles.reconDiffLabelShort}>
+                {s(t('difference'))}
+              </Text>
+              <Text style={isMatch ? styles.reconDiffValueMatch : styles.reconDiffValueShort}>
+                {diff > 0 ? '+' : ''}{formatCurrency(diff)} SAR
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Footer block (QR + Signatures) */}
+        <View style={styles.footerBlock}>
+          <View style={{ width: 80 }}>
+            {qrCodeDataUrl && <Image src={qrCodeDataUrl} style={styles.qrImage} />}
+          </View>
+          <View style={styles.signatures}>
+            <View style={styles.sigBox}>
+              <View style={styles.sigLine} />
+              <Text style={styles.sigLabel}>{s(t('cashierSignature'))}</Text>
+            </View>
+            <View style={styles.sigBox}>
+              <View style={styles.sigLine} />
+              <Text style={styles.sigLabel}>{s(t('managerSignature'))}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Absolute Page Footer */}
+        <View style={styles.pageFooter}>
+          <Text style={styles.pageFooterText}>{s(t('officialRecordFooter'))}</Text>
+          <Text style={styles.pageFooterText}>-</Text>
+          <Text style={styles.pageFooterText}>{new Date().toLocaleString('en-US')}</Text>
+        </View>
+
       </Page>
     </Document>
   );
 }
+

@@ -112,6 +112,22 @@ export async function getActivityData(filters: ActivityFilter = {}) {
     }
   })
 
+  const invoiceNumbers = transactions.map(t => t.invoiceNumber).filter(Boolean) as string[]
+  const stockMovements = await prisma.stockMovement.findMany({
+    where: { invoiceNumber: { in: invoiceNumbers }, type: 'SALE_OUT' },
+    include: { item: { select: { name: true } } }
+  })
+  
+  const itemsByInvoice = stockMovements.reduce((acc, sm) => {
+    if (!sm.invoiceNumber) return acc
+    if (!acc[sm.invoiceNumber]) acc[sm.invoiceNumber] = []
+    acc[sm.invoiceNumber].push({
+      name: sm.item?.name || 'Unknown',
+      quantity: Math.abs(sm.quantity)
+    })
+    return acc
+  }, {} as Record<string, any[]>)
+
   const total = await prisma.transaction.count({ where })
 
   return {
@@ -131,7 +147,9 @@ export async function getActivityData(filters: ActivityFilter = {}) {
         timestamp: tx.createdAt,
         status: 'SUCCESS',
         description: tx.description,
-        method: tx.method
+        method: tx.method,
+        invoiceNumber: tx.invoiceNumber,
+        items: tx.invoiceNumber ? itemsByInvoice[tx.invoiceNumber] || [] : []
       }
     }),
     total

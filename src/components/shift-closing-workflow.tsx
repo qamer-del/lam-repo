@@ -176,7 +176,8 @@ export function ShiftClosingWorkflow({
         <ShiftReportDocument 
           shift={closedShiftResult} 
           qrCodeDataUrl={qrDataUrl} 
-          locale={locale} 
+          locale={locale}
+          fontOrigin={window.location.origin}
         />
       ).toBlob()
       

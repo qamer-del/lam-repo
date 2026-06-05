@@ -159,7 +159,7 @@ export default function ActivityClient({ initialData, initialTotal }: { initialD
               key={`${item.id}-${i}`} 
               className={cn(
                 "flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-all cursor-default",
-                density === 'compact' ? "px-4 h-[56px]" : "px-6 h-20"
+                density === 'compact' ? "px-4 py-3 min-h-[56px]" : "px-6 py-4 min-h-[80px]"
               )}
             >
               <div className="flex items-center gap-4 min-w-0">
@@ -180,10 +180,21 @@ export default function ActivityClient({ initialData, initialTotal }: { initialD
                       {item.user}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-                    {density === 'comfortable' && <span className="flex items-center gap-1"><User size={10} /> {item.user}</span>}
-                    {density === 'comfortable' && <span className="hidden sm:inline">•</span>}
-                    <span className="hidden sm:flex items-center gap-1"><Calendar size={10} /> {format(new Date(item.timestamp), 'MMM d, h:mm a')}</span>
+                  <div className="flex flex-col gap-1.5 mt-1">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                      {density === 'comfortable' && <span className="flex items-center gap-1"><User size={10} /> {item.user}</span>}
+                      {density === 'comfortable' && <span className="hidden sm:inline">•</span>}
+                      <span className="hidden sm:flex items-center gap-1"><Calendar size={10} /> {format(new Date(item.timestamp), 'MMM d, h:mm a')}</span>
+                    </div>
+                    {item.items && item.items.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {item.items.map((prod: any, idx: number) => (
+                          <span key={idx} className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                            {prod.quantity}x {prod.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

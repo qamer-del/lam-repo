@@ -34,7 +34,7 @@ export function SettlementHistory({ initialSettlements }: { initialSettlements: 
         isSettled: tx?.isSettled ?? false,
       }));
 
-      const blob = await pdf(<SettlementDocument settlement={data} transactions={sanitizedTransactions} locale={locale} />).toBlob()
+      const blob = await pdf(<SettlementDocument settlement={data} transactions={sanitizedTransactions} locale={locale} fontOrigin={window.location.origin} />).toBlob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url

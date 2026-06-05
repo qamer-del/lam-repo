@@ -69,7 +69,7 @@ export function SettleCashBtn({ triggerClassName, children, open: externalOpen, 
           isInternal: tx?.isInternal ?? false,
           isSettled: tx?.isSettled ?? false,
         }));
-        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={sanitizedTransactions} locale={locale} />).toBlob()
+        const blob = await pdf(<SettlementDocument settlement={settlement} transactions={sanitizedTransactions} locale={locale} fontOrigin={window.location.origin} />).toBlob()
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url

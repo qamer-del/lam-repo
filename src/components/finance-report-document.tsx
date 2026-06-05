@@ -1,24 +1,15 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+import '@/lib/pdf-fonts';
 import { format } from 'date-fns'
 import { en, ar } from '@/lib/translations'
-import { shapeArabicVisual } from 'naqqash'
-
 // react-pdf v4 does NOT support direction:rtl. Use shapeArabicVisual for visual (reversed) order.
-const s = (text: string | number | null | undefined, isRtl = false): string => {
+// Pass text as-is; Noto Naskh Arabic font handles Arabic shaping via GSUB tables
+const s = (text: string | number | null | undefined): string => {
   if (text === null || text === undefined) return '';
-  const str = String(text);
-  return isRtl ? shapeArabicVisual(str) : str;
+  return String(text);
 };
-
 // Cairo font supports both Arabic and Latin — required for correct Arabic character shaping
-Font.register({
-  family: 'Cairo',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hOA-W1Q.ttf', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/cairo/v31/SLXgc1nY6HkvangtZmpQdkhzfH5lkSs2SgRjCAGMQ1z0hAc5W1Q.ttf', fontWeight: 700 },
-  ],
-})
 
 interface FinanceReportDocumentProps {
   data: any
