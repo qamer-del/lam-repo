@@ -47,6 +47,7 @@ interface PosClientProps {
   hasUnsettled: boolean
   unsettledCash: number; unsettledNetwork: number; unsettledTabby: number; unsettledTamara: number
   allTodaySales: any[]
+  historicalSales: any[]
   unpaidCreditSales: any[]
   activeShift: any | null
 }
@@ -63,7 +64,7 @@ const PAY_METHODS: { mode: PayMode; label: string; shortcut: string; icon: any; 
 export function PosClient({
   inventoryItems, customers: initialCustomers, cashierName, userRole,
   hasUnsettled, unsettledCash, unsettledNetwork, unsettledTabby, unsettledTamara,
-  allTodaySales, unpaidCreditSales, activeShift
+  allTodaySales, historicalSales, unpaidCreditSales, activeShift
 }: PosClientProps) {
   const { t, locale, setLocale } = useLanguage()
   const isRTL = locale === 'ar'
@@ -91,7 +92,8 @@ export function PosClient({
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isShiftOpen, setIsShiftOpen] = useState(false)
   const [mobilePosView, setMobilePosView] = useState<'items' | 'cart'>('items')
-  const [collapsedShifts, setCollapsedShifts] = useState<number[]>([])
+  const [collapsedShifts, setCollapsedShifts] = useState<(number | string)[]>([])
+  const [showHistory, setShowHistory] = useState(false)
 
   const [search, setSearch] = useState('')
   const [focusedIdx, setFocusedIdx] = useState(-1)
@@ -850,6 +852,151 @@ export function PosClient({
                               })}
                             </div>
                           )}
+                        </div>
+                      )
+                    })
+                  })()}
+                </div>
+              )}
+
+              {/* ── HISTORY SECTION ── */}
+              {historicalSales.length > 0 && (
+                <div className="mt-6 pb-8">
+                  {/* Toggle header */}
+                  <button
+                    onClick={() => setShowHistory(v => !v)}
+                    className="w-full flex items-center justify-between px-1.5 py-2 rounded-xl hover:bg-gray-100/60 transition-all group mb-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500">
+                        <History size={13} />
+                      </div>
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Previous Sales History</span>
+                      <span className="text-[9px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200">
+                        {historicalSales.length} transactions · last 14 days
+                      </span>
+                    </div>
+                    <div className={cn('transition-transform duration-200', showHistory && 'rotate-180')}>
+                      <ChevronDown size={14} className="text-gray-400" />
+                    </div>
+                  </button>
+
+                  {showHistory && (() => {
+                    // Group by date string
+                    const dateGroups: Record<string, any[]> = {}
+                    historicalSales.forEach((tx: any) => {
+                      const key = format(new Date(tx.createdAt), 'yyyy-MM-dd')
+                      if (!dateGroups[key]) dateGroups[key] = []
+                      dateGroups[key].push(tx)
+                    })
+
+                    return Object.entries(dateGroups).map(([dateKey, txs]) => {
+                      const shiftGroups: Record<string, any[]> = {}
+                      txs.forEach((tx: any) => {
+                        const k = tx.shiftId ?? 'no-shift'
+                        if (!shiftGroups[k]) shiftGroups[k] = []
+                        shiftGroups[k].push(tx)
+                      })
+
+                      const dayTotal = txs.reduce((s: number, tx: any) => s + (tx.type === 'SALE' ? tx.amount : -tx.amount), 0)
+
+                      return (
+                        <div key={dateKey} className="mb-4">
+                          {/* Date header */}
+                          <div className="flex items-center gap-3 mb-2 px-1">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">
+                              {format(new Date(dateKey), 'EEE, MMM d')}
+                            </span>
+                            <div className="flex-1 h-px bg-gray-200" />
+                            <span className="text-[9px] font-black text-gray-400 tabular-nums">
+                              {dayTotal.toFixed(2)} SAR
+                            </span>
+                          </div>
+
+                          {/* Shift cards for that day */}
+                          {Object.entries(shiftGroups).map(([shiftKey, shiftTxs]) => {
+                            const shift = shiftTxs[0]?.shift
+                            const shiftTotal = shiftTxs.reduce((s: number, tx: any) => s + (tx.type === 'SALE' ? tx.amount : -tx.amount), 0)
+                            const histShiftId = shift?.id ?? -1
+                            const histIsCollapsed = !collapsedShifts.includes(`hist-${histShiftId}`)
+
+                            return (
+                              <div key={shiftKey} className="mb-2">
+                                <button
+                                  onClick={() => {
+                                    const k = `hist-${histShiftId}`
+                                    setCollapsedShifts(prev =>
+                                      prev.includes(k as any) ? prev.filter(x => x !== (k as any)) : [...prev, k as any]
+                                    )
+                                  }}
+                                  className="w-full flex items-center justify-between px-1.5 py-1 hover:bg-gray-50 rounded-xl transition-all"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                      {shift ? `Shift #${shift.id}` : 'Other'}
+                                    </span>
+                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter bg-gray-100 text-gray-500 border border-gray-200">
+                                      Closed
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-[10px] font-black tabular-nums text-gray-500 bg-white shadow-sm border border-gray-100 px-2 py-0.5 rounded-lg">
+                                      {shiftTotal.toFixed(2)} <span className="text-[8px] opacity-60">SAR</span>
+                                    </span>
+                                    {histIsCollapsed ? <ChevronDown size={13} className="text-gray-300" /> : <ChevronUp size={13} className="text-gray-300" />}
+                                  </div>
+                                </button>
+
+                                {!histIsCollapsed && (
+                                  <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden mt-1 opacity-90">
+                                    {shiftTxs.map((tx: any) => (
+                                      <div key={tx.id} className="border-b border-gray-100 last:border-b-0">
+                                        <div className="flex items-center justify-between px-4 py-3">
+                                          <div className="flex items-center gap-3 min-w-0">
+                                            <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center shrink-0',
+                                              tx.type === 'SALE' ? 'bg-gray-100 text-gray-500' : 'bg-gray-100 text-gray-400'
+                                            )}>
+                                              {tx.type === 'SALE' ? <ArrowUpRight size={13} /> : <ArrowDownLeft size={13} />}
+                                            </div>
+                                            <div className="min-w-0">
+                                              <p className="text-xs font-bold text-gray-600 truncate leading-tight">
+                                                {tx.description || (tx.type === 'SALE' ? 'Sale' : 'Refund')}
+                                              </p>
+                                              <p className="text-[9px] text-gray-400 font-bold font-mono mt-0.5">
+                                                {tx.invoiceNumber || `#${tx.id}`} · {format(new Date(tx.createdAt), 'h:mm a')}
+                                              </p>
+                                              {tx.items && tx.items.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                  {tx.items.map((prod: any, idx: number) => (
+                                                    <span key={idx} className="bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded text-[8px] font-bold">
+                                                      {prod.quantity}x {prod.name}
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0 pl-3">
+                                            <span className={cn('text-[9px] font-black uppercase px-1.5 py-0.5 rounded-lg border',
+                                              tx.method === 'CASH' ? 'bg-gray-100 text-gray-500 border-gray-200' :
+                                              tx.method === 'NETWORK' ? 'bg-gray-100 text-gray-500 border-gray-200' :
+                                              'bg-gray-100 text-gray-500 border-gray-200'
+                                            )}>{tx.method}</span>
+                                            <span className={cn('text-sm font-black tabular-nums',
+                                              tx.type === 'RETURN' ? 'text-gray-400' : 'text-gray-600'
+                                            )}>
+                                              {tx.type === 'RETURN' ? '-' : '+'}{tx.amount.toFixed(2)}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       )
                     })

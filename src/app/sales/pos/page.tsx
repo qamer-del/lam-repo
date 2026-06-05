@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import { startOfDay } from 'date-fns'
+import { startOfDay, subDays } from 'date-fns'
 import { PosClient } from './pos-client'
 import { getOrCreateActiveShift } from '@/actions/transactions'
 import type { Metadata } from 'next'
@@ -11,6 +11,32 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Point of Sale | Lamaha',
   description: 'Professional POS terminal for recording sales transactions.',
+}
+
+/** Attach StockMovement items to a list of transactions */
+async function attachItems(transactions: any[]) {
+  const invoiceNumbers = transactions.map(t => t.invoiceNumber).filter(Boolean) as string[]
+  if (invoiceNumbers.length === 0) return transactions.map(tx => ({ ...tx, items: [] }))
+
+  const stockMovements = await prisma.stockMovement.findMany({
+    where: { invoiceNumber: { in: invoiceNumbers }, type: 'SALE_OUT' },
+    include: { item: { select: { name: true } } }
+  })
+
+  const itemsByInvoice = stockMovements.reduce((acc, sm) => {
+    if (!sm.invoiceNumber) return acc
+    if (!acc[sm.invoiceNumber]) acc[sm.invoiceNumber] = []
+    acc[sm.invoiceNumber].push({
+      name: sm.item?.name || 'Unknown',
+      quantity: Math.abs(sm.quantity)
+    })
+    return acc
+  }, {} as Record<string, any[]>)
+
+  return transactions.map(tx => ({
+    ...tx,
+    items: tx.invoiceNumber ? itemsByInvoice[tx.invoiceNumber] || [] : []
+  }))
 }
 
 export default async function PosPage() {
@@ -23,49 +49,52 @@ export default async function PosPage() {
   }
 
   const userId = session?.user?.id
+  const todayStart = startOfDay(new Date())
+  const historyStart = startOfDay(subDays(new Date(), 14))
 
-  const rawAllTodaySales = userId ? await prisma.transaction.findMany({
-    where: { recordedById: userId, type: { in: ['SALE', 'RETURN'] }, createdAt: { gte: startOfDay(new Date()) } },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true, amount: true, method: true, type: true,
-      invoiceNumber: true, description: true, customerName: true,
-      createdAt: true, isSettled: true, settlementId: true,
-      shiftId: true,
-      shift: {
-        select: {
-          id: true,
-          status: true,
-          openedAt: true,
-          closedAt: true,
-        }
+  // Fetch all data in parallel
+  const [
+    rawTodaySales,
+    rawHistoricalSales,
+    inventoryItems,
+    customers,
+    unsettledSales,
+    unpaidCreditSales,
+    activeShift,
+  ] = await Promise.all([
+    // Today's transactions
+    userId ? prisma.transaction.findMany({
+      where: { recordedById: userId, type: { in: ['SALE', 'RETURN'] }, createdAt: { gte: todayStart } },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, amount: true, method: true, type: true,
+        invoiceNumber: true, description: true, customerName: true,
+        createdAt: true, isSettled: true, settlementId: true,
+        shiftId: true,
+        shift: { select: { id: true, status: true, openedAt: true, closedAt: true } },
+        recordedBy: { select: { name: true } },
       },
-      recordedBy: { select: { name: true } },
-    },
-  }) : []
+    }) : Promise.resolve([]),
 
-  const invoiceNumbers = rawAllTodaySales.map(t => t.invoiceNumber).filter(Boolean) as string[]
-  const stockMovements = userId && invoiceNumbers.length > 0 ? await prisma.stockMovement.findMany({
-    where: { invoiceNumber: { in: invoiceNumbers }, type: 'SALE_OUT' },
-    include: { item: { select: { name: true } } }
-  }) : []
-  
-  const itemsByInvoice = stockMovements.reduce((acc, sm) => {
-    if (!sm.invoiceNumber) return acc
-    if (!acc[sm.invoiceNumber]) acc[sm.invoiceNumber] = []
-    acc[sm.invoiceNumber].push({
-      name: sm.item?.name || 'Unknown',
-      quantity: Math.abs(sm.quantity)
-    })
-    return acc
-  }, {} as Record<string, any[]>)
+    // Historical: last 14 days excluding today, from CLOSED shifts only
+    userId ? prisma.transaction.findMany({
+      where: {
+        recordedById: userId,
+        type: { in: ['SALE', 'RETURN'] },
+        createdAt: { gte: historyStart, lt: todayStart },
+        shift: { status: 'CLOSED' },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, amount: true, method: true, type: true,
+        invoiceNumber: true, description: true, customerName: true,
+        createdAt: true, isSettled: true, settlementId: true,
+        shiftId: true,
+        shift: { select: { id: true, status: true, openedAt: true, closedAt: true } },
+        recordedBy: { select: { name: true } },
+      },
+    }) : Promise.resolve([]),
 
-  const allTodaySales = rawAllTodaySales.map(tx => ({
-    ...tx,
-    items: tx.invoiceNumber ? itemsByInvoice[tx.invoiceNumber] || [] : []
-  }))
-
-  const [inventoryItems, customers, unsettledSales, unpaidCreditSales, activeShift] = await Promise.all([
     prisma.inventoryItem.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
@@ -81,7 +110,7 @@ export default async function PosPage() {
     }),
     // Unsettled today (for shift totals)
     userId ? prisma.transaction.findMany({
-      where: { recordedById: userId, type: { in: ['SALE', 'RETURN'] }, isSettled: false, settlementId: null, createdAt: { gte: startOfDay(new Date()) } },
+      where: { recordedById: userId, type: { in: ['SALE', 'RETURN'] }, isSettled: false, settlementId: null, createdAt: { gte: todayStart } },
       select: { id: true, amount: true, method: true, type: true },
     }) : Promise.resolve([]),
     // Unpaid credit sales this cashier recorded
@@ -91,6 +120,12 @@ export default async function PosPage() {
       include: { recordedBy: { select: { name: true } }, linkedBy: { select: { amount: true } } },
     }) : Promise.resolve([]),
     userId ? getOrCreateActiveShift() : Promise.resolve(null),
+  ])
+
+  // Attach items to both lists
+  const [allTodaySales, historicalSales] = await Promise.all([
+    attachItems(rawTodaySales),
+    attachItems(rawHistoricalSales),
   ])
 
   let unsettledCash = 0, unsettledNetwork = 0, unsettledTabby = 0, unsettledTamara = 0
@@ -117,6 +152,7 @@ export default async function PosPage() {
       unsettledTabby={unsettledTabby}
       unsettledTamara={unsettledTamara}
       allTodaySales={allTodaySales}
+      historicalSales={historicalSales}
       unpaidCreditSales={unpaidCreditSales}
       activeShift={activeShift}
     />
