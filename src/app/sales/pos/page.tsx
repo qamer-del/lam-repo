@@ -54,17 +54,21 @@ export default async function PosPage() {
 
   // Fetch all data in parallel
   const [
-    rawTodaySales,
-    rawHistoricalSales,
+    rawActiveShiftSales,
+    closedShifts,
     inventoryItems,
     customers,
     unsettledSales,
     unpaidCreditSales,
     activeShift,
   ] = await Promise.all([
-    // Today's transactions
+    // Active-shift transactions only (OPEN shift belonging to this user)
     userId ? prisma.transaction.findMany({
-      where: { recordedById: userId, type: { in: ['SALE', 'RETURN'] }, createdAt: { gte: todayStart } },
+      where: {
+        recordedById: userId,
+        type: { in: ['SALE', 'RETURN'] },
+        shift: { status: 'OPEN' },
+      },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true, amount: true, method: true, type: true,
@@ -76,22 +80,29 @@ export default async function PosPage() {
       },
     }) : Promise.resolve([]),
 
-    // Historical: last 14 days excluding today, from CLOSED shifts only
-    userId ? prisma.transaction.findMany({
+    // Closed shifts from last 14 days — summary cards only (no invoice rows loaded yet)
+    userId ? prisma.shift.findMany({
       where: {
-        recordedById: userId,
-        type: { in: ['SALE', 'RETURN'] },
-        createdAt: { gte: historyStart, lt: todayStart },
-        shift: { status: 'CLOSED' },
+        openedById: userId,
+        status: 'CLOSED',
+        openedAt: { gte: historyStart },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { openedAt: 'desc' },
       select: {
-        id: true, amount: true, method: true, type: true,
-        invoiceNumber: true, description: true, customerName: true,
-        createdAt: true, isSettled: true, settlementId: true,
-        shiftId: true,
-        shift: { select: { id: true, status: true, openedAt: true, closedAt: true } },
-        recordedBy: { select: { name: true } },
+        id: true,
+        openedAt: true,
+        closedAt: true,
+        status: true,
+        cashSales: true,
+        cardSales: true,
+        tabbySales: true,
+        tamaraSales: true,
+        creditSales: true,
+        totalSales: true,
+        invoiceCount: true,
+        expectedCash: true,
+        actualCash: true,
+        difference: true,
       },
     }) : Promise.resolve([]),
 
@@ -108,7 +119,7 @@ export default async function PosPage() {
       orderBy: { name: 'asc' },
       select: { id: true, name: true, phone: true },
     }),
-    // Unsettled today (for shift totals)
+    // Unsettled today (for shift totals in header widgets)
     userId ? prisma.transaction.findMany({
       where: { recordedById: userId, type: { in: ['SALE', 'RETURN'] }, isSettled: false, settlementId: null, createdAt: { gte: todayStart } },
       select: { id: true, amount: true, method: true, type: true },
@@ -122,11 +133,11 @@ export default async function PosPage() {
     userId ? getOrCreateActiveShift() : Promise.resolve(null),
   ])
 
-  // Attach items to both lists
-  const [allTodaySales, historicalSales] = await Promise.all([
-    attachItems(rawTodaySales),
-    attachItems(rawHistoricalSales),
-  ])
+  // Attach product items to active-shift sales only (closed shift invoices load lazily)
+  const activeShiftSales = await attachItems(rawActiveShiftSales)
+
+  // allTodaySales kept for backward-compat (Zustand store hydration)
+  const allTodaySales = activeShiftSales
 
   let unsettledCash = 0, unsettledNetwork = 0, unsettledTabby = 0, unsettledTamara = 0
 
@@ -152,7 +163,8 @@ export default async function PosPage() {
       unsettledTabby={unsettledTabby}
       unsettledTamara={unsettledTamara}
       allTodaySales={allTodaySales}
-      historicalSales={historicalSales}
+      activeShiftSales={activeShiftSales}
+      closedShifts={closedShifts}
       unpaidCreditSales={unpaidCreditSales}
       activeShift={activeShift}
     />

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/providers/language-provider'
 import { usePrinter } from '@/providers/printer-provider'
 import { useStore, Transaction } from '@/store/useStore'
-import { recordDailySales, getInvoiceDetails } from '@/actions/transactions'
+import { recordDailySales, getInvoiceDetails, getShiftInvoices } from '@/actions/transactions'
 import { createCustomer } from '@/actions/customers'
 import { format, addDays } from 'date-fns'
 import { toast } from 'sonner'
@@ -47,7 +47,8 @@ interface PosClientProps {
   hasUnsettled: boolean
   unsettledCash: number; unsettledNetwork: number; unsettledTabby: number; unsettledTamara: number
   allTodaySales: any[]
-  historicalSales: any[]
+  activeShiftSales: any[]
+  closedShifts: any[]
   unpaidCreditSales: any[]
   activeShift: any | null
 }
@@ -64,7 +65,7 @@ const PAY_METHODS: { mode: PayMode; label: string; shortcut: string; icon: any; 
 export function PosClient({
   inventoryItems, customers: initialCustomers, cashierName, userRole,
   hasUnsettled, unsettledCash, unsettledNetwork, unsettledTabby, unsettledTamara,
-  allTodaySales, historicalSales, unpaidCreditSales, activeShift
+  allTodaySales, activeShiftSales, closedShifts, unpaidCreditSales, activeShift
 }: PosClientProps) {
   const { t, locale, setLocale } = useLanguage()
   const isRTL = locale === 'ar'
@@ -92,8 +93,9 @@ export function PosClient({
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isShiftOpen, setIsShiftOpen] = useState(false)
   const [mobilePosView, setMobilePosView] = useState<'items' | 'cart'>('items')
-  const [collapsedShifts, setCollapsedShifts] = useState<(number | string)[]>([])
-  const [showHistory, setShowHistory] = useState(false)
+  const [expandedShiftId, setExpandedShiftId] = useState<number | null>(null)
+  const [shiftInvoices, setShiftInvoices] = useState<Record<number, any[]>>({})
+  const [shiftInvoicesLoading, setShiftInvoicesLoading] = useState<Record<number, boolean>>({})
 
   const [search, setSearch] = useState('')
   const [focusedIdx, setFocusedIdx] = useState(-1)
@@ -567,442 +569,484 @@ export function PosClient({
           </div>
         )}
 
-        {/* ── SALES TAB ── */}
+        {/* ── SALES / ACTIVITY TAB ── */}
         {activeTab === 'sales' && (
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t('dailyActivityLog')}</h2>
-              {allTodaySales.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-gray-300">
-                  <Receipt size={28} className="mb-2" /><p className="text-xs font-medium">{t('noTransactionsToday')}</p>
+          <div className="flex-1 overflow-y-auto" style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+            <div className="max-w-2xl mx-auto px-3 sm:px-4 py-5 space-y-5 pb-10">
+
+              {/* ══════════════════════════════════════════════════
+                  SECTION A — CURRENT ACTIVE SHIFT
+              ══════════════════════════════════════════════════ */}
+              <div>
+                {/* Gradient section header */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="relative flex items-center justify-center w-7 h-7">
+                    <div className="absolute w-7 h-7 rounded-full bg-emerald-500/20 animate-ping" />
+                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                  </div>
+                  <div className="flex-1 flex items-center gap-2.5">
+                    <h2 className="text-[11px] font-black text-emerald-700 uppercase tracking-[0.18em]">
+                      Current Shift
+                    </h2>
+                    {activeShift && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full shadow-sm">
+                        <span className="w-1 h-1 rounded-full bg-emerald-500 inline-block" />
+                        #{activeShift.id} · Since {format(new Date(activeShift.openedAt), 'h:mm a')}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-6 pb-8">
-                  {(() => {
-                    // Grouping allTodaySales by shiftId
-                    // Since allTodaySales is already sorted by createdAt desc, shift groups will naturally be in order
-                    const groups: any[] = [];
-                    let currentShiftId: number | null = -999;
-                    let currentGroup: any = null;
 
-                    allTodaySales.forEach((tx: any) => {
-                      if (tx.shiftId !== currentShiftId) {
-                        currentShiftId = tx.shiftId;
-                        currentGroup = {
-                          shift: tx.shift,
-                          transactions: [],
-                          totalAmount: 0
-                        };
-                        groups.push(currentGroup);
-                      }
-                      currentGroup.transactions.push(tx);
-                      // Calculate total (Sales - Refunds)
-                      currentGroup.totalAmount += (tx.type === 'SALE' ? tx.amount : -tx.amount);
-                    });
-
-                    return groups.map((group, gIdx) => {
-                      const shiftId = group.shift?.id || -1;
-                      const isCollapsed = group.shift?.status === 'CLOSED' && !collapsedShifts.includes(shiftId);
-                      
+                {activeShiftSales.length === 0 ? (
+                  /* Empty active shift */
+                  <div className="relative overflow-hidden bg-white rounded-2xl border border-emerald-100 shadow-sm">
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/60 via-white to-white" />
+                    <div className="relative flex flex-col items-center justify-center py-12 text-center px-6">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
+                        <Receipt size={26} className="text-white" />
+                      </div>
+                      <p className="text-sm font-bold text-gray-700">No sales yet this shift</p>
+                      <p className="text-[11px] text-gray-400 mt-1 max-w-[180px] leading-relaxed">Switch to the POS tab and record your first sale</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm overflow-hidden" style={{ boxShadow: '0 1px 12px rgba(16,185,129,0.07), 0 1px 3px rgba(0,0,0,0.04)' }}>
+                    {/* ── Gradient summary strip ── */}
+                    {(() => {
+                      const cashTotal   = activeShiftSales.filter((t: any) => t.method === 'CASH').reduce((s: number, t: any) => s + (t.type === 'SALE' ? t.amount : -t.amount), 0)
+                      const netTotal    = activeShiftSales.filter((t: any) => t.method === 'NETWORK').reduce((s: number, t: any) => s + (t.type === 'SALE' ? t.amount : -t.amount), 0)
+                      const grandTotal  = activeShiftSales.reduce((s: number, t: any) => s + (t.type === 'SALE' ? t.amount : -t.amount), 0)
+                      const invoiceSet  = new Set(activeShiftSales.map((t: any) => t.invoiceNumber).filter(Boolean))
                       return (
-                        <div key={shiftId !== -1 ? shiftId : `no-shift-${gIdx}`} className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                          {/* ── Shift Header ── */}
-                          <button 
-                            onClick={() => {
-                              if (collapsedShifts.includes(shiftId)) {
-                                setCollapsedShifts(prev => prev.filter(id => id !== shiftId))
-                              } else {
-                                setCollapsedShifts(prev => [...prev, shiftId])
+                        <div className="px-4 pt-4 pb-3 border-b border-emerald-50" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 60%, #f8fafc 100%)' }}>
+                          <div className="flex items-end justify-between mb-3">
+                            <div>
+                              <p className="text-[9px] font-black text-emerald-600/70 uppercase tracking-[0.2em] mb-0.5">Total Revenue</p>
+                              <p className="text-3xl font-black text-emerald-700 tabular-nums leading-none">
+                                {grandTotal.toFixed(2)}
+                                <span className="text-sm font-bold text-emerald-500/70 ms-1.5">SAR</span>
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{invoiceSet.size} Invoice{invoiceSet.size !== 1 ? 's' : ''}</p>
+                              <p className="text-[10px] font-bold text-gray-500">{activeShiftSales.length} transaction{activeShiftSales.length !== 1 ? 's' : ''}</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white/70 rounded-xl px-3 py-2 border border-emerald-100/60">
+                              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">💵 Cash</p>
+                              <p className="text-sm font-black text-gray-800 tabular-nums mt-0.5">{cashTotal.toFixed(2)} <span className="text-[9px] font-normal opacity-50">SAR</span></p>
+                            </div>
+                            <div className="bg-white/70 rounded-xl px-3 py-2 border border-blue-100/60">
+                              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">💳 Network</p>
+                              <p className="text-sm font-black text-blue-600 tabular-nums mt-0.5">{netTotal.toFixed(2)} <span className="text-[9px] font-normal opacity-50">SAR</span></p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    {/* ── Invoice rows ── */}
+                    {activeShiftSales.map((tx: any, txIdx: number) => {
+                      const isExpanded = expandedTxId === tx.id
+                      const isSale = tx.type === 'SALE'
+                      return (
+                        <div key={tx.id} className={cn('border-b border-gray-50 last:border-b-0', txIdx === 0 && 'border-t-0')}>
+                          <button
+                            onClick={async () => {
+                              if (isExpanded) { setExpandedTxId(null); setExpandedDetails(null); return }
+                              setExpandedTxId(tx.id)
+                              if (tx.invoiceNumber) {
+                                setExpandedLoading(true); setExpandedDetails(null)
+                                try { const res = await getInvoiceDetails(tx.invoiceNumber); setExpandedDetails(res) }
+                                catch { setExpandedDetails(null) }
+                                finally { setExpandedLoading(false) }
                               }
                             }}
-                            className="w-full flex items-center justify-between px-1.5 py-1 hover:bg-gray-50/50 rounded-xl transition-all"
+                            className={cn(
+                              'w-full flex items-center gap-3 px-4 py-3.5 transition-all duration-150 text-start group',
+                              isExpanded ? 'bg-emerald-50/60' : 'hover:bg-gray-50/80'
+                            )}
                           >
-                            <div className="flex items-center gap-2">
-                              <div className={cn("w-1.5 h-1.5 rounded-full", 
-                                group.shift?.status === 'OPEN' ? "bg-emerald-500 animate-pulse" : "bg-gray-400")} />
-                              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                                {group.shift ? `${t('shift')} #${group.shift.id}` : t('other')}
-                              </span>
-                              <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter", 
-                                group.shift?.status === 'OPEN' 
-                                  ? "bg-emerald-50 text-emerald-600 border border-emerald-100" 
-                                  : "bg-gray-100 text-gray-500 border border-gray-200")}>
-                                {group.shift?.status === 'OPEN' ? t('shiftActive') : t('shiftClosed')}
-                              </span>
+                            {/* Colored left accent */}
+                            <div className={cn(
+                              'w-0.5 h-10 rounded-full shrink-0',
+                              isSale ? 'bg-emerald-400' : 'bg-rose-400'
+                            )} />
+
+                            {/* Icon */}
+                            <div className={cn(
+                              'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm',
+                              isSale
+                                ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-emerald-500/25'
+                                : 'bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-rose-500/25'
+                            )}>
+                              {isSale ? <ArrowUpRight size={15} strokeWidth={2.5} /> : <ArrowDownLeft size={15} strokeWidth={2.5} />}
                             </div>
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black tabular-nums text-gray-600 bg-white shadow-sm border border-gray-100 px-2 py-0.5 rounded-lg">
-                                  {group.totalAmount.toFixed(2)} <span className="text-[8px] opacity-60">SAR</span>
-                                </span>
-                              </div>
-                              <div className="text-[9px] text-gray-400 font-bold hidden md:flex items-center gap-3">
-                                {group.shift?.openedAt && (
-                                  <div className="flex items-center gap-1">
-                                    <span className="opacity-60">{t('openedAtLabel')}:</span>
-                                    <span>{format(new Date(group.shift.openedAt), 'h:mm a')}</span>
-                                  </div>
-                                )}
-                                {group.shift?.closedAt && (
-                                  <div className="flex items-center gap-1">
-                                    <span className="opacity-60">{t('closedAtLabel')}:</span>
-                                    <span>{format(new Date(group.shift.closedAt), 'h:mm a')}</span>
-                                  </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-[11px] font-black text-gray-800 font-mono">{tx.invoiceNumber || `#${tx.id}`}</p>
+                                {tx.customerName && (
+                                  <span className="inline-flex items-center gap-0.5 text-[8px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full">
+                                    {tx.customerName}
+                                  </span>
                                 )}
                               </div>
-                              {isCollapsed ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronUp size={14} className="text-gray-400" />}
+                              <p className="text-[10px] text-gray-400 font-medium mt-0.5">{format(new Date(tx.createdAt), 'h:mm a')}</p>
+                              {tx.items && tx.items.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {tx.items.map((prod: any, idx: number) => (
+                                    <span key={idx} className="inline-flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-md text-[8px] font-bold">
+                                      <span className="text-emerald-400">{prod.quantity}×</span> {prod.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Right side */}
+                            <div className="flex items-center gap-2.5 shrink-0">
+                              <div className="text-right">
+                                <span className={cn(
+                                  'text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md border block text-center mb-1',
+                                  tx.method === 'CASH'    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                  tx.method === 'NETWORK' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                  tx.method === 'CREDIT'  ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                  'bg-purple-50 text-purple-700 border-purple-200'
+                                )}>{getPayMethodLabel(tx.method)}</span>
+                                <p className={cn('text-base font-black tabular-nums leading-tight', isSale ? 'text-gray-900' : 'text-rose-500')}>
+                                  {isSale ? '+' : '-'}{tx.amount.toFixed(2)}
+                                </p>
+                              </div>
+                              <div className={cn('w-5 h-5 rounded-full flex items-center justify-center transition-colors', isExpanded ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-200')}>
+                                {isExpanded ? <ChevronUp size={11} strokeWidth={3} /> : <ChevronDown size={11} strokeWidth={3} />}
+                              </div>
                             </div>
                           </button>
 
-                          {!isCollapsed && (
-                            <div className={cn(
-                              "bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-300",
-                              group.shift?.status === 'CLOSED' ? "opacity-90 bg-gray-50/30" : "ring-1 ring-blue-500/5 shadow-blue-500/5"
-                            )}>
-                              {group.transactions.map((tx: any) => {
-                                const isExpanded = expandedTxId === tx.id
-                                return (
-                                  <div key={tx.id} className="border-b border-gray-100 last:border-b-0">
-                                    {/* Row */}
-                                    <button
-                                      onClick={async () => {
-                                        if (isExpanded) {
-                                          setExpandedTxId(null); setExpandedDetails(null); return
-                                        }
-                                        setExpandedTxId(tx.id)
-                                        if (tx.invoiceNumber) {
-                                          setExpandedLoading(true); setExpandedDetails(null)
-                                          try {
-                                            const res = await getInvoiceDetails(tx.invoiceNumber)
-                                            setExpandedDetails(res)
-                                          } catch { setExpandedDetails(null) }
-                                          finally { setExpandedLoading(false) }
-                                        }
-                                      }}
-                                      className={cn('w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50/80 transition-colors text-start',
-                                        isExpanded && 'bg-gray-50')}
-                                    >
-                                      <div className="flex items-center gap-3 min-w-0">
-                                        <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-sm',
-                                          tx.type === 'SALE' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600')}>
-                                          {tx.type === 'SALE' ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
-                                        </div>
-                                        <div className="min-w-0">
-                                          <p className="text-sm font-bold text-gray-900 truncate leading-tight">{tx.description || (tx.type === 'SALE' ? t('sale') : t('refund'))}</p>
-                                          <p className="text-[10px] text-gray-400 font-bold font-mono mt-0.5">{tx.invoiceNumber || `#${tx.id}`} · {format(new Date(tx.createdAt), 'h:mm a')}</p>
-                                          {tx.items && tx.items.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mt-1.5">
-                                              {tx.items.map((prod: any, idx: number) => (
-                                                <span key={idx} className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[8px] font-bold">
-                                                  {prod.quantity}x {prod.name}
-                                                </span>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </div>
+                          {/* ── Expanded detail panel ── */}
+                          {isExpanded && (
+                            <div className="border-t border-emerald-50 bg-gradient-to-b from-emerald-50/40 to-gray-50/60 px-4 py-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                              {expandedLoading ? (
+                                <div className="flex items-center justify-center py-6 gap-2">
+                                  <Loader2 size={16} className="animate-spin text-emerald-500" />
+                                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Loading details…</span>
+                                </div>
+                              ) : expandedDetails ? (
+                                <>
+                                  {/* Meta chips */}
+                                  <div className="flex flex-wrap gap-2">
+                                    {[
+                                      { label: 'Invoice', value: expandedDetails.invoiceNumber, mono: true },
+                                      { label: 'Time', value: format(new Date(expandedDetails.createdAt), 'h:mm a'), mono: false },
+                                      { label: 'By', value: expandedDetails.salesperson, mono: false },
+                                    ].map(chip => (
+                                      <div key={chip.label} className="bg-white rounded-xl border border-gray-100 px-3 py-2 shadow-sm flex-1 min-w-[80px]">
+                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{chip.label}</p>
+                                        <p className={cn('text-[11px] font-bold text-gray-800 mt-0.5 leading-tight', chip.mono && 'font-mono')}>{chip.value}</p>
                                       </div>
-                                      <div className="flex items-center gap-3 shrink-0 ps-3">
-                                        <div className="flex flex-col items-end gap-1">
-                                          <div className="flex items-center gap-2">
-                                            <span className={cn('text-[9px] font-black uppercase px-1.5 py-0.5 rounded-lg border tabular-nums',
-                                              tx.method === 'CASH' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                              tx.method === 'NETWORK' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                              tx.method === 'CREDIT' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-gray-50 text-gray-600 border-gray-100'
-                                            )}>{getPayMethodLabel(tx.method)}</span>
-                                            <span className={cn('text-sm font-black tabular-nums', tx.type === 'RETURN' ? 'text-rose-600' : 'text-gray-900')}>
-                                              {tx.type === 'RETURN' ? '-' : '+'}{tx.amount.toFixed(2)}
-                                            </span>
-                                          </div>
-                                          
-                                          <div className="flex items-center gap-2">
-                                            {tx.settlementId && (
-                                              <span className="bg-blue-50 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-md border border-blue-100 flex items-center gap-0.5 uppercase tracking-tighter">
-                                                <CheckCircle2 size={9} /> {t('settled')}
-                                              </span>
-                                            )}
-                                            {tx.isSettled && !tx.settlementId && (
-                                              <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                                            )}
-                                          </div>
-                                        </div>
-                                        {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-300" />}
-                                      </div>
-                                    </button>
-
-                                    {/* Expanded inline detail */}
-                                    {isExpanded && (
-                                      <div className="bg-gray-50/50 border-t border-gray-100 px-4 py-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        {expandedLoading ? (
-                                          <div className="flex items-center justify-center py-8 gap-3 text-gray-400">
-                                            <Loader2 size={18} className="animate-spin text-blue-500" />
-                                            <span className="text-xs font-bold uppercase tracking-widest opacity-70">Loading Details...</span>
-                                          </div>
-                                        ) : expandedDetails ? (
-                                          <>
-                                            {/* Meta row */}
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                              <div className="bg-white rounded-xl border border-gray-200 p-2.5 shadow-sm">
-                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Invoice</span>
-                                                <p className="font-mono font-bold text-gray-800 text-xs mt-0.5">{expandedDetails.invoiceNumber}</p>
-                                              </div>
-                                              <div className="bg-white rounded-xl border border-gray-200 p-2.5 shadow-sm">
-                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Date</span>
-                                                <p className="font-bold text-gray-800 text-[11px] mt-0.5">{format(new Date(expandedDetails.createdAt), 'MMM dd, h:mm a')}</p>
-                                              </div>
-                                              <div className="bg-white rounded-xl border border-gray-200 p-2.5 shadow-sm col-span-2 sm:col-span-1">
-                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Cashier</span>
-                                                <p className="font-bold text-gray-800 text-[11px] mt-0.5">{expandedDetails.salesperson}</p>
-                                              </div>
-                                            </div>
-
-                                            {/* Items */}
-                                            {expandedDetails.items && expandedDetails.items.length > 0 && (
-                                              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                                                <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 border-b border-gray-100">
-                                                  <Package size={12} className="text-gray-400" />
-                                                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('items')}</span>
-                                                </div>
-                                                <div className="divide-y divide-gray-50">
-                                                  {expandedDetails.items.map((item: any, i: number) => (
-                                                    <div key={i} className="flex items-center justify-between px-3 py-2.5 hover:bg-gray-50/50 transition-colors">
-                                                      <div className="flex items-center gap-3 min-w-0">
-                                                        <span className="w-5 h-5 rounded-lg bg-gray-100 text-gray-400 text-[10px] font-black flex items-center justify-center shrink-0">{i+1}</span>
-                                                        <div className="min-w-0">
-                                                          <p className="text-xs font-bold text-gray-800 truncate leading-tight">{item.name}</p>
-                                                          {item.sku && <p className="text-[9px] text-gray-400 font-bold font-mono mt-0.5">{item.sku}</p>}
-                                                        </div>
-                                                      </div>
-                                                      <div className="text-end shrink-0 ps-4">
-                                                        <span className="text-xs font-black text-gray-900 tabular-nums">{item.quantitySold}</span>
-                                                        <span className="text-[10px] text-gray-400 font-bold ms-1">{item.unit}</span>
-                                                      </div>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </div>
-                                            )}
-
-                                            {/* Total with VAT */}
-                                            <div className="bg-gray-900 text-white rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-gray-900/10">
-                                              <div className="flex items-center gap-6 text-[10px] w-full sm:w-auto border-b sm:border-b-0 sm:border-e border-white/10 pb-3 sm:pb-0 sm:pe-6">
-                                                <div className="flex-1 sm:flex-none">
-                                                  <span className="text-gray-500 font-black uppercase tracking-widest opacity-80">Excl. VAT</span>
-                                                  <p className="font-bold tabular-nums text-gray-300 text-sm mt-0.5">{(expandedDetails.totalAmount / 1.15).toFixed(2)}</p>
-                                                </div>
-                                                <div className="flex-1 sm:flex-none">
-                                                  <span className="text-amber-500 font-black uppercase tracking-widest opacity-80">VAT 15%</span>
-                                                  <p className="font-bold tabular-nums text-amber-400 text-sm mt-0.5">{(expandedDetails.totalAmount - expandedDetails.totalAmount / 1.15).toFixed(2)}</p>
-                                                </div>
-                                              </div>
-                                              <div className="text-center sm:text-end w-full sm:w-auto">
-                                                <span className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">Total Amount</span>
-                                                <p className="text-2xl font-black tabular-nums text-emerald-400 leading-none mt-1">{expandedDetails.totalAmount.toFixed(2)} <span className="text-xs font-bold opacity-60 ms-1 uppercase">SAR</span></p>
-                                              </div>
-                                            </div>
-
-                                            {/* Actions */}
-                                            <div className="flex flex-col sm:flex-row gap-2">
-                                              {printerStatus === 'connected' && (
-                                                <button
-                                                  type="button"
-                                                  disabled={isPrinting}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    printReceipt({
-                                                      invoiceNumber: expandedDetails.invoiceNumber,
-                                                      createdAt: new Date(expandedDetails.createdAt),
-                                                      cashierName: expandedDetails.salesperson || cashierName,
-                                                      items: (expandedDetails.items || []).map((item: any) => ({
-                                                        name: item.name,
-                                                        quantity: item.quantitySold,
-                                                        price: item.price || 0,
-                                                        unit: item.unit,
-                                                      })),
-                                                      totalAmount: expandedDetails.totalAmount,
-                                                      paymentMethod: expandedDetails.transactions?.[0]?.method || 'CASH',
-                                                    })
-                                                  }}
-                                                  className="flex-1 flex items-center justify-center gap-2 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 active:scale-[0.98] disabled:opacity-50"
-                                                >
-                                                  <Printer size={16} />
-                                                  {isPrinting ? 'Printing...' : 'Reprint Receipt'}
-                                                </button>
-                                              )}
-                                              
-                                              {expandedDetails.description && (
-                                                <div className="flex-[2] bg-amber-50 rounded-xl border border-amber-100 px-3 py-2 flex gap-2 items-start">
-                                                  <Tag size={12} className="text-amber-500 shrink-0 mt-0.5" />
-                                                  <div>
-                                                    <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest leading-none mb-1">Notes</p>
-                                                    <p className="text-[11px] text-gray-700 font-medium leading-tight">"{expandedDetails.description}"</p>
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </>
-                                        ) : (
-                                          <div className="text-center py-8">
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No detailed info available</p>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
+                                    ))}
                                   </div>
-                                )
-                              })}
+
+                                  {/* Items table */}
+                                  {expandedDetails.items && expandedDetails.items.length > 0 && (
+                                    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+                                      <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-50/80 border-b border-gray-100">
+                                        <Package size={11} className="text-gray-400" />
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Items Sold</span>
+                                      </div>
+                                      {expandedDetails.items.map((item: any, i: number) => (
+                                        <div key={i} className="flex items-center justify-between px-3 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <span className="w-5 h-5 rounded-lg bg-gray-100 text-gray-500 text-[9px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
+                                            <p className="text-xs font-semibold text-gray-700 truncate">{item.name}</p>
+                                          </div>
+                                          <span className="text-xs font-black text-gray-900 tabular-nums shrink-0 ms-3">
+                                            {item.quantitySold} <span className="text-[10px] font-normal text-gray-400">{item.unit}</span>
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Total bar */}
+                                  <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' }}>
+                                    <div className="flex items-center justify-between px-4 py-3.5">
+                                      <div className="flex gap-5">
+                                        <div>
+                                          <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">Excl. VAT</p>
+                                          <p className="text-sm font-bold text-slate-300 tabular-nums">{(expandedDetails.totalAmount / 1.15).toFixed(2)}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[8px] text-amber-500/80 font-black uppercase tracking-widest">VAT 15%</p>
+                                          <p className="text-sm font-bold text-amber-400 tabular-nums">{(expandedDetails.totalAmount - expandedDetails.totalAmount / 1.15).toFixed(2)}</p>
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-[8px] text-emerald-400/80 uppercase tracking-widest font-black">Total</p>
+                                        <p className="text-2xl font-black text-emerald-400 tabular-nums leading-none">{expandedDetails.totalAmount.toFixed(2)} <span className="text-[10px] opacity-60 font-bold">SAR</span></p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Print button */}
+                                  {printerStatus === 'connected' && (
+                                    <button
+                                      type="button" disabled={isPrinting}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        printReceipt({
+                                          invoiceNumber: expandedDetails.invoiceNumber,
+                                          createdAt: new Date(expandedDetails.createdAt),
+                                          cashierName: expandedDetails.salesperson || cashierName,
+                                          items: (expandedDetails.items || []).map((item: any) => ({ name: item.name, quantity: item.quantitySold, price: item.price || 0, unit: item.unit })),
+                                          totalAmount: expandedDetails.totalAmount,
+                                          paymentMethod: expandedDetails.transactions?.[0]?.method || 'CASH',
+                                        })
+                                      }}
+                                      className="w-full flex items-center justify-center gap-2 h-10 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/25 active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                      <Printer size={14} />{isPrinting ? 'Printing…' : 'Reprint Receipt'}
+                                    </button>
+                                  )}
+                                </>
+                              ) : (
+                                <p className="text-center py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">No details available</p>
+                              )}
                             </div>
                           )}
                         </div>
                       )
-                    })
-                  })()}
-                </div>
-              )}
+                    })}
+                  </div>
+                )}
+              </div>
 
-              {/* ── HISTORY SECTION ── */}
-              {historicalSales.length > 0 && (
-                <div className="mt-6 pb-8">
-                  {/* Toggle header */}
-                  <button
-                    onClick={() => setShowHistory(v => !v)}
-                    className="w-full flex items-center justify-between px-1.5 py-2 rounded-xl hover:bg-gray-100/60 transition-all group mb-2"
-                  >
+              {/* ══════════════════════════════════════════════════
+                  SECTION B — PREVIOUS CLOSED SHIFTS
+              ══════════════════════════════════════════════════ */}
+              {closedShifts.length > 0 && (
+                <div className="pt-2">
+                  {/* Section header with divider */}
+                  <div className="flex items-center gap-3 mb-5">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500">
-                        <History size={13} />
-                      </div>
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Previous Sales History</span>
-                      <span className="text-[9px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200">
-                        {historicalSales.length} transactions · last 14 days
-                      </span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                      <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">Historical Shifts</h2>
                     </div>
-                    <div className={cn('transition-transform duration-200', showHistory && 'rotate-180')}>
-                      <ChevronDown size={14} className="text-gray-400" />
-                    </div>
-                  </button>
+                    <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
+                    <span className="text-[9px] font-bold text-slate-400 bg-white border border-slate-200/60 shadow-sm px-2.5 py-1 rounded-full whitespace-nowrap">
+                      Last 14 days
+                    </span>
+                  </div>
 
-                  {showHistory && (() => {
-                    // Group by date string
-                    const dateGroups: Record<string, any[]> = {}
-                    historicalSales.forEach((tx: any) => {
-                      const key = format(new Date(tx.createdAt), 'yyyy-MM-dd')
-                      if (!dateGroups[key]) dateGroups[key] = []
-                      dateGroups[key].push(tx)
-                    })
+                  <div className="relative space-y-4">
+                    {/* Vertical timeline line */}
+                    <div className="absolute top-2 bottom-6 left-6 w-px bg-slate-200/60 hidden sm:block" />
 
-                    return Object.entries(dateGroups).map(([dateKey, txs]) => {
-                      const shiftGroups: Record<string, any[]> = {}
-                      txs.forEach((tx: any) => {
-                        const k = tx.shiftId ?? 'no-shift'
-                        if (!shiftGroups[k]) shiftGroups[k] = []
-                        shiftGroups[k].push(tx)
-                      })
-
-                      const dayTotal = txs.reduce((s: number, tx: any) => s + (tx.type === 'SALE' ? tx.amount : -tx.amount), 0)
+                    {closedShifts.map((shift: any) => {
+                      const isOpen = expandedShiftId === shift.id
+                      const invoices = shiftInvoices[shift.id]
+                      const isLoadingInvoices = shiftInvoicesLoading[shift.id]
+                      const hasBnpl = (shift.tabbySales || 0) + (shift.tamaraSales || 0) > 0
+                      const shiftDate = format(new Date(shift.openedAt), 'EEE, MMM d')
 
                       return (
-                        <div key={dateKey} className="mb-4">
-                          {/* Date header */}
-                          <div className="flex items-center gap-3 mb-2 px-1">
-                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">
-                              {format(new Date(dateKey), 'EEE, MMM d')}
-                            </span>
-                            <div className="flex-1 h-px bg-gray-200" />
-                            <span className="text-[9px] font-black text-gray-400 tabular-nums">
-                              {dayTotal.toFixed(2)} SAR
-                            </span>
+                        <div key={shift.id} className="relative sm:pl-[42px]">
+                          {/* Timeline dot */}
+                          <div className={cn(
+                            'absolute left-4 top-4 w-4 h-4 rounded-full border-2 border-white shadow-sm hidden sm:flex items-center justify-center transition-colors z-10',
+                            isOpen ? 'bg-indigo-400' : 'bg-slate-200'
+                          )}>
+                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
                           </div>
 
-                          {/* Shift cards for that day */}
-                          {Object.entries(shiftGroups).map(([shiftKey, shiftTxs]) => {
-                            const shift = shiftTxs[0]?.shift
-                            const shiftTotal = shiftTxs.reduce((s: number, tx: any) => s + (tx.type === 'SALE' ? tx.amount : -tx.amount), 0)
-                            const histShiftId = shift?.id ?? -1
-                            const histIsCollapsed = !collapsedShifts.includes(`hist-${histShiftId}`)
-
-                            return (
-                              <div key={shiftKey} className="mb-2">
-                                <button
-                                  onClick={() => {
-                                    const k = `hist-${histShiftId}`
-                                    setCollapsedShifts(prev =>
-                                      prev.includes(k as any) ? prev.filter(x => x !== (k as any)) : [...prev, k as any]
-                                    )
-                                  }}
-                                  className="w-full flex items-center justify-between px-1.5 py-1 hover:bg-gray-50 rounded-xl transition-all"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                      {shift ? `Shift #${shift.id}` : 'Other'}
-                                    </span>
-                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter bg-gray-100 text-gray-500 border border-gray-200">
-                                      Closed
-                                    </span>
+                          <div className={cn(
+                            'rounded-[1.25rem] border overflow-hidden transition-all duration-300',
+                            isOpen
+                              ? 'bg-white border-indigo-100 shadow-md shadow-indigo-900/5 ring-1 ring-indigo-50'
+                              : 'bg-white/60 border-slate-200/60 shadow-sm hover:shadow-md hover:border-slate-300 hover:bg-white'
+                          )}>
+                            {/* ── Card Header ── */}
+                            <button
+                              onClick={async () => {
+                                if (isOpen) { setExpandedShiftId(null); return }
+                                setExpandedShiftId(shift.id)
+                                if (!shiftInvoices[shift.id]) {
+                                  setShiftInvoicesLoading(prev => ({ ...prev, [shift.id]: true }))
+                                  try {
+                                    const data = await getShiftInvoices(shift.id)
+                                    setShiftInvoices(prev => ({ ...prev, [shift.id]: data }))
+                                  } catch {
+                                    setShiftInvoices(prev => ({ ...prev, [shift.id]: [] }))
+                                  } finally {
+                                    setShiftInvoicesLoading(prev => ({ ...prev, [shift.id]: false }))
+                                  }
+                                }
+                              }}
+                              className="w-full text-start p-4 transition-colors"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                {/* Left side: Basic info */}
+                                <div className="flex items-center gap-3.5 min-w-0">
+                                  <div className={cn(
+                                    'w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 border transition-colors',
+                                    isOpen ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-50 border-slate-200/70'
+                                  )}>
+                                    <p className={cn('text-[7px] font-black uppercase leading-none mb-0.5', isOpen ? 'text-indigo-400' : 'text-slate-400')}>{format(new Date(shift.openedAt), 'MMM')}</p>
+                                    <p className={cn('text-sm font-black leading-none', isOpen ? 'text-indigo-700' : 'text-slate-700')}>{format(new Date(shift.openedAt), 'd')}</p>
                                   </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-[10px] font-black tabular-nums text-gray-500 bg-white shadow-sm border border-gray-100 px-2 py-0.5 rounded-lg">
-                                      {shiftTotal.toFixed(2)} <span className="text-[8px] opacity-60">SAR</span>
-                                    </span>
-                                    {histIsCollapsed ? <ChevronDown size={13} className="text-gray-300" /> : <ChevronUp size={13} className="text-gray-300" />}
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-[13px] font-black text-slate-800">Shift #{shift.id}</p>
+                                      <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                                        Closed
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 font-medium mt-0.5 truncate">
+                                      {format(new Date(shift.openedAt), 'h:mm a')} — {shift.closedAt ? format(new Date(shift.closedAt), 'h:mm a') : 'Now'}
+                                    </p>
                                   </div>
-                                </button>
+                                </div>
 
-                                {!histIsCollapsed && (
-                                  <div className="bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden mt-1 opacity-90">
-                                    {shiftTxs.map((tx: any) => (
-                                      <div key={tx.id} className="border-b border-gray-100 last:border-b-0">
-                                        <div className="flex items-center justify-between px-4 py-3">
-                                          <div className="flex items-center gap-3 min-w-0">
-                                            <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center shrink-0',
-                                              tx.type === 'SALE' ? 'bg-gray-100 text-gray-500' : 'bg-gray-100 text-gray-400'
+                                {/* Right side: Metrics & Chevron */}
+                                <div className="flex items-center justify-between sm:justify-end gap-5 w-full sm:w-auto pl-14 sm:pl-0">
+                                  {/* Compact stats strip */}
+                                  <div className="flex items-center gap-4 text-right">
+                                    <div>
+                                      <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Invoices</p>
+                                      <p className="text-[11px] font-bold text-slate-600">{shift.invoiceCount}</p>
+                                    </div>
+                                    <div className="w-px h-6 bg-slate-100" />
+                                    <div>
+                                      <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Total Sales</p>
+                                      <p className="text-sm font-black text-slate-800 tabular-nums leading-tight">
+                                        {shift.totalSales.toFixed(2)} <span className="text-[9px] font-bold text-slate-400">SAR</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className={cn(
+                                    'w-7 h-7 rounded-full flex items-center justify-center transition-all shrink-0 shadow-sm border',
+                                    isOpen ? 'bg-indigo-50 text-indigo-500 border-indigo-100 rotate-180' : 'bg-white text-slate-400 border-slate-200'
+                                  )}>
+                                    <ChevronDown size={14} strokeWidth={2.5} />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Tags row (only shown if there are network/bnpl sales) */}
+                              {((shift.cardSales || 0) > 0 || hasBnpl || shift.cashSales > 0) && (
+                                <div className="flex flex-wrap gap-1.5 mt-3.5 pl-14 sm:pl-[54px]">
+                                  {shift.cashSales > 0 && (
+                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100/60 px-2 py-1 rounded-md">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                      Cash {shift.cashSales.toFixed(2)}
+                                    </span>
+                                  )}
+                                  {(shift.cardSales || 0) > 0 && (
+                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-100/60 px-2 py-1 rounded-md">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                      Network {shift.cardSales.toFixed(2)}
+                                    </span>
+                                  )}
+                                  {(shift.tabbySales || 0) > 0 && (
+                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-100/60 px-2 py-1 rounded-md">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                                      Tabby {shift.tabbySales.toFixed(2)}
+                                    </span>
+                                  )}
+                                  {(shift.tamaraSales || 0) > 0 && (
+                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-bold text-pink-700 bg-pink-50 border border-pink-100/60 px-2 py-1 rounded-md">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-pink-400" />
+                                      Tamara {shift.tamaraSales.toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </button>
+
+                            {/* ── Lazy-loaded invoice list (Scrollable) ── */}
+                            {isOpen && (
+                              <div className="border-t border-indigo-50 bg-slate-50/50">
+                                {isLoadingInvoices ? (
+                                  <div className="flex flex-col items-center justify-center py-10 gap-3">
+                                    <Loader2 size={18} className="animate-spin text-indigo-400" />
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Loading records…</span>
+                                  </div>
+                                ) : invoices && invoices.length > 0 ? (
+                                  <div className="max-h-[360px] overflow-y-auto custom-scrollbar divide-y divide-slate-100/80 overscroll-contain">
+                                    {invoices.map((tx: any) => {
+                                      const isTxSale = tx.type === 'SALE'
+                                      return (
+                                        <div key={tx.id} className="flex items-start gap-3 px-4 sm:px-5 py-3 hover:bg-white transition-colors group">
+                                          {/* Left accent + icon */}
+                                          <div className="flex items-center gap-2.5 shrink-0 mt-0.5">
+                                            <div className={cn('w-0.5 h-8 rounded-full transition-colors', isTxSale ? 'bg-slate-200 group-hover:bg-indigo-300' : 'bg-rose-200 group-hover:bg-rose-400')} />
+                                            <div className={cn(
+                                              'w-7 h-7 rounded-[10px] flex items-center justify-center shadow-sm',
+                                              isTxSale ? 'bg-white text-slate-500 border border-slate-100' : 'bg-rose-50 text-rose-500 border border-rose-100'
                                             )}>
-                                              {tx.type === 'SALE' ? <ArrowUpRight size={13} /> : <ArrowDownLeft size={13} />}
+                                              {isTxSale ? <ArrowUpRight size={13} strokeWidth={2.5} /> : <ArrowDownLeft size={13} strokeWidth={2.5} />}
                                             </div>
-                                            <div className="min-w-0">
-                                              <p className="text-xs font-bold text-gray-600 truncate leading-tight">
-                                                {tx.description || (tx.type === 'SALE' ? 'Sale' : 'Refund')}
-                                              </p>
-                                              <p className="text-[9px] text-gray-400 font-bold font-mono mt-0.5">
-                                                {tx.invoiceNumber || `#${tx.id}`} · {format(new Date(tx.createdAt), 'h:mm a')}
-                                              </p>
-                                              {tx.items && tx.items.length > 0 && (
-                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                  {tx.items.map((prod: any, idx: number) => (
-                                                    <span key={idx} className="bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded text-[8px] font-bold">
-                                                      {prod.quantity}x {prod.name}
-                                                    </span>
-                                                  ))}
-                                                </div>
+                                          </div>
+                                          {/* Content */}
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <p className="text-[11px] font-black text-slate-700 font-mono">{tx.invoiceNumber || `#${tx.id}`}</p>
+                                              {tx.customerName && (
+                                                <span className="text-[8px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full">{tx.customerName}</span>
                                               )}
                                             </div>
+                                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">{format(new Date(tx.createdAt), 'h:mm a')}</p>
+                                            {tx.items && tx.items.length > 0 && (
+                                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                                {tx.items.map((prod: any, idx: number) => (
+                                                  <span key={idx} className="text-[8px] font-bold text-slate-500 bg-white border border-slate-200/80 px-1.5 py-0.5 rounded-md shadow-sm">
+                                                    <span className="text-slate-400 mr-0.5">{prod.quantity}×</span>{prod.name}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            )}
                                           </div>
-                                          <div className="flex items-center gap-2 shrink-0 pl-3">
-                                            <span className={cn('text-[9px] font-black uppercase px-1.5 py-0.5 rounded-lg border',
-                                              tx.method === 'CASH' ? 'bg-gray-100 text-gray-500 border-gray-200' :
-                                              tx.method === 'NETWORK' ? 'bg-gray-100 text-gray-500 border-gray-200' :
-                                              'bg-gray-100 text-gray-500 border-gray-200'
-                                            )}>{tx.method}</span>
-                                            <span className={cn('text-sm font-black tabular-nums',
-                                              tx.type === 'RETURN' ? 'text-gray-400' : 'text-gray-600'
-                                            )}>
-                                              {tx.type === 'RETURN' ? '-' : '+'}{tx.amount.toFixed(2)}
-                                            </span>
+                                          {/* Amount */}
+                                          <div className="text-right shrink-0">
+                                            <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-white text-slate-500 border border-slate-200 shadow-sm block text-center mb-1">{tx.method}</span>
+                                            <p className={cn('text-[13px] font-black tabular-nums tracking-tight', isTxSale ? 'text-slate-800' : 'text-rose-500')}>
+                                              {isTxSale ? '+' : '-'}{tx.amount.toFixed(2)}
+                                            </p>
                                           </div>
                                         </div>
-                                      </div>
-                                    ))}
+                                      )
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="py-8 text-center bg-white/50">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No invoices found</p>
                                   </div>
                                 )}
                               </div>
-                            )
-                          })}
+                            )}
+                          </div>
                         </div>
                       )
-                    })
-                  })()}
+                    })}
+                  </div>
                 </div>
               )}
+
+              {/* ── Global empty state ── */}
+              {activeShiftSales.length === 0 && closedShifts.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center mb-5 shadow-inner border border-white">
+                    <Receipt size={32} className="text-slate-300" />
+                  </div>
+                  <p className="text-sm font-black text-slate-600">No activity yet</p>
+                  <p className="text-[11px] font-medium text-slate-400 mt-1.5 max-w-[200px] leading-relaxed">Sales recorded during this shift will appear here.</p>
+                </div>
+              )}
+
             </div>
           </div>
         )}
