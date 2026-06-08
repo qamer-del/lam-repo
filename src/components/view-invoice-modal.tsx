@@ -1,74 +1,92 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { getInvoiceDetails } from '@/actions/transactions'
+import { getInvoiceDetails, getPaymentCorrectionsForInvoice } from '@/actions/transactions'
 import { checkWarrantyStatus } from '@/actions/warranty'
 import { ModernLoader } from './ui/modern-loader'
 import { format } from 'date-fns'
-import { Receipt, Package, ShieldCheck, ShieldOff, ShieldAlert, Download, Printer } from 'lucide-react'
+import { Receipt, Package, ShieldCheck, ShieldOff, ShieldAlert, Download, Printer, RefreshCw, History } from 'lucide-react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InvoiceDocument } from './invoice-document'
 import { useLanguage } from '@/providers/language-provider'
 import { usePrinter } from '@/providers/printer-provider'
 import { calcVat15, generateZatcaQrDataUrl } from '@/lib/zatca-qr'
+import { PaymentMethodCorrectionModal } from './payment-method-correction-modal'
+import { useSession } from 'next-auth/react'
 
 export function ViewInvoiceModal({ 
   invoiceNumber, 
   open, 
-  onOpenChange 
+  onOpenChange,
+  userRole, // fallback if passed manually
 }: { 
   invoiceNumber: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  userRole?: string
 }) {
+  const { data: session } = useSession();
   const { locale } = useLanguage();
   const { print: printThermal, status: printerStatus, isPrinting } = usePrinter()
   const [loading, setLoading] = useState(false)
   const [details, setDetails] = useState<any>(null)
   const [warranties, setWarranties] = useState<any[]>([])
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [corrections, setCorrections] = useState<any[]>([])
+  const [correctionOpen, setCorrectionOpen] = useState(false)
+
+  const activeRole = userRole || session?.user?.role;
+  const isAdmin = activeRole === 'ADMIN' || activeRole === 'SUPER_ADMIN'
+
+  const loadDetails = useCallback(() => {
+    if (!invoiceNumber) return
+    setLoading(true)
+    Promise.all([
+      getInvoiceDetails(invoiceNumber),
+      checkWarrantyStatus({ invoiceNumber }),
+      getPaymentCorrectionsForInvoice(invoiceNumber),
+    ])
+      .then(([res, warRes, corrRes]) => {
+        setDetails(res)
+        setWarranties(warRes)
+        setCorrections(corrRes)
+        setLoading(false)
+        if (res) {
+          const { vat } = calcVat15(res.totalAmount)
+          generateZatcaQrDataUrl({
+            sellerName: 'LAMAHA Car Care Center',
+            vatNumber: '300000000000000',
+            invoiceDate: new Date(res.createdAt),
+            totalWithVat: res.totalAmount,
+            vatAmount: vat,
+          }).then(setQrDataUrl)
+        }
+      })
+      .catch(err => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [invoiceNumber])
 
   useEffect(() => {
     if (open && invoiceNumber) {
-      setLoading(true)
-      Promise.all([
-        getInvoiceDetails(invoiceNumber),
-        checkWarrantyStatus({ invoiceNumber }),
-      ])
-        .then(([res, warRes]) => {
-          setDetails(res)
-          setWarranties(warRes)
-          setLoading(false)
-          // Generate ZATCA QR after details load
-          if (res) {
-            const { vat } = calcVat15(res.totalAmount)
-            generateZatcaQrDataUrl({
-              sellerName: 'LAMAHA Car Care Center',
-              vatNumber: '300000000000000',
-              invoiceDate: new Date(res.createdAt),
-              totalWithVat: res.totalAmount,
-              vatAmount: vat,
-            }).then(setQrDataUrl)
-          }
-        })
-        .catch(err => {
-          console.error(err)
-          setLoading(false)
-        })
+      loadDetails()
     } else {
       setDetails(null)
       setWarranties([])
+      setCorrections([])
     }
-  }, [open, invoiceNumber])
+  }, [open, invoiceNumber, loadDetails])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white dark:bg-gray-950">
         <div className="h-2 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600" />
         
@@ -85,7 +103,17 @@ export function ViewInvoiceModal({
                 </div>
               </DialogTitle>
               {details && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Correct Payment Method — Admin only */}
+                  {isAdmin && (
+                    <button
+                      onClick={() => setCorrectionOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors border border-indigo-100"
+                    >
+                      <RefreshCw size={14} />
+                      <span className="hidden sm:inline">Correct Method</span>
+                    </button>
+                  )}
                   {/* Thermal Reprint — only shown when QZ Tray is connected */}
                   {printerStatus === 'connected' && (
                     <button
@@ -274,6 +302,31 @@ export function ViewInvoiceModal({
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300 italic">"{details.description}"</p>
                 </div>
               )}
+
+              {/* ── Payment Method Correction History ── */}
+              {corrections.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 px-1">
+                    <History size={14} className="text-indigo-500" />
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Payment Method Corrections</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {corrections.map((c: any) => (
+                      <div key={c.id} className="p-4 bg-indigo-50/60 rounded-2xl border border-indigo-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200">{c.oldMethod}</span>
+                          <RefreshCw size={11} className="text-indigo-400" />
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200">{c.newMethod}</span>
+                        </div>
+                        <p className="text-xs font-medium text-gray-600 italic mb-1.5">"{c.reason}"</p>
+                        <p className="text-[10px] text-gray-400">
+                          By <span className="font-bold text-gray-600">{c.correctedBy?.name}</span> · {format(new Date(c.createdAt), 'MMM d, yyyy · h:mm a')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="py-20 text-center space-y-4">
@@ -286,5 +339,17 @@ export function ViewInvoiceModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Correction modal — mounted outside the invoice dialog to avoid nesting issues */}
+    {details && correctionOpen && (
+      <PaymentMethodCorrectionModal
+        open={correctionOpen}
+        onOpenChange={setCorrectionOpen}
+        invoiceNumber={details.invoiceNumber}
+        currentMethod={details.transactions?.[0]?.method || 'CASH'}
+        onCorrected={loadDetails}
+      />
+    )}
+    </>
   )
 }

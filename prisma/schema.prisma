@@ -119,6 +119,7 @@ model User {
   bnplSessions          BnplSession[]         @relation("UserBnplSessions")
   absenceRecords        AbsenceRecord[]       @relation("AbsenceRecordedBy")
   attendanceRecords     AttendanceRecord[]    @relation("AttendanceRecordedBy")
+  paymentCorrections    PaymentMethodCorrection[] @relation("PaymentCorrections")
 
   // Internal Consumption Audit Trails
   consumptionsCreated   InternalConsumptionRequest[] @relation("ConsumptionCreatedBy")
@@ -634,3 +635,21 @@ model InternalConsumptionRequest {
   @@index([staffId])
 }
 
+// ── Payment Method Correction Audit Log ────────────────────
+// Permanent, never-deleted record of every payment method correction.
+// Reports and shift summaries read from Transaction.method directly,
+// so they automatically reflect corrected values.
+model PaymentMethodCorrection {
+  id              Int       @id @default(autoincrement())
+  invoiceNumber   String
+  transactionId   Int       // The Transaction row that was updated
+  oldMethod       PayMethod
+  newMethod       PayMethod
+  reason          String
+  correctedById   String
+  correctedBy     User      @relation("PaymentCorrections", fields: [correctedById], references: [id])
+  createdAt       DateTime  @default(now())
+
+  @@index([invoiceNumber])
+  @@index([correctedById])
+}

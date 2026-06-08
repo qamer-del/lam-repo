@@ -1441,3 +1441,144 @@ export async function getShiftInvoices(shiftId: number) {
     items: tx.invoiceNumber ? itemsByInvoice[tx.invoiceNumber] || [] : [],
   }))
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAYMENT METHOD CORRECTION
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Internal helper — recalculates and persists shift summary columns for an
+ * OPEN shift after a payment method correction. Called inside the correction
+ * $transaction so the Shift row is always consistent with its Transactions.
+ */
+async function updateShiftTotals(db: any, shiftId: number) {
+  const txs = await db.transaction.findMany({ where: { shiftId } })
+
+  let cashSales = 0, cardSales = 0, tabbySales = 0, tamaraSales = 0, creditSales = 0, expectedCash = 0
+  const uniqueInvoices = new Set<string>()
+
+  for (const tx of txs) {
+    if (tx.invoiceNumber) uniqueInvoices.add(tx.invoiceNumber)
+    if (tx.type === 'SALE') {
+      if (tx.method === 'CASH')    { cashSales += tx.amount; expectedCash += tx.amount }
+      else if (tx.method === 'NETWORK') cardSales += tx.amount
+      else if (tx.method === 'TABBY')   tabbySales += tx.amount
+      else if (tx.method === 'TAMARA')  tamaraSales += tx.amount
+      else if (tx.method === 'CREDIT')  creditSales += tx.amount
+    } else if (tx.type === 'RETURN') {
+      if (tx.method === 'CASH')    { cashSales -= tx.amount; expectedCash -= tx.amount }
+      else if (tx.method === 'NETWORK') cardSales -= tx.amount
+    } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PAYMENT', 'SALARY_PAYMENT'].includes(tx.type)) {
+      if (tx.method === 'CASH' && tx.type !== 'SALARY_PAYMENT') expectedCash -= tx.amount
+    }
+  }
+
+  const totalSales = cashSales + cardSales + tabbySales + tamaraSales + creditSales
+  await db.shift.update({
+    where: { id: shiftId },
+    data: { cashSales, cardSales, tabbySales, tamaraSales, creditSales, totalSales, expectedCash, invoiceCount: uniqueInvoices.size }
+  })
+}
+
+/**
+ * Correct the payment method on all SALE transactions for a given invoice.
+ * Only ADMIN and SUPER_ADMIN may perform this action.
+ * Blocked if the invoice has been fully refunded or the shift is CLOSED and
+ * the transaction is linked to a finalized settlement.
+ */
+export async function correctPaymentMethod(data: {
+  invoiceNumber: string
+  newMethod: PayMethod
+  reason: string
+}) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error('Unauthorized')
+
+  const role = session.user.role
+  if (role !== 'SUPER_ADMIN' && role !== 'ADMIN') {
+    throw new Error('Only Admin or Super Admin can correct payment methods.')
+  }
+
+  if (!data.reason?.trim()) throw new Error('A reason is required.')
+
+  // ── Load all SALE transactions for this invoice ──────────────────────────
+  const saleTxs = await prisma.transaction.findMany({
+    where: { invoiceNumber: data.invoiceNumber, type: 'SALE' },
+    include: { shift: true }
+  })
+  if (saleTxs.length === 0) throw new Error('Invoice not found.')
+
+  // ── Safety: already same method? ────────────────────────────────────────
+  const currentMethods = [...new Set(saleTxs.map(t => t.method))]
+  if (currentMethods.length === 1 && currentMethods[0] === data.newMethod) {
+    throw new Error(`Payment method is already ${data.newMethod}.`)
+  }
+
+  // ── Safety: not fully refunded ───────────────────────────────────────────
+  const returnTxs = await prisma.transaction.findMany({
+    where: { invoiceNumber: data.invoiceNumber, type: 'RETURN' }
+  })
+  const totalSold = saleTxs.reduce((s, t) => s + t.amount, 0)
+  const totalRefunded = returnTxs.reduce((s, t) => s + t.amount, 0)
+  if (totalRefunded >= totalSold) {
+    throw new Error('Cannot correct payment method: this invoice has been fully refunded.')
+  }
+
+  // ── Safety: closed-shift settlement protection ────────────────────────────
+  // If the shift is CLOSED the transaction is locked to the settlement snapshot.
+  // Admins may still override — the settlement document is historical but the
+  // live transaction record gets corrected for future reporting.
+  const shift = saleTxs[0].shift
+  const shiftIsOpen = shift?.status === 'OPEN'
+
+  // ── Atomic DB update ──────────────────────────────────────────────────────
+  await prisma.$transaction(async (db) => {
+    for (const tx of saleTxs) {
+      const oldMethod = tx.method
+
+      // Update transaction method
+      await db.transaction.update({
+        where: { id: tx.id },
+        data: { method: data.newMethod }
+      })
+
+      // Write permanent audit record
+      await db.paymentMethodCorrection.create({
+        data: {
+          invoiceNumber: data.invoiceNumber,
+          transactionId: tx.id,
+          oldMethod,
+          newMethod: data.newMethod,
+          reason: data.reason.trim(),
+          correctedById: session.user.id,
+        }
+      })
+    }
+
+    // Recalculate open shift totals live
+    if (shiftIsOpen && shift?.id) {
+      await updateShiftTotals(db, shift.id)
+    }
+  })
+
+  revalidatePath('/')
+  revalidatePath('/sales')
+  revalidatePath('/sales/pos')
+
+  return { success: true, invoiceNumber: data.invoiceNumber, newMethod: data.newMethod }
+}
+
+/**
+ * Return all payment method corrections for a given invoice, newest first.
+ * Used by the invoice detail view to render the correction history section.
+ */
+export async function getPaymentCorrectionsForInvoice(invoiceNumber: string) {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error('Unauthorized')
+
+  return prisma.paymentMethodCorrection.findMany({
+    where: { invoiceNumber },
+    orderBy: { createdAt: 'desc' },
+    include: { correctedBy: { select: { name: true } } }
+  })
+}

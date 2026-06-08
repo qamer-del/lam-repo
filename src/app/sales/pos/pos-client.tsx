@@ -12,11 +12,12 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { BnplCheckoutModal } from '@/components/bnpl-checkout-modal'
 import { BnplPendingPanel } from '@/components/bnpl-pending-panel'
+import { PaymentMethodCorrectionModal } from '@/components/payment-method-correction-modal'
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, Receipt, Banknote, Wifi,
   SplitSquareHorizontal, ShoppingBag, Users, Check, UserPlus, ArrowLeft,
   CheckCircle2, Package, ChevronsUpDown, X, History, CreditCard, LogOut,
-  ArrowUpRight, ArrowDownLeft, Percent, Tag, Keyboard, ChevronDown, ChevronUp, Loader2, Printer, Menu, Globe
+  ArrowUpRight, ArrowDownLeft, Percent, Tag, Keyboard, ChevronDown, ChevronUp, Loader2, Printer, Menu, Globe, RefreshCw
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { CloseShiftBtn } from '@/components/close-shift-btn'
@@ -96,6 +97,7 @@ export function PosClient({
   const [expandedShiftId, setExpandedShiftId] = useState<number | null>(null)
   const [shiftInvoices, setShiftInvoices] = useState<Record<number, any[]>>({})
   const [shiftInvoicesLoading, setShiftInvoicesLoading] = useState<Record<number, boolean>>({})
+  const [correctionOpenFor, setCorrectionOpenFor] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
   const [focusedIdx, setFocusedIdx] = useState(-1)
@@ -376,6 +378,25 @@ export function PosClient({
 
       {pendingWarranties.length > 0 && (
         <WarrantyNotification warranties={pendingWarranties} customerPhone={customerPhone || undefined} onDismiss={() => setPendingWarranties([])} />
+      )}
+
+      {correctionOpenFor && (
+        <PaymentMethodCorrectionModal
+          open={!!correctionOpenFor}
+          onOpenChange={(v) => { if (!v) setCorrectionOpenFor(null) }}
+          invoiceNumber={correctionOpenFor}
+          currentMethod={expandedDetails?.transactions?.[0]?.method || 'CASH'}
+          onCorrected={() => {
+            // Re-fetch the details to update the UI live
+            if (correctionOpenFor) {
+              setExpandedLoading(true)
+              getInvoiceDetails(correctionOpenFor).then(res => {
+                setExpandedDetails(res)
+                setExpandedLoading(false)
+              }).catch(() => setExpandedLoading(false))
+            }
+          }}
+        />
       )}
 
       <div className="fixed top-0 bottom-24 left-0 right-0 lg:relative lg:top-auto lg:bottom-auto lg:inset-auto lg:h-screen flex flex-col bg-[#f0f2f5] overflow-hidden z-[60] lg:z-auto" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -791,26 +812,41 @@ export function PosClient({
                                     </div>
                                   </div>
 
-                                  {/* Print button */}
-                                  {printerStatus === 'connected' && (
-                                    <button
-                                      type="button" disabled={isPrinting}
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        printReceipt({
-                                          invoiceNumber: expandedDetails.invoiceNumber,
-                                          createdAt: new Date(expandedDetails.createdAt),
-                                          cashierName: expandedDetails.salesperson || cashierName,
-                                          items: (expandedDetails.items || []).map((item: any) => ({ name: item.name, quantity: item.quantitySold, price: item.price || 0, unit: item.unit })),
-                                          totalAmount: expandedDetails.totalAmount,
-                                          paymentMethod: expandedDetails.transactions?.[0]?.method || 'CASH',
-                                        })
-                                      }}
-                                      className="w-full flex items-center justify-center gap-2 h-10 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/25 active:scale-[0.98] disabled:opacity-50"
-                                    >
-                                      <Printer size={14} />{isPrinting ? 'Printing…' : 'Reprint Receipt'}
-                                    </button>
-                                  )}
+                                  {/* Print & Actions bar */}
+                                  <div className="flex gap-2">
+                                    {userRole && ['ADMIN', 'SUPER_ADMIN'].includes(userRole) && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setCorrectionOpenFor(expandedDetails.invoiceNumber)
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 h-10 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border border-indigo-100"
+                                      >
+                                        <RefreshCw size={14} strokeWidth={2.5} /> Correct
+                                      </button>
+                                    )}
+
+                                    {printerStatus === 'connected' && (
+                                      <button
+                                        type="button" disabled={isPrinting}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          printReceipt({
+                                            invoiceNumber: expandedDetails.invoiceNumber,
+                                            createdAt: new Date(expandedDetails.createdAt),
+                                            cashierName: expandedDetails.salesperson || cashierName,
+                                            items: (expandedDetails.items || []).map((item: any) => ({ name: item.name, quantity: item.quantitySold, price: item.price || 0, unit: item.unit })),
+                                            totalAmount: expandedDetails.totalAmount,
+                                            paymentMethod: expandedDetails.transactions?.[0]?.method || 'CASH',
+                                          })
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-2 h-10 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/25 active:scale-[0.98] disabled:opacity-50"
+                                      >
+                                        <Printer size={14} />{isPrinting ? 'Printing…' : 'Reprint Receipt'}
+                                      </button>
+                                    )}
+                                  </div>
                                 </>
                               ) : (
                                 <p className="text-center py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">No details available</p>
