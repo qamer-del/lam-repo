@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TransType = 'SALE' | 'RETURN' | 'EXPENSE' | 'ADVANCE' | 'SALARY_PAYMENT' | 'OWNER_WITHDRAWAL' | 'AGENT_PURCHASE' | 'AGENT_PAYMENT' | 'WARRANTY_REPLACEMENT' | 'SUPPLIER_WARRANTY_REFUND'
+export type TransType = 'SALE' | 'RETURN' | 'EXPENSE' | 'ADVANCE' | 'SALARY_PAYMENT' | 'OWNER_WITHDRAWAL' | 'AGENT_PURCHASE' | 'AGENT_PAYMENT' | 'WARRANTY_REPLACEMENT' | 'SUPPLIER_WARRANTY_REFUND' | 'PURCHASE_RETURN' | 'SUPPLIER_CREDIT_NOTE' | 'STOCK_ADJUSTMENT_LOSS'
 export type PayMethod = 'CASH' | 'NETWORK' | 'TABBY' | 'TAMARA' | 'CREDIT'
 
 export interface Transaction {
@@ -101,7 +101,7 @@ export const useStore = create<VaultState>((set) => ({
         } else if (tx.method === 'TAMARA') {
           tamaraChange -= tx.amount;
         }
-      } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PURCHASE', 'AGENT_PAYMENT'].includes(tx.type)) {
+      } else if (['EXPENSE', 'ADVANCE', 'OWNER_WITHDRAWAL', 'AGENT_PURCHASE', 'AGENT_PAYMENT', 'PURCHASE_RETURN', 'SUPPLIER_CREDIT_NOTE', 'STOCK_ADJUSTMENT_LOSS'].includes(tx.type)) {
         if (tx.method === 'CASH') cashChange -= tx.amount;
         else if (tx.method === 'NETWORK') netChange -= tx.amount;
         else if (tx.method === 'TABBY') tabbyChange -= tx.amount;

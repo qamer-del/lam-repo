@@ -262,6 +262,99 @@ export async function adjustStock(data: {
   revalidatePath('/inventory')
 }
 
+export async function createStockAdjustment(data: {
+  type: string
+  reason: string
+  notes?: string
+  items: {
+    itemId: number
+    quantity: number
+    unitCost: number
+  }[]
+}) {
+  const session = await requireAdminOrAbove()
+  
+  if (!data.items || data.items.length === 0) {
+    throw new Error('Adjustment must have at least one item')
+  }
+
+  const isOut = data.type === 'OUT'
+  const adjustmentNumber = `ADJ-${Date.now().toString().slice(-6)}`
+  const totalCostImpact = data.items.reduce((sum, i) => sum + (i.quantity * i.unitCost), 0)
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Check stock for OUT adjustments
+    if (isOut) {
+      for (const item of data.items) {
+        const inventory = await tx.inventoryItem.findUnique({ where: { id: item.itemId } })
+        if (!inventory) throw new Error(`Item not found`)
+        if (inventory.currentStock < item.quantity) {
+          throw new Error(`Insufficient stock for ${inventory.name}`)
+        }
+      }
+    }
+
+    // 1. Create Adjustment Record
+    const adj = await tx.stockAdjustment.create({
+      data: {
+        adjustmentNumber,
+        type: data.type,
+        reason: data.reason,
+        notes: data.notes,
+        totalCostImpact,
+        createdById: session.user.id,
+        items: {
+          create: data.items.map(i => ({
+            itemId: i.itemId,
+            quantity: i.quantity,
+            unitCost: i.unitCost
+          }))
+        }
+      }
+    })
+
+    // 2. Adjust Stock & Add Movements
+    for (const item of data.items) {
+      const qtyChange = isOut ? -item.quantity : item.quantity
+
+      await tx.inventoryItem.update({
+        where: { id: item.itemId },
+        data: { currentStock: { increment: qtyChange } }
+      })
+
+      await tx.stockMovement.create({
+        data: {
+          itemId: item.itemId,
+          type: isOut ? 'ADJUSTMENT_OUT' : 'ADJUSTMENT',
+          quantity: qtyChange,
+          unitCost: item.unitCost,
+          note: `Stock Adjustment [${data.reason}] ${adjustmentNumber}`,
+          recordedById: session.user.id
+        }
+      })
+    }
+    
+    // 3. Financial Log for OUT adjustments
+    if (isOut) {
+      await tx.transaction.create({
+        data: {
+          type: 'STOCK_ADJUSTMENT_LOSS',
+          amount: totalCostImpact,
+          method: 'CREDIT',
+          description: `Stock Loss/Adjustment: ${data.reason} (${adjustmentNumber})`,
+          recordedById: session.user.id,
+          isInternal: true
+        }
+      })
+    }
+    
+    return adj
+  })
+
+  revalidatePath('/inventory')
+  return result
+}
+
 // ── Purchase Orders ───────────────────────────────────────────────────────────
 
 export async function getPurchaseOrders() {
@@ -274,9 +367,9 @@ export async function getPurchaseOrders() {
   return prisma.purchaseOrder.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
-      agent: { select: { name: true, companyName: true } },
+      agent: { select: { id: true, name: true, companyName: true } },
       items: {
-        include: { item: { select: { name: true, unit: true } } },
+        include: { item: { select: { id: true, name: true, unit: true } } },
       },
       recordedBy: { select: { name: true } },
     },

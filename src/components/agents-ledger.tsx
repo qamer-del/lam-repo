@@ -95,14 +95,14 @@ export function AgentsLedger({ agents, userRole }: { agents: any[], userRole?: s
   const globalMetrics = useMemo(() => {
     const totalDebt = agents.reduce((sum, a) => {
       const purchases = (a.transactions || []).filter((t: any) => t.type === 'AGENT_PURCHASE' && t.method === 'CREDIT').reduce((s: number, t: any) => s + t.amount, 0)
-      const payments = (a.transactions || []).filter((t: any) => t.type === 'AGENT_PAYMENT').reduce((s: number, t: any) => s + t.amount, 0)
+      const payments = (a.transactions || []).filter((t: any) => ['AGENT_PAYMENT', 'PURCHASE_RETURN', 'SUPPLIER_CREDIT_NOTE'].includes(t.type)).reduce((s: number, t: any) => s + t.amount, 0)
       return sum + (a.openingBalance || 0) + purchases - payments
     }, 0)
 
     const topAgent = [...agents].sort((a, b) => {
       const getBal = (ag: any) => {
         const pur = (ag.transactions || []).filter((t: any) => t.type === 'AGENT_PURCHASE' && t.method === 'CREDIT').reduce((s: number, t: any) => s + t.amount, 0)
-        const pay = (ag.transactions || []).filter((t: any) => t.type === 'AGENT_PAYMENT').reduce((s: number, t: any) => s + t.amount, 0)
+        const pay = (ag.transactions || []).filter((t: any) => ['AGENT_PAYMENT', 'PURCHASE_RETURN', 'SUPPLIER_CREDIT_NOTE'].includes(t.type)).reduce((s: number, t: any) => s + t.amount, 0)
         return (ag.openingBalance || 0) + pur - pay
       }
       return getBal(b) - getBal(a)
@@ -115,7 +115,7 @@ export function AgentsLedger({ agents, userRole }: { agents: any[], userRole?: s
   const netBalance = useMemo(() => {
     if (!selectedAgent) return 0
     const totalPurchases = (selectedAgent.transactions || []).filter((t: any) => t.type === 'AGENT_PURCHASE' && t.method === 'CREDIT').reduce((s: number, t: any) => s + t.amount, 0)
-    const totalPayments = (selectedAgent.transactions || []).filter((t: any) => t.type === 'AGENT_PAYMENT').reduce((s: number, t: any) => s + t.amount, 0)
+    const totalPayments = (selectedAgent.transactions || []).filter((t: any) => ['AGENT_PAYMENT', 'PURCHASE_RETURN', 'SUPPLIER_CREDIT_NOTE'].includes(t.type)).reduce((s: number, t: any) => s + t.amount, 0)
     return (selectedAgent.openingBalance || 0) + totalPurchases - totalPayments
   }, [selectedAgent])
 
@@ -276,7 +276,7 @@ export function AgentsLedger({ agents, userRole }: { agents: any[], userRole?: s
               const active = selectedAgentId === a.id
               const bal = (a.openingBalance || 0) + 
                 (a.transactions || []).filter((t: any) => t.type === 'AGENT_PURCHASE' && t.method === 'CREDIT').reduce((s: number, tx: any) => s + tx.amount, 0) -
-                (a.transactions || []).filter((t: any) => t.type === 'AGENT_PAYMENT').reduce((s: number, tx: any) => s + tx.amount, 0);
+                (a.transactions || []).filter((t: any) => ['AGENT_PAYMENT', 'PURCHASE_RETURN', 'SUPPLIER_CREDIT_NOTE'].includes(t.type)).reduce((s: number, tx: any) => s + tx.amount, 0);
 
               return (
                 <button
@@ -497,7 +497,10 @@ export function AgentsLedger({ agents, userRole }: { agents: any[], userRole?: s
                             </div>
                           </TableCell>
                           <TableCell className="font-bold text-gray-900 dark:text-white">
-                            {tx.type === 'AGENT_PURCHASE' ? (t('purchase') || 'Credit Purchase') : (t('payment') || 'Cash Payment')}
+                            {tx.type === 'AGENT_PURCHASE' ? (t('purchase') || 'Credit Purchase') : 
+                             tx.type === 'SUPPLIER_CREDIT_NOTE' ? 'Credit Note (Return)' :
+                             tx.type === 'PURCHASE_RETURN' ? 'Purchase Return' :
+                             (t('payment') || 'Cash Payment')}
                           </TableCell>
                           <TableCell>
                             <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-200/50 dark:border-gray-700/50">
@@ -541,7 +544,10 @@ export function AgentsLedger({ agents, userRole }: { agents: any[], userRole?: s
                       <div className="flex justify-between items-end">
                         <div className="space-y-1">
                           <p className="text-sm font-black text-gray-900 dark:text-white">
-                            {tx.type === 'AGENT_PURCHASE' ? (t('purchase') || 'Credit Purchase') : (t('payment') || 'Cash Payment')}
+                            {tx.type === 'AGENT_PURCHASE' ? (t('purchase') || 'Credit Purchase') : 
+                             tx.type === 'SUPPLIER_CREDIT_NOTE' ? 'Credit Note (Return)' :
+                             tx.type === 'PURCHASE_RETURN' ? 'Purchase Return' :
+                             (t('payment') || 'Cash Payment')}
                           </p>
                           <p className="text-[10px] text-gray-400 font-medium">
                             {format(new Date(tx.createdAt), 'PP')}

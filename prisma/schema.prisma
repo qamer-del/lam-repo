@@ -20,6 +20,9 @@ enum TransType {
   AGENT_PAYMENT
   WARRANTY_REPLACEMENT
   SUPPLIER_WARRANTY_REFUND
+  PURCHASE_RETURN
+  SUPPLIER_CREDIT_NOTE
+  STOCK_ADJUSTMENT_LOSS
 }
 
 enum WarrantyStatus {
@@ -39,6 +42,12 @@ enum SupplierCaseStatus {
 }
 
 enum ConsumptionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReturnStatus {
   PENDING
   APPROVED
   REJECTED
@@ -72,7 +81,9 @@ enum MovementType {
   PURCHASE_IN
   SALE_OUT
   ADJUSTMENT
+  ADJUSTMENT_OUT
   RETURN_IN
+  PURCHASE_RETURN_OUT
   WARRANTY_RETURN_IN   // defective item returned by customer
   WARRANTY_OUT         // replacement item given to customer
   INTERNAL_CONSUMPTION
@@ -126,6 +137,11 @@ model User {
   consumptionsApproved  InternalConsumptionRequest[] @relation("ConsumptionApprovedBy")
   consumptionsRejected  InternalConsumptionRequest[] @relation("ConsumptionRejectedBy")
   consumptionsModified  InternalConsumptionRequest[] @relation("ConsumptionModifiedBy")
+
+  // Return and Adjustment Audit Trails
+  purchaseReturnsCreated PurchaseReturn[] @relation("PurchaseReturnCreatedBy")
+  purchaseReturnsApproved PurchaseReturn[] @relation("PurchaseReturnApprovedBy")
+  stockAdjustments      StockAdjustment[] @relation("AdjustmentCreatedBy")
 }
 
 model Staff {
@@ -165,6 +181,7 @@ model Agent {
   transactions    Transaction[]
   purchaseOrders  PurchaseOrder[]
   supplierCases   SupplierWarrantyCase[]
+  purchaseReturns PurchaseReturn[]
 }
 
 model Customer {
@@ -376,6 +393,8 @@ model InventoryItem {
   replacementsDefective   WarrantyReplacement[] @relation("DefectiveItem")
   supplierCaseItems       SupplierWarrantyCaseItem[]
   consumptions            InternalConsumptionRequest[]
+  purchaseReturnItems     PurchaseReturnItem[]
+  adjustmentItems         StockAdjustmentItem[]
 }
 
 model StockMovement {
@@ -413,6 +432,7 @@ model PurchaseOrder {
 
   items     PurchaseOrderItem[]
   movements StockMovement[]
+  returns   PurchaseReturn[]
 }
 
 model PurchaseOrderItem {
@@ -548,7 +568,69 @@ model PrinterSettings {
   printSpeed   Int     @default(4)    // 2-6 ips
   labelWidth   Float   @default(50)   // mm
   labelHeight  Float   @default(25)   // mm
-  updatedAt    DateTime @updatedAt
+  updatedAt      DateTime @updatedAt
+}
+
+// ── Purchase Returns ────────────────────────────────────────
+
+model PurchaseReturn {
+  id              Int            @id @default(autoincrement())
+  returnNumber    String         @unique
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id])
+  agentId         Int?
+  agent           Agent?         @relation(fields: [agentId], references: [id])
+  status          ReturnStatus   @default(PENDING)
+  reason          String
+  notes           String?
+  totalAmount     Float          @default(0)
+  transactionId   Int?           // link to financial impact
+  createdById     String
+  createdBy       User           @relation("PurchaseReturnCreatedBy", fields: [createdById], references: [id])
+  approvedById    String?
+  approvedBy      User?          @relation("PurchaseReturnApprovedBy", fields: [approvedById], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  items           PurchaseReturnItem[]
+}
+
+model PurchaseReturnItem {
+  id               Int            @id @default(autoincrement())
+  purchaseReturnId Int
+  purchaseReturn   PurchaseReturn @relation(fields: [purchaseReturnId], references: [id])
+  itemId           Int
+  item             InventoryItem  @relation(fields: [itemId], references: [id])
+  quantity         Float
+  unitCost         Float
+  total            Float
+}
+
+// ── Stock Adjustments (Out/Losses) ──────────────────────────
+
+model StockAdjustment {
+  id               Int            @id @default(autoincrement())
+  adjustmentNumber String         @unique
+  type             String         @default("OUT") // IN or OUT
+  reason           String         // Damaged, Expired, etc.
+  notes            String?
+  totalCostImpact  Float          @default(0)
+  createdById      String
+  createdBy        User           @relation("AdjustmentCreatedBy", fields: [createdById], references: [id])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  items            StockAdjustmentItem[]
+}
+
+model StockAdjustmentItem {
+  id               Int            @id @default(autoincrement())
+  adjustmentId     Int
+  adjustment       StockAdjustment @relation(fields: [adjustmentId], references: [id])
+  itemId           Int
+  item             InventoryItem  @relation(fields: [itemId], references: [id])
+  quantity         Float
+  unitCost         Float
 }
 
 // ── BNPL Payment Sessions (Tabby / Tamara) ─────────────────

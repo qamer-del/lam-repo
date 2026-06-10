@@ -87,15 +87,15 @@ export function ViewInvoiceModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white dark:bg-gray-950">
-        <div className="h-2 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600" />
+      <DialogContent className="w-[95vw] max-h-[90vh] overflow-y-auto sm:w-full sm:max-w-[480px] p-0 border-none shadow-2xl rounded-[2rem] sm:rounded-[2.5rem] bg-white dark:bg-gray-950 scrollbar-hide">
+        <div className="h-2 w-full bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600 sticky top-0 z-10" />
         
-        <div className="p-8 md:p-10 space-y-8">
+        <div className="p-5 sm:p-8 md:p-10 space-y-6 sm:space-y-8">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-4">
-                <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl shadow-inner">
-                  <Receipt size={28} strokeWidth={2.5} />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between">
+              <DialogTitle className="text-xl sm:text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3 sm:gap-4">
+                <div className="p-2.5 sm:p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl sm:rounded-2xl shadow-inner shrink-0">
+                  <Receipt size={24} className="sm:w-7 sm:h-7" strokeWidth={2.5} />
                 </div>
                 <div className="flex flex-col">
                   <span className="leading-tight">Invoice Details</span>
@@ -103,15 +103,15 @@ export function ViewInvoiceModal({
                 </div>
               </DialogTitle>
               {details && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                   {/* Correct Payment Method — Admin only */}
                   {isAdmin && (
                     <button
                       onClick={() => setCorrectionOpen(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors border border-indigo-100"
+                      className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-colors border border-indigo-100"
                     >
                       <RefreshCw size={14} />
-                      <span className="hidden sm:inline">Correct Method</span>
+                      <span>Correct</span>
                     </button>
                   )}
                   {/* Thermal Reprint — only shown when QZ Tray is connected */}
@@ -132,20 +132,20 @@ export function ViewInvoiceModal({
                           paymentMethod: details.transactions?.[0]?.method || 'CASH',
                         })
                       }}
-                      className="flex items-center gap-2 px-4 py-2 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors disabled:opacity-50"
+                      className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-colors disabled:opacity-50"
                     >
                       <Printer size={16} />
-                      <span className="hidden sm:inline">{isPrinting ? 'Printing...' : 'Reprint'}</span>
+                      <span>{isPrinting ? 'Printing' : 'Reprint'}</span>
                     </button>
                   )}
                   {/* Save PDF */}
                   <PDFDownloadLink
                     document={<InvoiceDocument details={details} warranties={warranties} locale={locale} qrDataUrl={qrDataUrl} />}
                     fileName={`invoice-${details.invoiceNumber}.pdf`}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest transition-colors"
+                    className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-colors"
                   >
                     <Download size={16} />
-                    <span className="hidden sm:inline">Save PDF</span>
+                    <span>Save PDF</span>
                   </PDFDownloadLink>
                 </div>
               )}
@@ -158,22 +158,22 @@ export function ViewInvoiceModal({
               <p className="text-xs font-black uppercase tracking-widest text-emerald-600 animate-pulse">Loading Receipt</p>
             </div>
           ) : details ? (
-            <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
+            <div className="space-y-6 sm:space-y-8 animate-in fade-in zoom-in-95 duration-500">
               {/* Header Info */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <div className="p-4 sm:p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Invoice #</p>
-                  <p className="font-mono text-xs sm:text-sm font-black text-gray-900 dark:text-white">{details.invoiceNumber}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="p-3 sm:p-5 bg-gray-50 dark:bg-gray-900 rounded-xl sm:rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
+                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 sm:mb-2">Invoice #</p>
+                  <p className="font-mono text-xs sm:text-sm font-black text-gray-900 dark:text-white truncate">{details.invoiceNumber}</p>
                 </div>
-                <div className="p-4 sm:p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Issued On</p>
+                <div className="p-3 sm:p-5 bg-gray-50 dark:bg-gray-900 rounded-xl sm:rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
+                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 sm:mb-2">Issued On</p>
                   <p className="text-xs sm:text-sm font-black text-gray-900 dark:text-white leading-tight">
                     {format(new Date(details.createdAt), 'MMM dd, yyyy')}<br/>
                     <span className="text-[10px] opacity-50">{format(new Date(details.createdAt), 'hh:mm a')}</span>
                   </p>
                 </div>
-                <div className="col-span-2 sm:col-span-1 p-4 sm:p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Cashier</p>
+                <div className="col-span-2 sm:col-span-1 p-3 sm:p-5 bg-gray-50 dark:bg-gray-900 rounded-xl sm:rounded-2xl border border-gray-100 dark:border-gray-800 shadow-inner">
+                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 sm:mb-2">Cashier</p>
                   <p className="text-xs sm:text-sm font-black text-gray-900 dark:text-white truncate">
                     {details.salesperson}
                   </p>
@@ -184,24 +184,24 @@ export function ViewInvoiceModal({
               {(() => {
                 const { base: subtotal, vat } = calcVat15(details.totalAmount)
                 return (
-                  <div className="relative overflow-hidden rounded-[2rem] bg-slate-900 text-white shadow-xl shadow-slate-900/20">
+                  <div className="relative overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] bg-slate-900 text-white shadow-xl shadow-slate-900/20">
                     {/* Tax summary strip */}
-                    <div className="flex items-center justify-between gap-4 px-8 pt-7 pb-5 border-b border-white/10">
+                    <div className="flex items-center justify-between gap-2 sm:gap-4 px-4 sm:px-8 pt-5 sm:pt-7 pb-4 sm:pb-5 border-b border-white/10">
                       <div className="text-center">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Subtotal (excl. VAT)</p>
-                        <p className="text-base font-black tabular-nums text-slate-200">{subtotal.toFixed(2)} <span className="text-xs opacity-60">SAR</span></p>
+                        <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Subtotal (excl. VAT)</p>
+                        <p className="text-sm sm:text-base font-black tabular-nums text-slate-200">{subtotal.toFixed(2)} <span className="text-[10px] sm:text-xs opacity-60">SAR</span></p>
                       </div>
                       <div className="text-center">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">VAT (15%)</p>
-                        <p className="text-base font-black tabular-nums text-amber-400">{vat.toFixed(2)} <span className="text-xs opacity-60">SAR</span></p>
+                        <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">VAT (15%)</p>
+                        <p className="text-sm sm:text-base font-black tabular-nums text-amber-400">{vat.toFixed(2)} <span className="text-[10px] sm:text-xs opacity-60">SAR</span></p>
                       </div>
                       <div className="text-center">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-1">Total incl. VAT</p>
-                        <p className="text-2xl font-black tabular-nums text-emerald-400">{details.totalAmount.toFixed(2)} <span className="text-sm opacity-70">SAR</span></p>
+                        <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-1">Total incl. VAT</p>
+                        <p className="text-xl sm:text-2xl font-black tabular-nums text-emerald-400">{details.totalAmount.toFixed(2)} <span className="text-xs sm:text-sm opacity-70">SAR</span></p>
                       </div>
                     </div>
                     {/* Payment method + ZATCA note */}
-                    <div className="flex items-center justify-between px-8 py-4">
+                    <div className="flex items-center justify-between px-4 sm:px-8 py-3 sm:py-4">
                       <div className="flex gap-2 flex-wrap">
                         {details.transactions.map((t: any) => (
                           <span key={t.id} className="text-[10px] font-black bg-white/10 px-3 py-1 rounded-full uppercase tracking-wider">
@@ -219,28 +219,28 @@ export function ViewInvoiceModal({
               })()}
 
               {/* Items Table */}
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center gap-2 px-1">
-                  <Package size={16} className="text-gray-400" />
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Purchased Items</h3>
+                  <Package size={14} className="text-gray-400 sm:w-4 sm:h-4" />
+                  <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400">Purchased Items</h3>
                 </div>
                 
                 {details.items && details.items.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 sm:space-y-3">
                     {details.items.map((item: any, i: number) => (
-                      <div key={i} className="group flex justify-between items-center p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl hover:border-emerald-200 transition-all shadow-sm">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-950 flex items-center justify-center text-xs font-black text-gray-400 group-hover:text-emerald-500 transition-colors">
+                      <div key={i} className="group flex justify-between items-center p-3 sm:p-5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl sm:rounded-2xl hover:border-emerald-200 transition-all shadow-sm">
+                        <div className="flex items-center gap-3 sm:gap-4">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gray-50 dark:bg-gray-950 flex items-center justify-center text-[10px] sm:text-xs font-black text-gray-400 group-hover:text-emerald-500 transition-colors shrink-0">
                             {i + 1}
                           </div>
-                          <div>
-                            <p className="font-black text-gray-900 dark:text-white leading-tight">{item.name}</p>
-                            {item.sku && <p className="text-[10px] text-gray-400 font-mono mt-0.5">{item.sku}</p>}
+                          <div className="min-w-0 pr-2">
+                            <p className="font-black text-sm sm:text-base text-gray-900 dark:text-white leading-tight truncate">{item.name}</p>
+                            {item.sku && <p className="text-[9px] sm:text-[10px] text-gray-400 font-mono mt-0.5 truncate">{item.sku}</p>}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.quantitySold}</p>
-                          <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">{item.unit}</p>
+                        <div className="text-right shrink-0">
+                          <p className="text-base sm:text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.quantitySold}</p>
+                          <p className="text-[9px] sm:text-[10px] font-black uppercase text-gray-400 tracking-wider">{item.unit}</p>
                         </div>
                       </div>
                     ))}
@@ -254,10 +254,10 @@ export function ViewInvoiceModal({
 
               {/* Warranty Section */}
               {warranties.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div className="flex items-center gap-2 px-1">
-                    <ShieldCheck size={16} className="text-violet-500" />
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-500">Warranty Coverage</h3>
+                    <ShieldCheck size={14} className="text-violet-500 sm:w-4 sm:h-4" />
+                    <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-violet-500">Warranty Coverage</h3>
                   </div>
                   <div className="space-y-2">
                     {warranties.map((w: any) => {
@@ -265,20 +265,20 @@ export function ViewInvoiceModal({
                       const isExpired = w.status === 'EXPIRED'
                       const Icon = isActive ? ShieldCheck : isExpired ? ShieldOff : ShieldAlert
                       return (
-                        <div key={w.id} className={`flex items-center gap-4 p-4 rounded-2xl border ${
+                        <div key={w.id} className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border ${
                           isActive ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' :
                           isExpired ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800' :
                           'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800'
                         }`}>
-                          <div className={`p-2 rounded-xl ${
+                          <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl shrink-0 ${
                             isActive ? 'bg-emerald-100 dark:bg-emerald-900/30' :
                             isExpired ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30'
                           }`}>
-                            <Icon size={16} className={isActive ? 'text-emerald-600' : isExpired ? 'text-red-500' : 'text-amber-600'} />
+                            <Icon size={14} className={`sm:w-4 sm:h-4 ${isActive ? 'text-emerald-600' : isExpired ? 'text-red-500' : 'text-amber-600'}`} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-black text-sm text-gray-900 dark:text-white truncate">{w.item?.name}</p>
-                            <p className="text-[10px] text-gray-500 font-medium">
+                            <p className="font-black text-xs sm:text-sm text-gray-900 dark:text-white truncate">{w.item?.name}</p>
+                            <p className="text-[9px] sm:text-[10px] text-gray-500 font-medium">
                               Replacement · {w.item?.warrantyDuration} {w.item?.warrantyUnit} · expires{' '}
                               <span className="font-bold">{format(new Date(w.warrantyEndDate), 'dd MMM yyyy')}</span>
                             </p>
@@ -297,9 +297,9 @@ export function ViewInvoiceModal({
               )}
 
               {details.description && (
-                <div className="p-6 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/30">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-2">Notes</p>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 italic">"{details.description}"</p>
+                <div className="p-4 sm:p-6 bg-amber-50/50 dark:bg-amber-900/10 rounded-xl sm:rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1.5 sm:mb-2">Notes</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 italic">"{details.description}"</p>
                 </div>
               )}
 
@@ -308,18 +308,18 @@ export function ViewInvoiceModal({
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 px-1">
                     <History size={14} className="text-indigo-500" />
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Payment Method Corrections</h3>
+                    <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-indigo-500">Payment Method Corrections</h3>
                   </div>
                   <div className="space-y-2">
                     {corrections.map((c: any) => (
-                      <div key={c.id} className="p-4 bg-indigo-50/60 rounded-2xl border border-indigo-100">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200">{c.oldMethod}</span>
+                      <div key={c.id} className="p-3 sm:p-4 bg-indigo-50/60 rounded-xl sm:rounded-2xl border border-indigo-100">
+                        <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
+                          <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 border border-rose-200">{c.oldMethod}</span>
                           <RefreshCw size={11} className="text-indigo-400" />
-                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200">{c.newMethod}</span>
+                          <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200">{c.newMethod}</span>
                         </div>
-                        <p className="text-xs font-medium text-gray-600 italic mb-1.5">"{c.reason}"</p>
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-[10px] sm:text-xs font-medium text-gray-600 italic mb-1 sm:mb-1.5">"{c.reason}"</p>
+                        <p className="text-[9px] sm:text-[10px] text-gray-400">
                           By <span className="font-bold text-gray-600">{c.correctedBy?.name}</span> · {format(new Date(c.createdAt), 'MMM d, yyyy · h:mm a')}
                         </p>
                       </div>

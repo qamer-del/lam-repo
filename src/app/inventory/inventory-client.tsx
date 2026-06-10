@@ -14,12 +14,14 @@ import { AddInventoryItemModal } from '@/components/add-inventory-item-modal'
 import { AddPurchaseModal } from '@/components/add-purchase-modal'
 import { StockAdjustmentModal } from '@/components/stock-adjustment-modal'
 import { ImportInventoryModal } from '@/components/import-inventory-modal'
+import { CreateReturnModal } from '@/components/create-return-modal'
+import { CreateAdjustmentModal } from '@/components/create-adjustment-modal'
 import { deactivateInventoryItem } from '@/actions/inventory'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { InventoryCategory } from '@prisma/client'
 
-type Tab = 'items' | 'purchases' | 'movements'
+type Tab = 'items' | 'purchases' | 'movements' | 'adjustments'
 
 const CATEGORY_COLORS: Record<string, string> = {
   POLISH: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
@@ -39,11 +41,13 @@ const MOVEMENT_COLORS: Record<string, string> = {
   PURCHASE_IN: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
   SALE_OUT: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
   ADJUSTMENT: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  ADJUSTMENT_OUT: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
   RETURN_IN: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  PURCHASE_RETURN_OUT: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
 }
 
 const MOVEMENT_LABELS: Record<string, string> = {
-  PURCHASE_IN: 'Stock In', SALE_OUT: 'Sale Out', ADJUSTMENT: 'Adjustment', RETURN_IN: 'Returned',
+  PURCHASE_IN: 'Stock In', SALE_OUT: 'Sale Out', ADJUSTMENT: 'Adj. In', ADJUSTMENT_OUT: 'Adj. Out', RETURN_IN: 'Sales Return', PURCHASE_RETURN_OUT: 'Purch. Return',
 }
 
 interface InventoryItem {
@@ -190,6 +194,7 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
     { key: 'items', label: t('items'), icon: Package },
     { key: 'purchases', label: t('purchases'), icon: ShoppingCart },
     { key: 'movements', label: t('movements'), icon: ArrowLeftRight },
+    { key: 'adjustments', label: 'Returns & Losses', icon: SlidersHorizontal },
   ]
   if (isAdmin || isOwner) {
     tabs.push({ key: 'barcodes', label: t('barcodeLabels') || 'Barcode & Labels', icon: Tag })
@@ -300,6 +305,13 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
             ))}
           </div>
         </div>
+
+        {tab === 'adjustments' && isAdmin && (
+          <div className="flex gap-2 w-full sm:w-auto">
+            <CreateReturnModal triggerClassName="flex-1 sm:flex-none h-11" />
+            <CreateAdjustmentModal items={initialItems} triggerClassName="flex-1 sm:flex-none h-11" />
+          </div>
+        )}
 
         {tab === 'items' && (
           <div className="relative w-full sm:w-72">
@@ -641,6 +653,23 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
               onPageChange={setCurrentPage}
             />
           )}
+        </Card>
+      )}
+
+      {/* ── ADJUSTMENTS TAB ── */}
+      {tab === 'adjustments' && (
+        <Card className="shadow-md border border-gray-200 dark:border-gray-800 p-8 text-center text-gray-500">
+          <SlidersHorizontal size={48} className="mx-auto text-gray-300 mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Returns & Adjustments</h2>
+          <p className="mt-2 text-sm max-w-md mx-auto">Use the buttons above to process a supplier purchase return or record a stock loss (damage, expired, etc.).</p>
+          
+          <div className="mt-8 text-left bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl border border-blue-100 dark:border-blue-900">
+            <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-2">How it works</h3>
+            <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-2 list-disc pl-4">
+              <li><strong>Purchase Returns:</strong> Removes stock and updates the supplier credit balance automatically. Requires a linked Purchase Order.</li>
+              <li><strong>Adjustments:</strong> Records stock reductions without affecting supplier balances. Useful for audits and damages.</li>
+            </ul>
+          </div>
         </Card>
       )}
 
