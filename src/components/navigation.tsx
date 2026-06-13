@@ -35,10 +35,13 @@ const navItems = [
   { href: '/admin/settings', icon: Settings, labelKey: 'settings' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN'], labelFallback: 'System Settings' },
 ]
 
-export function Sidebar({ role }: { role?: string }) {
+import { BranchSwitcherClient } from '@/components/branch-switcher'
+
+export function Sidebar({ role, branches, activeBranchId }: { role?: string; branches?: { id: number; name: string }[]; activeBranchId?: string | null }) {
   const pathname = usePathname()
   const { t, locale, setLocale } = useLanguage()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const isSuperAdmin = role === 'SUPER_ADMIN'
 
   return (
     <aside className="hidden md:flex flex-col w-64 min-h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-sm">
@@ -52,6 +55,9 @@ export function Sidebar({ role }: { role?: string }) {
 
       {/* Nav */}
       <nav className="flex-1 p-4 space-y-1">
+        {isSuperAdmin && branches && (
+          <BranchSwitcherClient branches={branches} activeBranchId={activeBranchId ?? null} />
+        )}
         {navItems.map(item => {
           if (item.allowedRoles && (!role || !item.allowedRoles.includes(role))) return null
           
@@ -124,9 +130,10 @@ export function Sidebar({ role }: { role?: string }) {
   )
 }
 
-export function MobileTopBar() {
+export function MobileTopBar({ role, branches, activeBranchId }: { role?: string; branches?: { id: number; name: string }[]; activeBranchId?: string | null }) {
   const { t, locale, setLocale } = useLanguage()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const isSuperAdmin = role === 'SUPER_ADMIN'
 
   return (
     <header className="md:hidden sticky top-0 z-50 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
@@ -164,9 +171,15 @@ export function MobileTopBar() {
           </button>
         </div>
       </div>
+      {isSuperAdmin && branches && (
+        <div className="px-4 pb-3">
+          <BranchSwitcherClient branches={branches} activeBranchId={activeBranchId ?? null} />
+        </div>
+      )}
     </header>
   )
 }
+
 
 
 export function MobileNav({ role }: { role?: string }) {

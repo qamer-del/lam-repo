@@ -1,9 +1,9 @@
-import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { getSystemSettings } from '@/actions/settings'
 import { ensureDefaultTemplate, getReceiptTemplates } from '@/actions/receipt-templates'
-import { getPendingUsers } from '@/actions/users'
+import { getPendingUsers, getAllUsersForAdmin } from '@/actions/users'
+import { getBranches } from '@/actions/branches'
 import { SettingsClient } from './settings-client'
 
 export const dynamic = 'force-dynamic'
@@ -15,38 +15,28 @@ export default async function AdminSettingsPage() {
   }
 
   const userRole = session?.user?.role ?? 'CASHIER'
+  const isSuperAdmin = userRole === 'SUPER_ADMIN'
 
   // Ensure default receipt template exists
   await ensureDefaultTemplate()
 
-  const [users, pendingUsers, settings, templates] = await Promise.all([
-    prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        role: true,
-        isActive: true,
-        status: true,
-        phone: true,
-        createdAt: true
-      },
-      where: { status: { in: ['ACTIVE', 'REJECTED'] } },
-      orderBy: { createdAt: 'asc' }
-    }),
+  const [users, pendingUsers, settings, templates, branches] = await Promise.all([
+    getAllUsersForAdmin(),
     getPendingUsers(),
     getSystemSettings(),
-    getReceiptTemplates()
+    getReceiptTemplates(),
+    isSuperAdmin ? getBranches() : Promise.resolve([]),
   ])
 
   return (
     <div className="px-4 py-8 max-w-7xl mx-auto min-h-[calc(100vh-4rem)]">
-      <SettingsClient 
-        initialUsers={users} 
+      <SettingsClient
+        initialUsers={users}
         initialPendingUsers={pendingUsers}
-        initialSettings={settings} 
+        initialSettings={settings}
         initialTemplates={templates}
         userRole={userRole}
+        initialBranches={branches}
       />
     </div>
   )

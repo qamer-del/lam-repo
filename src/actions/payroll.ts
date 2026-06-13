@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { isFridayDate } from '@/lib/payroll-engine'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 // ── Attendance Record Actions ────────────────────────────────────────────────
 
@@ -387,8 +388,9 @@ export async function settleSalaryV2(data: {
 // ── Payroll List Data ────────────────────────────────────────────────────────
 
 export async function getAllStaffForPayroll() {
+  const branchFilter = await getBranchFilter()
   return prisma.staff.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     include: {
       salarySettlements: {
         orderBy: { paidAt: 'desc' },

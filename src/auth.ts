@@ -30,7 +30,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             id: user.id,
             name: user.name,
             username: user.username,
-            role: user.role
+            role: user.role,
+            branchId: user.branchId ?? 1,
           }
         }
         return null
@@ -43,6 +44,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id
         token.role = (user as any).role
         token.username = (user as any).username
+        token.branchId = (user as any).branchId ?? 1
       }
       return token
     },
@@ -51,6 +53,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string
         session.user.role = token.role as any
         session.user.username = token.username as string
+        session.user.branchId = token.branchId as number
       }
       return session
     }
@@ -61,3 +64,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET || "lamv_auth_secret_fallback_9x8123908123",
 })
+

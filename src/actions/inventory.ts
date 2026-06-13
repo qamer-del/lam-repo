@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { InventoryCategory, MovementType, PayMethod } from '@prisma/client'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -31,8 +32,10 @@ export async function getInventoryItems() {
     throw new Error('Unauthorized')
   }
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.inventoryItem.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     orderBy: [{ category: 'asc' }, { name: 'asc' }],
   })
 }
@@ -42,8 +45,10 @@ export async function getAllInventoryItemsForSelect() {
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthorized')
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.inventoryItem.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     select: {
       id: true, name: true, unit: true, currentStock: true,
       category: true, sellingPrice: true, sku: true,
@@ -75,6 +80,7 @@ export async function createInventoryItem(data: {
   console.log('[createInventoryItem] Auth session obtained')
 
   console.log('[createInventoryItem] Creating item in DB...')
+  const branchId = await getCurrentBranchId()
   const item = await prisma.inventoryItem.create({
     data: {
       name: data.name,
@@ -91,6 +97,7 @@ export async function createInventoryItem(data: {
       warrantyUnit: data.hasWarranty ? (data.warrantyUnit ?? null) : null,
       barcode: data.barcode || null,
       barcodeType: data.barcode ? (data.barcodeType || 'CODE128') : null,
+      branchId,
     },
   })
 
@@ -104,6 +111,7 @@ export async function createInventoryItem(data: {
         unitCost: data.unitCost,
         note: 'Initial stock entry',
         recordedById: session.user.id,
+        branchId,
       },
     })
   }
@@ -129,6 +137,8 @@ export async function bulkCreateInventoryItems(items: {
 
   // Helper: round to 2 decimal places without floating-point drift
   const round2 = (n: number) => Math.round(n * 100) / 100
+
+  const branchId = await getCurrentBranchId()
 
   // Prepare all rows with precise VAT / price computation
   const rows = items.map((data) => {
@@ -158,6 +168,7 @@ export async function bulkCreateInventoryItems(items: {
       sellingPrice: finalPrice,
       currentStock: Math.round(data.initialStock),
       hasWarranty: false,
+      branchId,
     }
   })
 
@@ -178,6 +189,7 @@ export async function bulkCreateInventoryItems(items: {
         unitCost,
         note: 'Initial stock — imported from Excel',
         recordedById: session.user.id,
+        branchId,
       })),
     })
   }
@@ -364,7 +376,10 @@ export async function getPurchaseOrders() {
     throw new Error('Unauthorized')
   }
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.purchaseOrder.findMany({
+    where: { ...branchFilter },
     orderBy: { createdAt: 'desc' },
     include: {
       agent: { select: { id: true, name: true, companyName: true } },
@@ -401,6 +416,8 @@ export async function createPurchaseOrder(data: {
     0
   )
 
+  const branchId = await getCurrentBranchId()
+
   const txRecord = await prisma.$transaction(async (tx) => {
     // 1. Create PO
     const po = await tx.purchaseOrder.create({
@@ -412,6 +429,7 @@ export async function createPurchaseOrder(data: {
         note: data.note,
         receivedAt: new Date(),
         recordedById: session.user.id,
+        branchId,
         items: {
           create: data.items.map((i) => ({
             itemId: i.itemId,
@@ -442,6 +460,7 @@ export async function createPurchaseOrder(data: {
           purchaseOrderId: po.id,
           note: `Purchase Order #${po.id}`,
           recordedById: session.user.id,
+          branchId,
         },
       })
     }
@@ -457,6 +476,7 @@ export async function createPurchaseOrder(data: {
           : `Inventory purchase — no supplier (PO #${po.id})`,
         agentId: data.agentId || null,
         recordedById: session.user.id,
+        branchId,
       },
     })
 
@@ -487,8 +507,10 @@ export async function getStockMovements(itemId?: number) {
     throw new Error('Unauthorized')
   }
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.stockMovement.findMany({
-    where: itemId ? { itemId } : undefined,
+    where: { ...branchFilter, ...(itemId ? { itemId } : {}) },
     orderBy: { createdAt: 'desc' },
     take: 200,
     select: {
@@ -515,8 +537,10 @@ export async function getInventorySummary() {
     return null
   }
 
+  const branchFilter = await getBranchFilter()
+
   const items = await prisma.inventoryItem.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     select: { currentStock: true, reorderLevel: true, unitCost: true },
   })
 

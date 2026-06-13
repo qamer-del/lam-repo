@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { TransType, PayMethod } from '@prisma/client'
 import { createWarrantyRecordsForSale } from '@/actions/warranty'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 export async function addTransaction(data: {
   type: TransType
@@ -22,6 +23,8 @@ export async function addTransaction(data: {
 
   const activeShift = await getOrCreateActiveShift()
 
+  const branchId = await getCurrentBranchId()
+
   const tx = await prisma.transaction.create({
     data: {
       type: data.type,
@@ -30,7 +33,8 @@ export async function addTransaction(data: {
       description: data.description,
       staffId: data.staffId,
       recordedById: session.user.id,
-      shiftId: activeShift.id
+      shiftId: activeShift.id,
+      branchId,
     }
   })
   
@@ -44,12 +48,14 @@ export async function getDashboardData() {
   const role = session?.user?.role
 
   const isAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'OWNER'
+  const branchFilter = await getBranchFilter()
   
   // If cashier, they only see their own UNSETTLED transactions.
-  // Super Admin/Admin/Owner see everything.
+  // Super Admin/Admin/Owner see everything (within their branch).
   const whereClause = isAdmin 
-    ? {} 
+    ? { ...branchFilter } 
     : { 
+        ...branchFilter,
         recordedById: session?.user?.id,
         settlementId: null, // Crucial: exclude transactions that are already part of a handover/report
         OR: [
@@ -153,6 +159,7 @@ export async function getDashboardData() {
   const firstDayOfMonth = new Date(curYear, curMonth, 1)
   const consumptions = await prisma.internalConsumptionRequest.findMany({
     where: {
+      ...branchFilter,
       status: 'APPROVED',
       approvedAt: { gte: firstDayOfMonth }
     },
@@ -181,6 +188,7 @@ export async function getDashboardData() {
     internalConsumptionMonthQty,
     internalConsumptionMonthValue,
     recentSettlements: await prisma.settlement.findMany({
+      where: { ...branchFilter },
       orderBy: { reportDate: 'desc' },
       take: 5,
       include: {
@@ -213,10 +221,12 @@ export async function getOrCreateActiveShift() {
       throw new Error("Your account has been deleted or deactivated. Please log in again.")
     }
 
+    const branchId = session.user.branchId ?? 1
     shift = await prisma.shift.create({
       data: {
         openedById: session.user.id,
-        status: 'OPEN'
+        status: 'OPEN',
+        branchId,
       },
       include: {
         transactions: true
@@ -360,7 +370,10 @@ export async function getSettlementHistory() {
   const session = await auth()
   if (!session?.user?.id) throw new Error("Unauthorized")
 
+  const branchFilter = await getBranchFilter()
+
   return await prisma.settlement.findMany({
+    where: { ...branchFilter },
     orderBy: { reportDate: 'desc' },
     include: {
       transactions: {
@@ -408,6 +421,8 @@ export async function recordRefund(data: {
     ? `[${data.reason}] ${data.description || ''}`.trim()
     : data.description
 
+  const branchId = await getCurrentBranchId()
+
   // ── Atomic operation: all DB writes succeed or all roll back ─────────────────
   const tx = await prisma.$transaction(async (db) => {
     // 1. Create the financial RETURN transaction
@@ -420,6 +435,7 @@ export async function recordRefund(data: {
         invoiceNumber: data.invoiceNumber,
         recordedById: session.user.id,
         shiftId: activeShift.id,
+        branchId,
       },
     })
 
@@ -455,6 +471,7 @@ export async function recordRefund(data: {
             transactionId: returnTx.id,
             invoiceNumber: data.invoiceNumber,
             recordedById: session.user.id,
+            branchId,
           },
         })
       }
@@ -710,7 +727,8 @@ export async function settleAllSalaries(data: { month: number, year: number, met
     throw new Error("Unauthorized. Bulk settlement is restricted to Administrators.")
   }
 
-  const staffMembers = await prisma.staff.findMany({ where: { isActive: true }})
+  const branchFilter = await getBranchFilter()
+  const staffMembers = await prisma.staff.findMany({ where: { isActive: true, ...branchFilter }})
   const results = []
   for (const s of staffMembers) {
     results.push(await settleSalary({ staffId: s.id, month: data.month, year: data.year, method: data.method }))
@@ -801,8 +819,10 @@ export async function createSettlement(actualCashCounted: number) {
   // from a cashier handover (informational snapshot), but they remain active in the drawer
   // until this explicit admin settlement.
   console.log('[createSettlement] Fetching unsettled transactions...')
+  const branchFilter = await getBranchFilter()
   const unsettled = await prisma.transaction.findMany({
     where: { 
+      ...branchFilter,
       AND: [
         {
           OR: [
@@ -845,12 +865,15 @@ export async function createSettlement(actualCashCounted: number) {
     return acc;
   }, 0)
 
+  const branchId = await getCurrentBranchId()
+
   const settlement = await prisma.settlement.create({
     data: {
       totalCashHanded: cashHanded,
       actualCashCounted: actualCashCounted,
       totalNetworkVolume: networkVolume,
       performedById: session.user.id,
+      branchId,
       transactions: {
         connect: unsettled
           .filter((t: UnsettledTx) => t.method === 'CASH')
@@ -927,12 +950,15 @@ export async function createCashierHandover(actualCashCounted: number) {
     return acc;
   }, 0)
 
+  const branchId = await getCurrentBranchId()
+
   const settlement = await prisma.settlement.create({
     data: {
       totalCashHanded: cashHanded,
       actualCashCounted: actualCashCounted,
       totalNetworkVolume: networkVolume,
       performedById: session.user.id,
+      branchId,
       transactions: {
         connect: unsettled.map((t: UnsettledTx) => ({ id: t.id }))
       }
@@ -986,9 +1012,11 @@ export async function recordDailySales(data: {
     customerPhone?: string
     dueDate?: Date
     shiftId: number
+    branchId: number
   }
 
   const activeShift = await getOrCreateActiveShift()
+  const branchId = await getCurrentBranchId()
 
   const exactTime = new Date()
   const invoiceNumber = `INV-${Date.now()}` // Generate a unique serial number
@@ -1000,6 +1028,7 @@ export async function recordDailySales(data: {
     ...(data.customerName && { customerName: data.customerName }),
     ...(data.customerPhone && { customerPhone: data.customerPhone }),
     shiftId: activeShift.id,
+    branchId,
   }
 
   if (data.paymentMode === 'SPLIT') {
@@ -1058,6 +1087,7 @@ export async function recordDailySales(data: {
           note: `Consumed in sale — ${data.description || 'no description'}`,
           invoiceNumber: invoiceNumber,
           recordedById: session.user.id,
+          branchId,
         },
       })
     }
@@ -1135,7 +1165,8 @@ export async function settleCreditSale(data: {
         customerName: originalTx.customerName,
         customerPhone: originalTx.customerPhone,
         shiftId: (await getOrCreateActiveShift()).id,
-        isSettled: false // Standard sales are unsettled until cash handover
+        isSettled: false, // Standard sales are unsettled until cash handover
+        branchId: await getCurrentBranchId()
       }
     })
   })
@@ -1166,8 +1197,10 @@ export async function collectCreditPayment(data: {
     : { customerName: data.customerName, customerPhone: data.customerPhone }
 
   // Get all unpaid credit invoices for this customer, oldest first, with existing payments
+  const branchFilter = await getBranchFilter()
   const unpaidInvoices = await prisma.transaction.findMany({
     where: {
+      ...branchFilter,
       type: 'SALE',
       method: 'CREDIT',
       isSettled: false,
@@ -1228,6 +1261,7 @@ export async function collectCreditPayment(data: {
           customerId: alloc.invoice.customerId,
           shiftId: (await getOrCreateActiveShift()).id,
           isSettled: false, // Unsettled until cash handover / admin settlement
+          branchId: await getCurrentBranchId(),
         }
       })
       paymentTxs.push(paymentTx)
@@ -1350,10 +1384,13 @@ export async function getCashierPerformance() {
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
+  const branchFilter = await getBranchFilter()
+
   // Fetch all active users who have recorded any transaction in the current month
   const users = await prisma.user.findMany({
     where: { 
       isActive: true,
+      ...branchFilter,
       OR: [
         { role: 'CASHIER' },
         { records: { some: { type: 'SALE', createdAt: { gte: startOfMonth } } } }

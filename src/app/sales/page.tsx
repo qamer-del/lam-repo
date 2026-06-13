@@ -15,8 +15,9 @@ export default async function SalesRoute() {
     redirect('/sales/pos')
   }
 
+  const branchFilter = await (await import('@/actions/branch-helpers')).getBranchFilter()
   const typeFilter = { in: ['SALE', 'RETURN'] }
-  const baseWhere: any = { type: typeFilter }
+  const baseWhere: any = { type: typeFilter, ...branchFilter }
 
   const [sales, unpaidCreditSales, cashierPerformance] = await Promise.all([
     prisma.transaction.findMany({

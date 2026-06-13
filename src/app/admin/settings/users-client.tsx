@@ -37,10 +37,12 @@ export function UsersClient({
   initialUsers,
   initialPendingUsers,
   userRole,
+  branches,
 }: {
   initialUsers: any[]
   initialPendingUsers: any[]
   userRole: string
+  branches?: any[]
 }) {
   const router = useRouter()
   // Derive session user id for self-deletion guard (still need session for the id)
@@ -54,11 +56,11 @@ export function UsersClient({
 
   // ── Create user form state ────────────────────────────────────────────────
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', username: '', password: '', role: 'CASHIER', phone: '' })
+  const [form, setForm] = useState({ name: '', username: '', password: '', role: 'CASHIER', phone: '', branchId: '' })
 
   // ── Edit state ────────────────────────────────────────────────────────────
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', role: '', password: '', phone: '' })
+  const [editForm, setEditForm] = useState({ name: '', role: '', password: '', phone: '', branchId: '' })
 
   // ── Reset confirmation ────────────────────────────────────────────────────
   const [resetConfirm, setResetConfirm] = useState('')
@@ -67,8 +69,12 @@ export function UsersClient({
     e.preventDefault()
     setLoading(true)
     try {
-      await createUser(form)
-      setForm({ name: '', username: '', password: '', role: 'CASHIER', phone: '' })
+      const payload: any = { ...form }
+      if (payload.branchId) payload.branchId = Number(payload.branchId)
+      else delete payload.branchId
+      
+      await createUser(payload)
+      setForm({ name: '', username: '', password: '', role: 'CASHIER', phone: '', branchId: '' })
       router.refresh()
     } catch (err: any) {
       alert(err.message || t('errorCreatingUser'))
@@ -89,7 +95,7 @@ export function UsersClient({
 
   const startEdit = (user: any) => {
     setEditingId(user.id)
-    setEditForm({ name: user.name, role: user.role, password: '', phone: user.phone || '' })
+    setEditForm({ name: user.name, role: user.role, password: '', phone: user.phone || '', branchId: user.branchId ? String(user.branchId) : '' })
   }
 
   const handleEditSave = async (id: string) => {
@@ -100,6 +106,7 @@ export function UsersClient({
         role: editForm.role || undefined,
         password: editForm.password || undefined,
         phone: editForm.phone,
+        branchId: editForm.branchId ? Number(editForm.branchId) : undefined,
       })
       setEditingId(null)
       router.refresh()
@@ -233,6 +240,19 @@ export function UsersClient({
                     </SelectContent>
                   </Select>
                 </div>
+                {branches && branches.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Assigned Branch</Label>
+                    <Select value={form.branchId} onValueChange={v => setForm({ ...form, branchId: v ?? '' })}>
+                      <SelectTrigger><SelectValue placeholder="Main Branch (Default)" /></SelectTrigger>
+                      <SelectContent>
+                        {branches.map(b => (
+                          <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                   {t('createUser')}
                 </Button>
@@ -278,6 +298,19 @@ export function UsersClient({
                           <Label className="text-xs">New Password <span className="text-gray-400 font-normal">(leave blank to keep)</span></Label>
                           <Input type="password" value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))} className="h-8 text-sm" dir="ltr" placeholder="••••••••" />
                         </div>
+                        {branches && branches.length > 0 && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Branch</Label>
+                            <Select value={editForm.branchId} onValueChange={v => setEditForm(f => ({ ...f, branchId: v ?? '' }))}>
+                              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select branch" /></SelectTrigger>
+                              <SelectContent>
+                                {branches.map(b => (
+                                  <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" onClick={() => handleEditSave(user.id)} disabled={loading} className="h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5">
@@ -301,6 +334,11 @@ export function UsersClient({
                           <span className={`px-1.5 py-0.5 text-[9px] uppercase tracking-tighter rounded-md font-black ${roleBadge(user.role)}`}>
                             {user.role.replace('_', ' ')}
                           </span>
+                          {user.branchId && branches && branches.find(b => b.id === user.branchId) && (
+                            <span className="px-1.5 py-0.5 text-[9px] uppercase tracking-tighter rounded-md font-black bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                              {branches.find(b => b.id === user.branchId)?.name}
+                            </span>
+                          )}
                           {user.status === 'REJECTED' && (
                             <span className={`px-1.5 py-0.5 text-[9px] uppercase tracking-tighter rounded-md font-black ${statusBadge(user.status)}`}>
                               Rejected

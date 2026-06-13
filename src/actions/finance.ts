@@ -6,6 +6,7 @@ import { startOfMonth, endOfMonth, subMonths, format, startOfYear } from 'date-f
 import { renderToBuffer } from '@react-pdf/renderer'
 import { FinanceReportDocument } from '@/components/finance-report-document'
 import React from 'react'
+import { getBranchFilter } from '@/actions/branch-helpers'
 
 export async function getFinanceDashboardData(startDate?: Date, endDate?: Date) {
   const session = await auth()
@@ -16,15 +17,17 @@ export async function getFinanceDashboardData(startDate?: Date, endDate?: Date) 
 
   const now = new Date()
   const startOfCurrentYear = startOfYear(now)
+  const branchFilter = await getBranchFilter()
   
   const queryRange = (startDate && endDate) 
     ? { gte: startDate, lte: endDate } 
     : { gte: startOfCurrentYear }
 
-  // 1. Fetch all relevant data
+  // 1. Fetch all relevant data (branch-isolated)
   const [transactions, purchaseOrders, stockMovements] = await Promise.all([
     prisma.transaction.findMany({
       where: {
+        ...branchFilter,
         createdAt: queryRange,
         type: { in: ['SALE', 'RETURN', 'EXPENSE', 'SALARY_PAYMENT', 'AGENT_PAYMENT'] }
       },
@@ -36,7 +39,7 @@ export async function getFinanceDashboardData(startDate?: Date, endDate?: Date) 
       orderBy: { createdAt: 'desc' }
     }),
     prisma.purchaseOrder.findMany({
-      where: { createdAt: queryRange },
+      where: { ...branchFilter, createdAt: queryRange },
       include: {
         items: { include: { item: { select: { name: true } } } },
         agent: { select: { name: true, companyName: true } },
@@ -46,6 +49,7 @@ export async function getFinanceDashboardData(startDate?: Date, endDate?: Date) 
     }),
     prisma.stockMovement.findMany({
       where: {
+        ...branchFilter,
         createdAt: queryRange,
         type: { in: ['SALE_OUT', 'RETURN_IN'] }
       },

@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { ConsumptionStatus, MovementType } from '@prisma/client'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 export async function createConsumptionRequest(data: {
   itemId: number
@@ -19,6 +20,8 @@ export async function createConsumptionRequest(data: {
     throw new Error('Either Staff or Employee Name must be provided')
   }
 
+  const branchId = await getCurrentBranchId()
+
   return prisma.internalConsumptionRequest.create({
     data: {
       itemId: data.itemId,
@@ -28,7 +31,8 @@ export async function createConsumptionRequest(data: {
       reason: data.reason,
       notes: data.notes,
       createdById: session.user.id,
-      status: ConsumptionStatus.PENDING
+      status: ConsumptionStatus.PENDING,
+      branchId,
     }
   })
 }
@@ -40,11 +44,12 @@ export async function getConsumptionRequests(params?: {
   const session = await auth()
   if (!session?.user) throw new Error('Unauthorized')
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.internalConsumptionRequest.findMany({
     where: {
+      ...branchFilter,
       ...(params?.status ? { status: params.status } : {}),
-      // If Cashier, maybe they can only view their own? Or view all?
-      // "Cashier: View own requests"
       ...(session.user.role === 'CASHIER' ? { createdById: session.user.id } : {})
     },
     include: {

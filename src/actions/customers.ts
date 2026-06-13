@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 export async function createCustomer(data: {
   name: string
@@ -13,12 +14,15 @@ export async function createCustomer(data: {
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthorized')
 
+  const branchId = await getCurrentBranchId()
+
   const customer = await prisma.customer.create({
     data: {
       name: data.name.trim(),
       phone: data.phone?.trim() || null,
       email: data.email?.trim() || null,
       notes: data.notes?.trim() || null,
+      branchId,
     },
   })
 
@@ -65,8 +69,10 @@ export async function getAllCustomers() {
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthorized')
 
+  const branchFilter = await getBranchFilter()
+
   const customers = await prisma.customer.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     orderBy: { name: 'asc' },
     include: {
       transactions: {
@@ -114,8 +120,10 @@ export async function getAllCustomersForSelect() {
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthorized')
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.customer.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     orderBy: { name: 'asc' },
     select: { id: true, name: true, phone: true },
   })

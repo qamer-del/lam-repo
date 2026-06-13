@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { TransType, PayMethod } from '@prisma/client'
+import { getBranchFilter } from '@/actions/branch-helpers'
 
 export interface ActivityFilter {
   type?: 'ALL' | 'SALE' | 'RETURN' | 'SETTLEMENT'
@@ -57,6 +58,11 @@ export async function getActivityData(filters: ActivityFilter = {}) {
     isInternal: false
   }
 
+  const branchFilter = await getBranchFilter()
+  if (branchFilter.branchId) {
+    where.branchId = branchFilter.branchId
+  }
+
   if (type !== 'ALL') {
     if (type === 'SETTLEMENT') {
       // Settlements are not transactions directly in this schema? 
@@ -69,13 +75,11 @@ export async function getActivityData(filters: ActivityFilter = {}) {
 
   // Handle Settlements separately if needed
   if (type === 'SETTLEMENT') {
+    const settlementWhere: any = { reportDate: { gte: start, lte: end } }
+    if (branchFilter.branchId) settlementWhere.branchId = branchFilter.branchId
+
     const settlements = await prisma.settlement.findMany({
-      where: {
-        reportDate: {
-          gte: start,
-          lte: end
-        }
-      },
+      where: settlementWhere,
       orderBy: { reportDate: 'desc' },
       skip,
       take: limit,
@@ -94,7 +98,7 @@ export async function getActivityData(filters: ActivityFilter = {}) {
         timestamp: s.reportDate,
         status: 'COMPLETED'
       })),
-      total: await prisma.settlement.count({ where: { reportDate: { gte: start, lte: end } } })
+      total: await prisma.settlement.count({ where: settlementWhere })
     }
   }
 

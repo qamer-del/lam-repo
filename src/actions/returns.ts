@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { PayMethod } from '@prisma/client'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 // Helper to enforce admin
 async function requireAdminOrAbove() {
@@ -17,8 +18,10 @@ async function requireAdminOrAbove() {
 
 export async function getPurchaseReturns() {
   await requireAdminOrAbove()
+  const branchFilter = await getBranchFilter()
   
   return prisma.purchaseReturn.findMany({
+    where: { ...branchFilter },
     orderBy: { createdAt: 'desc' },
     include: {
       agent: { select: { name: true } },
@@ -49,6 +52,7 @@ export async function createPurchaseReturn(data: {
     throw new Error('Return must have at least one item')
   }
 
+  const branchId = await getCurrentBranchId()
   const totalAmount = data.items.reduce((sum, i) => sum + i.quantity * i.unitCost, 0)
   const returnNumber = `PR-${Date.now().toString().slice(-6)}`
 
@@ -61,6 +65,7 @@ export async function createPurchaseReturn(data: {
       notes: data.notes,
       totalAmount,
       createdById: session.user.id,
+      branchId,
       items: {
         create: data.items.map(i => ({
           itemId: i.itemId,

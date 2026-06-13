@@ -103,12 +103,12 @@ export function ViewInvoiceModal({
                 </div>
               </DialogTitle>
               {details && (
-                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto mt-4 sm:mt-0">
                   {/* Correct Payment Method — Admin only */}
                   {isAdmin && (
                     <button
                       onClick={() => setCorrectionOpen(true)}
-                      className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-colors border border-indigo-100"
+                      className="col-span-1 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg sm:rounded-xl font-bold text-[9px] sm:text-xs uppercase tracking-widest transition-colors border border-indigo-100"
                     >
                       <RefreshCw size={14} />
                       <span>Correct</span>
@@ -132,17 +132,17 @@ export function ViewInvoiceModal({
                           paymentMethod: details.transactions?.[0]?.method || 'CASH',
                         })
                       }}
-                      className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-colors disabled:opacity-50"
+                      className="col-span-1 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-lg sm:rounded-xl font-bold text-[9px] sm:text-xs uppercase tracking-widest transition-colors disabled:opacity-50"
                     >
                       <Printer size={16} />
-                      <span>{isPrinting ? 'Printing' : 'Reprint'}</span>
+                      <span>{isPrinting ? 'Print' : 'Reprint'}</span>
                     </button>
                   )}
                   {/* Save PDF */}
                   <PDFDownloadLink
                     document={<InvoiceDocument details={details} warranties={warranties} locale={locale} qrDataUrl={qrDataUrl} />}
                     fileName={`invoice-${details.invoiceNumber}.pdf`}
-                    className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg sm:rounded-xl font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-colors"
+                    className="col-span-2 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg sm:rounded-xl font-bold text-[9px] sm:text-xs uppercase tracking-widest transition-colors"
                   >
                     <Download size={16} />
                     <span>Save PDF</span>
@@ -186,8 +186,8 @@ export function ViewInvoiceModal({
                 return (
                   <div className="relative overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] bg-slate-900 text-white shadow-xl shadow-slate-900/20">
                     {/* Tax summary strip */}
-                    <div className="flex items-center justify-between gap-2 sm:gap-4 px-4 sm:px-8 pt-5 sm:pt-7 pb-4 sm:pb-5 border-b border-white/10">
-                      <div className="text-center">
+                    <div className="grid grid-cols-2 sm:flex sm:items-center sm:justify-between gap-4 px-4 sm:px-8 pt-5 sm:pt-7 pb-4 sm:pb-5 border-b border-white/10">
+                      <div className="text-center sm:text-left">
                         <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Subtotal (excl. VAT)</p>
                         <p className="text-sm sm:text-base font-black tabular-nums text-slate-200">{subtotal.toFixed(2)} <span className="text-[10px] sm:text-xs opacity-60">SAR</span></p>
                       </div>
@@ -195,7 +195,7 @@ export function ViewInvoiceModal({
                         <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">VAT (15%)</p>
                         <p className="text-sm sm:text-base font-black tabular-nums text-amber-400">{vat.toFixed(2)} <span className="text-[10px] sm:text-xs opacity-60">SAR</span></p>
                       </div>
-                      <div className="text-center">
+                      <div className="text-center col-span-2 sm:col-span-1 border-t border-white/10 sm:border-0 pt-4 sm:pt-0 mt-2 sm:mt-0 sm:text-right">
                         <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-emerald-400 mb-1">Total incl. VAT</p>
                         <p className="text-xl sm:text-2xl font-black tabular-nums text-emerald-400">{details.totalAmount.toFixed(2)} <span className="text-xs sm:text-sm opacity-70">SAR</span></p>
                       </div>

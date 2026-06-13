@@ -107,7 +107,7 @@ export default async function PosPage() {
     }) : Promise.resolve([]),
 
     prisma.inventoryItem.findMany({
-      where: { isActive: true },
+      where: { isActive: true, ...(userId ? await (await import('@/actions/branch-helpers')).getBranchFilter() : {}) },
       orderBy: { name: 'asc' },
       select: {
         id: true, name: true, sku: true, unit: true,
@@ -116,6 +116,7 @@ export default async function PosPage() {
       },
     }),
     prisma.customer.findMany({
+      where: userId ? await (await import('@/actions/branch-helpers')).getBranchFilter() : undefined,
       orderBy: { name: 'asc' },
       select: { id: true, name: true, phone: true },
     }),

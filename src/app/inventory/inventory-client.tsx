@@ -17,9 +17,11 @@ import { ImportInventoryModal } from '@/components/import-inventory-modal'
 import { CreateReturnModal } from '@/components/create-return-modal'
 import { CreateAdjustmentModal } from '@/components/create-adjustment-modal'
 import { deactivateInventoryItem } from '@/actions/inventory'
+import { approvePurchaseReturn, rejectPurchaseReturn } from '@/actions/returns'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { InventoryCategory } from '@prisma/client'
+import { InventoryCategory, ReturnStatus } from '@prisma/client'
+import { toast } from 'sonner'
 
 type Tab = 'items' | 'purchases' | 'movements' | 'adjustments'
 
@@ -71,10 +73,21 @@ interface StockMovement {
   recordedBy: { name: string } | null
 }
 
+interface PurchaseReturn {
+  id: number; returnNumber: string; totalAmount: number; status: ReturnStatus
+  reason: string; notes: string | null; createdAt: Date
+  agent: { name: string } | null
+  purchaseOrder: { id: number; method: string } | null
+  createdBy: { name: string } | null
+  approvedBy: { name: string } | null
+  items: { quantity: number; unitCost: number; item: { name: string; unit: string } }[]
+}
+
 interface Props {
   initialItems: InventoryItem[]
   initialPurchases: PurchaseOrder[]
   initialMovements: StockMovement[]
+  initialReturns: PurchaseReturn[]
   userRole: string
 }
 
@@ -156,11 +169,12 @@ function Pagination({
   )
 }
 
-export function InventoryClient({ initialItems, initialPurchases, initialMovements, userRole }: Props) {
+export function InventoryClient({ initialItems, initialPurchases, initialMovements, initialReturns, userRole }: Props) {
   const { t } = useLanguage()
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('items')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
   const [editItem, setEditItem] = useState<InventoryItem | null>(null)
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -183,6 +197,34 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
     if (!confirm('Deactivate this item? It will no longer appear in stock.')) return
     await deactivateInventoryItem(id)
     router.refresh()
+  }
+
+  const handleApproveReturn = async (id: number) => {
+    if (!confirm('Approve this return? Stock will be reduced and credit note generated.')) return
+    setIsProcessing(true)
+    try {
+      await approvePurchaseReturn(id)
+      toast.success('Return approved successfully')
+      router.refresh()
+    } catch (e: any) {
+      toast.error('Failed to approve', { description: e.message })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleRejectReturn = async (id: number) => {
+    if (!confirm('Reject this return? No stock will be deducted.')) return
+    setIsProcessing(true)
+    try {
+      await rejectPurchaseReturn(id)
+      toast.success('Return rejected')
+      router.refresh()
+    } catch (e: any) {
+      toast.error('Failed to reject', { description: e.message })
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const filteredItems = initialItems.filter(item =>
@@ -658,19 +700,104 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
 
       {/* ── ADJUSTMENTS TAB ── */}
       {tab === 'adjustments' && (
-        <Card className="shadow-md border border-gray-200 dark:border-gray-800 p-8 text-center text-gray-500">
-          <SlidersHorizontal size={48} className="mx-auto text-gray-300 mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Returns & Adjustments</h2>
-          <p className="mt-2 text-sm max-w-md mx-auto">Use the buttons above to process a supplier purchase return or record a stock loss (damage, expired, etc.).</p>
-          
-          <div className="mt-8 text-left bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl border border-blue-100 dark:border-blue-900">
-            <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-2">How it works</h3>
-            <ul className="text-sm text-blue-800 dark:text-blue-400 space-y-2 list-disc pl-4">
-              <li><strong>Purchase Returns:</strong> Removes stock and updates the supplier credit balance automatically. Requires a linked Purchase Order.</li>
-              <li><strong>Adjustments:</strong> Records stock reductions without affecting supplier balances. Useful for audits and damages.</li>
-            </ul>
-          </div>
-        </Card>
+        <div className="space-y-6">
+          <Card className="shadow-md border border-gray-200 dark:border-gray-800 p-6 text-center text-gray-500">
+            <SlidersHorizontal size={40} className="mx-auto text-gray-300 mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Returns & Adjustments</h2>
+            <p className="mt-2 text-sm max-w-md mx-auto">Use the buttons above to process a supplier purchase return or record a stock loss.</p>
+          </Card>
+
+          {/* Returns Table */}
+          <Card className="shadow-md border border-gray-200 dark:border-gray-800 overflow-hidden">
+            <CardHeader className="bg-gray-50 dark:bg-gray-900/50 pb-4 border-b border-gray-100 dark:border-gray-800">
+              <CardTitle className="text-lg">Purchase Returns</CardTitle>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Return No.</TableHead>
+                    <TableHead>PO Reference</TableHead>
+                    <TableHead>Supplier</TableHead>
+                    <TableHead>Items</TableHead>
+                    <TableHead>Total Value</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date / By</TableHead>
+                    {isAdmin && <TableHead className="text-right">Action</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {initialReturns.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-12 text-gray-400">No returns found</TableCell>
+                    </TableRow>
+                  )}
+                  {initialReturns.map((ret) => (
+                    <TableRow key={ret.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                      <TableCell className="font-mono text-sm font-bold text-indigo-600">{ret.returnNumber}</TableCell>
+                      <TableCell>
+                        {ret.purchaseOrder ? `PO #${ret.purchaseOrder.id} (${ret.purchaseOrder.method})` : '—'}
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">{ret.agent?.name || '—'}</TableCell>
+                      <TableCell>
+                        <div className="space-y-0.5">
+                          {ret.items.map((i, idx) => (
+                            <p key={idx} className="text-xs text-gray-600 dark:text-gray-400">
+                              {i.item.name} × {i.quantity} {i.item.unit}
+                            </p>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-black tabular-nums">{ret.totalAmount.toFixed(2)} SAR</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          ret.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
+                          ret.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                          'bg-amber-100 text-amber-700'
+                        }`}>
+                          {ret.status}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{format(new Date(ret.createdAt), 'PP')}</p>
+                        <p className="text-xs text-gray-400">{ret.createdBy?.name}</p>
+                      </TableCell>
+                      {isAdmin && (
+                        <TableCell className="text-right space-x-2">
+                          {ret.status === 'PENDING' && (
+                            <>
+                              <Button
+                                size="sm" variant="outline"
+                                className="h-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+                                onClick={() => handleApproveReturn(ret.id)}
+                                disabled={isProcessing}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm" variant="outline"
+                                className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                onClick={() => handleRejectReturn(ret.id)}
+                                disabled={isProcessing}
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {ret.status !== 'PENDING' && (
+                            <span className="text-xs text-gray-400 italic">
+                              Processed by {ret.approvedBy?.name}
+                            </span>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* Edit Item Modal */}

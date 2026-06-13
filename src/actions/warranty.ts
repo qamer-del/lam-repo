@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
 import { addMonths, addDays, isPast } from 'date-fns'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ export async function createWarrantyRecordsForSale(data: {
   customerId?: number
   customerName?: string
   customerPhone?: string
+  branchId?: number
 }) {
   const itemIds = data.items.map((i) => i.itemId)
   const invItems = await prisma.inventoryItem.findMany({
@@ -29,6 +31,8 @@ export async function createWarrantyRecordsForSale(data: {
   })
 
   if (invItems.length === 0) return []
+
+  const branchId = data.branchId ?? (await getCurrentBranchId())
 
   const warranties = []
   for (const inv of invItems) {
@@ -43,6 +47,7 @@ export async function createWarrantyRecordsForSale(data: {
       saleDate: data.saleDate,
       warrantyEndDate,
       status: 'ACTIVE' as const,
+      branchId,
     })
   }
 
@@ -174,6 +179,8 @@ export async function processWarrantyClaim(data: {
     throw new Error('Insufficient stock to process this replacement.')
   }
 
+  const branchId = await getCurrentBranchId()
+
   const result = await prisma.$transaction(async (tx) => {
     // 1. Decrement available stock (replacement item going out)
     await tx.inventoryItem.update({
@@ -195,6 +202,7 @@ export async function processWarrantyClaim(data: {
         note: `Warranty replacement #${warranty.replacementCount + 1} — Invoice ${warranty.invoiceNumber}. ${data.claimNotes || ''}`.trim(),
         invoiceNumber: warranty.invoiceNumber,
         recordedById: session.user.id,
+        branchId,
       },
     })
 
@@ -209,6 +217,7 @@ export async function processWarrantyClaim(data: {
         invoiceNumber: warranty.invoiceNumber,
         recordedById: session.user.id,
         isRestocked: false,
+        branchId,
       },
     })
 
@@ -225,6 +234,7 @@ export async function processWarrantyClaim(data: {
         customerPhone: warranty.customerPhone || undefined,
         recordedById: session.user.id,
         isSettled: true,
+        branchId,
       },
     })
 
@@ -270,13 +280,15 @@ export async function getActiveWarranties() {
     throw new Error('Unauthorized')
   }
 
+  const branchFilter = await getBranchFilter()
+
   await prisma.warranty.updateMany({
-    where: { status: 'ACTIVE', warrantyEndDate: { lt: new Date() } },
+    where: { ...branchFilter, status: 'ACTIVE', warrantyEndDate: { lt: new Date() } },
     data: { status: 'EXPIRED' },
   })
 
   return prisma.warranty.findMany({
-    where: { status: 'ACTIVE' },
+    where: { ...branchFilter, status: 'ACTIVE' },
     include: {
       item: { select: { name: true, sku: true } },
       customer: { select: { name: true, phone: true } },
@@ -293,10 +305,12 @@ export async function getExpiringSoonWarranties(days = 30) {
     throw new Error('Unauthorized')
   }
 
+  const branchFilter = await getBranchFilter()
   const cutoff = addDays(new Date(), days)
 
   return prisma.warranty.findMany({
     where: {
+      ...branchFilter,
       status: 'ACTIVE',
       warrantyEndDate: { lte: cutoff, gte: new Date() },
     },
@@ -316,22 +330,22 @@ export async function getWarrantyStats() {
     return null
   }
 
+  const branchFilter = await getBranchFilter()
   const now = new Date()
   const in30 = addDays(now, 30)
 
   const [active, expiringSoon, replaced, expired, pendingSupplierCases, totalReplacements] = await Promise.all([
-    prisma.warranty.count({ where: { status: 'ACTIVE' } }),
-    prisma.warranty.count({ where: { status: 'ACTIVE', warrantyEndDate: { lte: in30 } } }),
-    prisma.warranty.count({ where: { replacementCount: { gt: 0 } } }),
-    prisma.warranty.count({ where: { status: 'EXPIRED' } }),
-    prisma.supplierWarrantyCase.count({ where: { status: { in: ['PENDING', 'SENT_TO_SUPPLIER'] } } }),
+    prisma.warranty.count({ where: { ...branchFilter, status: 'ACTIVE' } }),
+    prisma.warranty.count({ where: { ...branchFilter, status: 'ACTIVE', warrantyEndDate: { lte: in30 } } }),
+    prisma.warranty.count({ where: { ...branchFilter, replacementCount: { gt: 0 } } }),
+    prisma.warranty.count({ where: { ...branchFilter, status: 'EXPIRED' } }),
+    prisma.supplierWarrantyCase.count({ where: { ...branchFilter, status: { in: ['PENDING', 'SENT_TO_SUPPLIER'] } } }),
     prisma.warrantyReplacement.count(),
   ])
 
-  // Warranty return stock summary across all items
   const returnStockAgg = await prisma.inventoryItem.aggregate({
     _sum: { warrantyReturnStock: true, damagedStock: true },
-    where: { OR: [{ warrantyReturnStock: { gt: 0 } }, { damagedStock: { gt: 0 } }] },
+    where: { ...branchFilter, OR: [{ warrantyReturnStock: { gt: 0 } }, { damagedStock: { gt: 0 } }] },
   })
 
   return {
@@ -355,7 +369,10 @@ export async function getReplacementHistory(limit = 100) {
     throw new Error('Unauthorized')
   }
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.warrantyReplacement.findMany({
+    where: branchFilter.branchId ? { warranty: { branchId: branchFilter.branchId } } : {},
     orderBy: { createdAt: 'desc' },
     take: limit,
     include: {
@@ -377,8 +394,10 @@ export async function getWarrantyReturnStock() {
     throw new Error('Unauthorized')
   }
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.inventoryItem.findMany({
-    where: { OR: [{ warrantyReturnStock: { gt: 0 } }, { damagedStock: { gt: 0 } }] },
+    where: { ...branchFilter, OR: [{ warrantyReturnStock: { gt: 0 } }, { damagedStock: { gt: 0 } }] },
     select: {
       id: true, name: true, sku: true, unit: true,
       warrantyReturnStock: true, damagedStock: true, unitCost: true,
@@ -396,7 +415,10 @@ export async function getSupplierWarrantyCases() {
     throw new Error('Unauthorized')
   }
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.supplierWarrantyCase.findMany({
+    where: { ...branchFilter },
     orderBy: { createdAt: 'desc' },
     take: 100,
     include: {
@@ -421,6 +443,8 @@ export async function createSupplierWarrantyCase(data: {
     throw new Error('Unauthorized')
   }
 
+  const branchId = await (await import('@/actions/branch-helpers')).getCurrentBranchId()
+
   // Validate sufficient warrantyReturnStock for each item
   for (const lineItem of data.items) {
     const inv = await prisma.inventoryItem.findUnique({
@@ -441,6 +465,7 @@ export async function createSupplierWarrantyCase(data: {
         notes: data.notes || null,
         status: 'PENDING',
         createdById: session.user.id,
+        branchId,
         items: {
           create: data.items.map((i) => ({
             itemId: i.itemId,
@@ -504,6 +529,8 @@ export async function resolveSupplierCase(data: {
   if (!supplierCase) throw new Error('Supplier case not found')
   if (supplierCase.status === 'CLOSED') throw new Error('This case is already closed')
 
+  const branchId = await getCurrentBranchId()
+
   await prisma.$transaction(async (tx) => {
     const resolutionStatus = data.resolution === 'REPLACED' ? 'REPLACED'
       : data.resolution === 'REPAIRED' ? 'REPAIRED'
@@ -528,6 +555,7 @@ export async function resolveSupplierCase(data: {
             unitCost: caseItem.item.unitCost,
             note: `Supplier warranty ${data.resolution.toLowerCase()} — Case #${data.caseId}`,
             recordedById: session.user.id,
+            branchId,
           },
         })
       } else if (data.resolution === 'REJECTED') {
@@ -566,6 +594,7 @@ export async function resolveSupplierCase(data: {
           recordedById: session.user.id,
           isSettled: false,
           isInternal: false,
+          branchId,
         },
       })
     }

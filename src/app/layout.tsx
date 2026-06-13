@@ -7,6 +7,8 @@ import { Sidebar, MobileNav, MobileTopBar } from '@/components/navigation';
 import { auth } from "@/auth"
 import { SessionProvider } from 'next-auth/react'
 import { Toaster } from 'sonner'
+import { cookies } from 'next/headers'
+import { prisma } from '@/lib/prisma'
 
 const inter = Inter({
   variable: "--font-inter",
@@ -30,7 +32,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth()
-  console.log("LAYOUT SESSION:", session)
+  
+  let branches = undefined
+  let activeBranchId = undefined
+  
+  if (session?.user?.role === 'SUPER_ADMIN') {
+    branches = await prisma.branch.findMany({ select: { id: true, name: true }, orderBy: { createdAt: 'asc' } })
+    const cookieStore = await cookies()
+    activeBranchId = cookieStore.get('active_branch_id')?.value
+  }
 
   return (
     <html lang="en" className={`${inter.variable} ${cairo.variable} h-full antialiased`}>
@@ -40,9 +50,9 @@ export default async function RootLayout({
             <PrinterProvider>
               {session ? (
                 <div className="flex flex-col md:flex-row min-h-screen">
-                  <Sidebar role={session?.user?.role} />
+                  <Sidebar role={session?.user?.role} branches={branches} activeBranchId={activeBranchId} />
                   <div className="flex-1 flex flex-col min-w-0">
-                    <MobileTopBar />
+                    <MobileTopBar role={session?.user?.role} branches={branches} activeBranchId={activeBranchId} />
                     <main className="flex-1 pb-24 md:pb-0">
                       {children}
                     </main>

@@ -3,9 +3,12 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 export async function getAgents() {
+  const branchFilter = await getBranchFilter()
   const agents = await prisma.agent.findMany({
+    where: { ...branchFilter },
     orderBy: { name: 'asc' },
     include: {
       transactions: {
@@ -20,11 +23,14 @@ export async function createAgent(data: { name: string; companyName?: string; op
   const session = await auth()
   if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error('Unauthorized')
 
+  const branchId = await getCurrentBranchId()
+
   await prisma.agent.create({
     data: {
       name: data.name,
       companyName: data.companyName,
       openingBalance: data.openingBalance,
+      branchId,
     }
   })
   
@@ -43,6 +49,8 @@ export async function addAgentTransaction(data: {
   const session = await auth()
   if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error('Unauthorized')
 
+  const branchId = await getCurrentBranchId()
+
   await prisma.transaction.create({
     data: {
       type: data.type,
@@ -50,7 +58,8 @@ export async function addAgentTransaction(data: {
       method: data.method,
       description: data.description,
       agentId: data.agentId,
-      recordedById: session.user.id
+      recordedById: session.user.id,
+      branchId,
     }
   })
 

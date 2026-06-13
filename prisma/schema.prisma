@@ -1,4 +1,5 @@
 // This is your Prisma schema file,
+// This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -7,6 +8,34 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+
+model Branch {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  location    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users                 User[]
+  staff                 Staff[]
+  transactions          Transaction[]
+  settlements           Settlement[]
+  shifts                Shift[]
+  salarySettlements     SalarySettlement[]
+  inventoryItems        InventoryItem[]
+  purchaseOrders        PurchaseOrder[]
+  purchaseReturns       PurchaseReturn[]
+  stockAdjustments      StockAdjustment[]
+  stockMovements        StockMovement[]
+  warranties            Warranty[]
+  supplierCases         SupplierWarrantyCase[]
+  consumptions          InternalConsumptionRequest[]
+  bnplSessions          BnplSession[]
+  customers             Customer[]
+  agents                Agent[]
 }
 
 enum TransType {
@@ -142,6 +171,8 @@ model User {
   purchaseReturnsCreated PurchaseReturn[] @relation("PurchaseReturnCreatedBy")
   purchaseReturnsApproved PurchaseReturn[] @relation("PurchaseReturnApprovedBy")
   stockAdjustments      StockAdjustment[] @relation("AdjustmentCreatedBy")
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model Staff {
@@ -170,6 +201,8 @@ model Staff {
   absenceRecords      AbsenceRecord[]
   attendanceRecords   AttendanceRecord[]
   consumptions        InternalConsumptionRequest[]
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model Agent {
@@ -182,6 +215,8 @@ model Agent {
   purchaseOrders  PurchaseOrder[]
   supplierCases   SupplierWarrantyCase[]
   purchaseReturns PurchaseReturn[]
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model Customer {
@@ -197,6 +232,8 @@ model Customer {
   transactions Transaction[]
   warranties   Warranty[]
   bnplSessions BnplSession[]
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model Transaction {
@@ -230,6 +267,8 @@ model Transaction {
   shift               Shift?            @relation(fields: [shiftId], references: [id])
   monthlyDeductionLimit Float?           // If set, this advance deducts at most this amount per settlement
   createdAt           DateTime          @default(now())
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model Settlement {
@@ -244,6 +283,8 @@ model Settlement {
   performedById       String?
   performedBy         User?         @relation("UserSettlements", fields: [performedById], references: [id])
   shift               Shift?
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model Shift {
@@ -270,6 +311,8 @@ model Shift {
   actualCash      Float     @default(0)
   difference      Float     @default(0)
   
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
   denominations   Json?     // { "200": 5, "100": 10, ... }
   
   settlementId    Int?      @unique
@@ -319,6 +362,8 @@ model SalarySettlement {
   cashSource            String?       // CASH_DRAWER | SALARY_FUND (when method=CASH)
   paidAt                DateTime      @default(now())
   transactions          Transaction[]
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model AbsenceRecord {
@@ -395,6 +440,8 @@ model InventoryItem {
   consumptions            InternalConsumptionRequest[]
   purchaseReturnItems     PurchaseReturnItem[]
   adjustmentItems         StockAdjustmentItem[]
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model StockMovement {
@@ -414,6 +461,8 @@ model StockMovement {
   recordedById    String?
   recordedBy      User?          @relation(fields: [recordedById], references: [id])
   createdAt       DateTime       @default(now())
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model PurchaseOrder {
@@ -433,6 +482,8 @@ model PurchaseOrder {
   items     PurchaseOrderItem[]
   movements StockMovement[]
   returns   PurchaseReturn[]
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model PurchaseOrderItem {
@@ -468,6 +519,8 @@ model Warranty {
 
   replacements    WarrantyReplacement[]
 
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
   @@index([invoiceNumber])
   @@index([itemId])
   @@index([status])
@@ -509,6 +562,8 @@ model SupplierWarrantyCase {
   items           SupplierWarrantyCaseItem[]
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 // Items within a supplier warranty batch
@@ -593,6 +648,8 @@ model PurchaseReturn {
   updatedAt       DateTime       @updatedAt
 
   items           PurchaseReturnItem[]
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model PurchaseReturnItem {
@@ -621,6 +678,8 @@ model StockAdjustment {
   updatedAt        DateTime       @updatedAt
 
   items            StockAdjustmentItem[]
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
 }
 
 model StockAdjustmentItem {
@@ -674,6 +733,8 @@ model BnplSession {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
   @@index([invoiceNumber])
   @@index([status])
   @@index([provider])
@@ -712,6 +773,8 @@ model InternalConsumptionRequest {
   modifiedBy      User?             @relation("ConsumptionModifiedBy", fields: [modifiedById], references: [id])
   updatedAt       DateTime          @updatedAt
 
+  branchId              Int      @default(1)
+  branch                Branch?  @relation(fields: [branchId], references: [id])
   @@index([status])
   @@index([itemId])
   @@index([staffId])

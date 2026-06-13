@@ -1,16 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings2, Users, Receipt, Shield } from 'lucide-react'
+import { Settings2, Users, Receipt, GitBranch } from 'lucide-react'
 import { SystemSettingsPanel } from '@/components/system-settings-panel'
 import { UsersClient } from './users-client'
 import { ReceiptSettingsPanel } from '@/components/receipt-settings-panel'
-
-const TABS = [
-  { id: 'general', label: 'General', icon: Settings2 },
-  { id: 'receipts', label: 'Receipts & Printers', icon: Receipt },
-  { id: 'users', label: 'Users & Roles', icon: Users },
-]
+import { BranchManagement } from '@/components/branch-management'
+import { Branch } from '@prisma/client'
 
 export function SettingsClient({ 
   initialUsers, 
@@ -18,15 +14,26 @@ export function SettingsClient({
   initialSettings, 
   initialTemplates,
   userRole,
+  initialBranches = [],
 }: { 
-  initialUsers: any
+  initialUsers: any[]
   initialPendingUsers: any[]
   initialSettings: any
   initialTemplates: any
   userRole: string
+  initialBranches?: Branch[]
 }) {
-  const [activeTab, setActiveTab] = useState('general')
+  const isSuperAdmin = userRole === 'SUPER_ADMIN'
   const pendingCount = initialPendingUsers?.length || 0
+
+  const TABS = [
+    { id: 'general', label: 'General', icon: Settings2 },
+    { id: 'receipts', label: 'Receipts & Printers', icon: Receipt },
+    { id: 'users', label: 'Users & Roles', icon: Users },
+    ...(isSuperAdmin ? [{ id: 'branches', label: 'Branches', icon: GitBranch }] : []),
+  ]
+
+  const [activeTab, setActiveTab] = useState('general')
 
   return (
     <div className="flex flex-col md:flex-row items-start gap-8 max-w-[1400px] mx-auto">
@@ -93,8 +100,15 @@ export function SettingsClient({
                 <h2 className="text-2xl font-bold tracking-tight">User Management</h2>
                 <p className="text-gray-500 text-sm mt-1">Add, remove, or modify employee access permissions.</p>
               </div>
-              <UsersClient initialUsers={initialUsers} initialPendingUsers={initialPendingUsers} userRole={userRole} />
+              <UsersClient initialUsers={initialUsers} initialPendingUsers={initialPendingUsers} userRole={userRole} branches={initialBranches} />
             </div>
+          )}
+
+          {activeTab === 'branches' && isSuperAdmin && (
+            <BranchManagement
+              branches={initialBranches}
+              users={initialUsers.map((u: any) => ({ id: u.id, name: u.name, role: u.role, branchId: u.branchId ?? 1 }))}
+            />
           )}
         </div>
       </main>

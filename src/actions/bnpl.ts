@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache'
 import { randomUUID } from 'crypto'
 import { getOrCreateActiveShift } from '@/actions/transactions'
 import { createWarrantyRecordsForSale } from '@/actions/warranty'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
+
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -257,6 +259,7 @@ export async function createBnplSession(input: CreateBnplSessionInput) {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const activeShift = await getOrCreateActiveShift()
+  const branchId = await getCurrentBranchId()
   // Use UUID suffix to guarantee uniqueness even on rapid retries
   const invoiceNumber = `BNPL-${Date.now()}-${randomUUID().slice(0, 8)}`
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 min
@@ -278,6 +281,7 @@ export async function createBnplSession(input: CreateBnplSessionInput) {
         expiresAt,
         recordedById: session.user.id,
         shiftId: activeShift.id,
+        branchId,
       },
     })
     bnplSessionId = bnplSession.id
@@ -390,6 +394,7 @@ export async function finalizeBnplPayment(params: {
         recordedById: bnplSession.recordedById,
         shiftId: shiftId,
         isSettled: false,
+        branchId: bnplSession.branchId,
       },
     })
 
@@ -414,6 +419,7 @@ export async function finalizeBnplPayment(params: {
           note: `BNPL ${bnplSession.provider} sale — ${bnplSession.invoiceNumber}`,
           invoiceNumber: bnplSession.invoiceNumber,
           recordedById: bnplSession.recordedById,
+          branchId: bnplSession.branchId,
         },
       })
     }
@@ -428,6 +434,7 @@ export async function finalizeBnplPayment(params: {
       customerId: bnplSession.customerId ?? undefined,
       customerName: bnplSession.customerName ?? undefined,
       customerPhone: bnplSession.customerPhone,
+      branchId: bnplSession.branchId,
     })
   } catch (err) {
     console.error('[BNPL] Warranty creation failed:', err)
@@ -449,8 +456,11 @@ export async function getBnplSessions(filters?: {
   const role = session?.user?.role
   if (!['SUPER_ADMIN', 'ADMIN', 'OWNER'].includes(role || '')) throw new Error('Unauthorized')
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.bnplSession.findMany({
     where: {
+      ...branchFilter,
       ...(filters?.provider && { provider: filters.provider }),
       ...(filters?.status && { status: filters.status as any }),
     },

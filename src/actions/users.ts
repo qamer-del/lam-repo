@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import bcrypt from 'bcryptjs'
 import { revalidatePath } from 'next/cache'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 // ── Admin-created user ────────────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ export async function createUser(data: {
   password: string
   role: string
   phone?: string
+  branchId?: number
 }) {
   const session = await auth()
   if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') {
@@ -24,6 +26,7 @@ export async function createUser(data: {
   }
 
   const hashedPassword = await bcrypt.hash(data.password, 10)
+  const creatorBranchId = await getCurrentBranchId()
 
   await prisma.user.create({
     data: {
@@ -34,6 +37,7 @@ export async function createUser(data: {
       phone: data.phone || null,
       status: 'ACTIVE',
       isActive: true,
+      branchId: data.branchId ?? creatorBranchId,
     },
   })
 
@@ -104,6 +108,7 @@ export async function updateUser(id: string, data: {
   role?: string
   password?: string
   phone?: string
+  branchId?: number
 }) {
   const session = await auth()
   if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') {
@@ -119,6 +124,7 @@ export async function updateUser(id: string, data: {
   if (data.role) updateData.role = data.role
   if (data.phone !== undefined) updateData.phone = data.phone || null
   if (data.password) updateData.password = await bcrypt.hash(data.password, 10)
+  if (data.branchId !== undefined) updateData.branchId = data.branchId
 
   await prisma.user.update({ where: { id }, data: updateData })
   revalidatePath('/admin/settings')
@@ -142,12 +148,29 @@ export async function getUsers() {
   const session = await auth()
   if (!session?.user) throw new Error('Unauthorized')
 
+  const branchFilter = await getBranchFilter()
+
   return prisma.user.findMany({
-    where: { status: { in: ['ACTIVE', 'REJECTED'] } },
-    select: { id: true, name: true, role: true, username: true, phone: true, status: true, isActive: true, createdAt: true },
+    where: { status: { in: ['ACTIVE', 'REJECTED'] }, ...branchFilter },
+    select: { id: true, name: true, role: true, username: true, phone: true, status: true, isActive: true, createdAt: true, branchId: true },
     orderBy: { createdAt: 'asc' },
   })
 }
+
+// For admin settings page — shows ALL users regardless of branch (super admin use)
+export async function getAllUsersForAdmin() {
+  const session = await auth()
+  if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') {
+    throw new Error('Unauthorized')
+  }
+
+  return prisma.user.findMany({
+    where: { status: { in: ['ACTIVE', 'REJECTED'] } },
+    select: { id: true, name: true, role: true, username: true, phone: true, status: true, isActive: true, createdAt: true, branchId: true },
+    orderBy: { createdAt: 'asc' },
+  })
+}
+
 
 export async function getPendingUsers() {
   const session = await auth()

@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { getBranchFilter } from '@/actions/branch-helpers'
 
 async function assertAdmin() {
   const session = await auth()
@@ -12,8 +13,9 @@ async function assertAdmin() {
 /** One row per active employee — total paid, average monthly, last settlement date */
 export async function getPayrollSummaryReport(year: number) {
   await assertAdmin()
+  const branchFilter = await getBranchFilter()
   const settlements = await prisma.salarySettlement.findMany({
-    where: { year },
+    where: { year, ...branchFilter },
     include: { staff: { select: { id: true, name: true, isActive: true } } },
     orderBy: { paidAt: 'desc' },
   })
@@ -57,8 +59,9 @@ export async function getAttendanceReport(year: number, month?: number) {
     ? new Date(year, month, 0, 23, 59, 59)
     : new Date(year, 11, 31, 23, 59, 59)
 
+  const branchFilter = await getBranchFilter()
   const records = await prisma.attendanceRecord.findMany({
-    where: { date: { gte: startDate, lte: endDate } },
+    where: { date: { gte: startDate, lte: endDate }, staff: { ...branchFilter } },
     include: { staff: { select: { id: true, name: true } } },
     orderBy: [{ staff: { name: 'asc' } }, { date: 'asc' }],
   })
@@ -98,8 +101,9 @@ export async function getAttendanceReport(year: number, month?: number) {
 /** Overtime amounts per employee for the year */
 export async function getOvertimeReport(year: number) {
   await assertAdmin()
+  const branchFilter = await getBranchFilter()
   const settlements = await prisma.salarySettlement.findMany({
-    where: { year },
+    where: { year, ...branchFilter },
     include: { staff: { select: { id: true, name: true } } },
     orderBy: { paidAt: 'asc' },
   })
@@ -138,6 +142,7 @@ export async function getOvertimeReport(year: number) {
 /** Advance totals vs recovered amounts per employee */
 export async function getAdvanceDeductionReport(year: number) {
   await assertAdmin()
+  const branchFilter = await getBranchFilter()
 
   const [advances, settlements] = await Promise.all([
     prisma.transaction.findMany({
@@ -145,11 +150,12 @@ export async function getAdvanceDeductionReport(year: number) {
         type: 'ADVANCE',
         amount: { gt: 0 }, // positive = advance given
         createdAt: { gte: new Date(year, 0, 1), lte: new Date(year, 11, 31, 23, 59, 59) },
+        ...branchFilter,
       },
       include: { staff: { select: { id: true, name: true } } },
     }),
     prisma.salarySettlement.findMany({
-      where: { year },
+      where: { year, ...branchFilter },
       select: { staffId: true, advancesTally: true },
     }),
   ])
@@ -190,8 +196,9 @@ export async function getAdvanceDeductionReport(year: number) {
 /** Full payroll history for a single employee in a given year */
 export async function getEmployeePayrollReport(staffId: number, year: number) {
   await assertAdmin()
+  const branchFilter = await getBranchFilter()
   return prisma.salarySettlement.findMany({
-    where: { staffId, year },
+    where: { staffId, year, ...branchFilter },
     orderBy: { paidAt: 'asc' },
     include: {
       staff: { select: { name: true, idNumber: true, nationality: true } },
@@ -206,8 +213,9 @@ export async function getEmployeePayrollReport(staffId: number, year: number) {
 /** Get all active staff for selectors */
 export async function getActiveStaffList() {
   await assertAdmin()
+  const branchFilter = await getBranchFilter()
   return prisma.staff.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     select: { id: true, name: true },
     orderBy: { name: 'asc' },
   })
@@ -219,9 +227,10 @@ export async function getActiveStaffList() {
  */
 export async function getStaffSalaryForReport(year: number) {
   await assertAdmin()
+  const branchFilter = await getBranchFilter()
 
   const staff = await prisma.staff.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     select: {
       id: true,
       name: true,

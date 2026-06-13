@@ -3,12 +3,14 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
+import { getBranchFilter, getCurrentBranchId } from '@/actions/branch-helpers'
 
 // ── ERP Staff Sidebar ──────────────────────────────────────────────────────
 
 export async function getStaffForSidebar() {
+  const branchFilter = await getBranchFilter()
   const staff = await prisma.staff.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     select: {
       id: true,
       name: true,
@@ -48,9 +50,10 @@ export async function getStaffList() {
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
+  const branchFilter = await getBranchFilter()
 
   return prisma.staff.findMany({
-    where: { isActive: true },
+    where: { isActive: true, ...branchFilter },
     include: {
       transactions: true,
       salarySettlements: {
@@ -83,6 +86,8 @@ export async function addStaff(data: {
   if (session?.user?.role !== 'SUPER_ADMIN' && session?.user?.role !== 'ADMIN') {
     throw new Error("Unauthorized")
   }
+
+  const branchId = await getCurrentBranchId()
   
   const staff = await prisma.staff.create({
     data: {
@@ -97,6 +102,7 @@ export async function addStaff(data: {
       idNumber: data.idNumber,
       nationality: data.nationality,
       userId: data.userId || null,
+      branchId,
     }
   })
   revalidatePath('/staff')
