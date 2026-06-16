@@ -7,14 +7,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
-import { createAgent, addAgentTransaction } from '@/actions/agents'
+import { createAgent, addAgentTransaction, updateAgent, deleteAgent } from '@/actions/agents'
 import { AgentPdfReportButton } from './agent-report-pdf'
 import { useSession } from 'next-auth/react'
 import { 
   Receipt, User, Building2, History, PlusCircle, 
   Search, DollarSign, TrendingUp, Calendar, LayoutDashboard,
   Wallet, ShieldCheck, FileText, ChevronRight, UserPlus,
-  Filter, ArrowUpDown, MoreHorizontal, Edit3
+  Filter, ArrowUpDown, MoreHorizontal, Edit3, Trash2, Check, X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -43,6 +43,12 @@ export function AgentsLedger({ agents, userRole }: { agents: any[], userRole?: s
   const [companyName, setCompanyName] = useState('')
   const [openingBalance, setOpeningBalance] = useState('')
 
+  // Edit agent state
+  const [editingAgentId, setEditingAgentId] = useState<number | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editCompany, setEditCompany] = useState('')
+  const [editOpening, setEditOpening] = useState('')
+
   // Transaction state
   const [txType, setTxType] = useState<'AGENT_PURCHASE' | 'AGENT_PAYMENT'>('AGENT_PURCHASE')
   const [amount, setAmount] = useState('')
@@ -60,6 +66,33 @@ export function AgentsLedger({ agents, userRole }: { agents: any[], userRole?: s
     } catch(e) {
       alert('Failed to create agent')
     }
+  }
+
+  const startEditAgent = (a: any) => {
+    setEditingAgentId(a.id)
+    setEditName(a.name)
+    setEditCompany(a.companyName || '')
+    setEditOpening(String(a.openingBalance || 0))
+  }
+
+  const handleEditAgent = async () => {
+    if (!editingAgentId) return
+    try {
+      await updateAgent(editingAgentId, {
+        name: editName,
+        companyName: editCompany,
+        openingBalance: parseFloat(editOpening) || 0,
+      })
+      setEditingAgentId(null)
+    } catch { alert('Failed to update agent') }
+  }
+
+  const handleDeleteAgent = async (id: number, name: string) => {
+    if (!confirm(`Delete "${name}"? This will permanently remove the agent and all their transactions.`)) return
+    try {
+      if (selectedAgentId === id) setSelectedAgentId(null)
+      await deleteAgent(id)
+    } catch (e: any) { alert(e.message || 'Failed to delete agent') }
   }
 
   const handleCreateTx = async (e: React.FormEvent) => {
@@ -279,32 +312,98 @@ export function AgentsLedger({ agents, userRole }: { agents: any[], userRole?: s
                 (a.transactions || []).filter((t: any) => ['AGENT_PAYMENT', 'PURCHASE_RETURN', 'SUPPLIER_CREDIT_NOTE'].includes(t.type)).reduce((s: number, tx: any) => s + tx.amount, 0);
 
               return (
-                <button
+                <div
                   key={a.id}
-                  onClick={() => setSelectedAgentId(a.id)}
                   className={cn(
-                    "group flex flex-col gap-3 p-4 rounded-2xl transition-all duration-300 border-2 text-start",
+                    "group flex flex-col gap-3 p-4 rounded-2xl transition-all duration-300 border-2",
                     active
                       ? "bg-white dark:bg-gray-950 border-blue-600 shadow-lg scale-[1.02] z-10"
                       : "bg-white dark:bg-gray-900 border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
                   )}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", active ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" : "bg-gray-100 dark:bg-gray-800 text-gray-400")}>
-                        <User size={18} />
+                  {editingAgentId === a.id ? (
+                    /* ── Inline Edit Form ── */
+                    <div className="space-y-3" onClick={e => e.stopPropagation()}>
+                      <Input
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        placeholder="Name"
+                        className="h-9 text-sm rounded-xl"
+                      />
+                      <Input
+                        value={editCompany}
+                        onChange={e => setEditCompany(e.target.value)}
+                        placeholder="Company (optional)"
+                        className="h-9 text-sm rounded-xl"
+                      />
+                      <div className="relative">
+                        <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">SAR</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={editOpening}
+                          onChange={e => setEditOpening(e.target.value)}
+                          placeholder="Opening balance"
+                          className="h-9 text-sm rounded-xl pe-12"
+                        />
                       </div>
-                      <div className="flex flex-col">
-                        <span className={cn("font-black text-sm", active ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300")}>{a.name}</span>
-                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">{a.companyName || 'Independent'}</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleEditAgent}
+                          className="flex-1 flex items-center justify-center gap-1 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition-colors"
+                        >
+                          <Check size={13} /> Save
+                        </button>
+                        <button
+                          onClick={() => setEditingAgentId(null)}
+                          className="flex-1 flex items-center justify-center gap-1 h-8 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-xl text-xs font-black transition-colors"
+                        >
+                          <X size={13} /> Cancel
+                        </button>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <span className={cn("text-sm font-black tabular-nums", bal > 0 ? "text-orange-600" : "text-emerald-600")}>{bal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                      <span className="text-[7px] font-black text-gray-400 uppercase">SAR</span>
+                  ) : (
+                    /* ── Display Row ── */
+                    <div
+                      className="flex items-center justify-between w-full cursor-pointer"
+                      onClick={() => setSelectedAgentId(a.id)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", active ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30" : "bg-gray-100 dark:bg-gray-800 text-gray-400")}>
+                          <User size={18} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className={cn("font-black text-sm", active ? "text-gray-900 dark:text-white" : "text-gray-700 dark:text-gray-300")}>{a.name}</span>
+                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">{a.companyName || 'Independent'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-end">
+                          <span className={cn("text-sm font-black tabular-nums", bal > 0 ? "text-orange-600" : "text-emerald-600")}>{bal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          <span className="text-[7px] font-black text-gray-400 uppercase">SAR</span>
+                        </div>
+                        {isAdmin && (
+                          <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => startEditAgent(a)}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                              title="Edit"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAgent(a.id, a.name)}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  )}
+                </div>
               )
             })}
           </div>

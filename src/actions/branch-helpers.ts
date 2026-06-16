@@ -3,7 +3,8 @@
 import { auth } from '@/auth'
 import { cookies } from 'next/headers'
 
-const SUPER_ADMIN_ROLES = ['SUPER_ADMIN'] as const
+// Roles that can switch branches via cookie (Super Admin sees all by default; Admin uses cookie or assigned branchId)
+const MULTI_BRANCH_ROLES = ['SUPER_ADMIN', 'ADMIN'] as const
 
 export async function setActiveBranchCookie(branchId: number | null) {
   const cookieStore = await cookies()
@@ -16,22 +17,26 @@ export async function setActiveBranchCookie(branchId: number | null) {
 
 /**
  * Returns the branchId filter for Prisma queries.
- * SUPER_ADMIN gets an unrestricted view (no branchId filter) UNLESS they explicitly selected a branch.
- * All other roles are restricted to their own branch.
+ * - SUPER_ADMIN: respects cookie; if none, sees ALL branches (no filter)
+ * - ADMIN: respects cookie; if none, falls back to their assigned branchId
+ * - All other roles: restricted to their own assigned branchId
  */
 export async function getBranchFilter(): Promise<{ branchId?: number }> {
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthorized')
 
   const role = session.user.role as string
-  if (SUPER_ADMIN_ROLES.includes(role as any)) {
+
+  if (MULTI_BRANCH_ROLES.includes(role as any)) {
     const cookieStore = await cookies()
     const activeBranch = cookieStore.get('active_branch_id')?.value
     if (activeBranch && activeBranch !== 'all') {
       return { branchId: parseInt(activeBranch, 10) }
     }
-    // Super Admins see all branches by default (no filter)
-    return {}
+    // Super Admins with no cookie → see all branches
+    if (role === 'SUPER_ADMIN') return {}
+    // Admins with no cookie → fall back to assigned branch
+    return { branchId: session.user.branchId ?? 1 }
   }
 
   return { branchId: session.user.branchId ?? 1 }
@@ -39,14 +44,14 @@ export async function getBranchFilter(): Promise<{ branchId?: number }> {
 
 /**
  * Returns the current user's active branchId (for creating new records).
- * Falls back to branch 1 (Main Branch) for safety.
  */
 export async function getCurrentBranchId(): Promise<number> {
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthorized')
-  
+
   const role = session.user.role as string
-  if (SUPER_ADMIN_ROLES.includes(role as any)) {
+
+  if (MULTI_BRANCH_ROLES.includes(role as any)) {
     const cookieStore = await cookies()
     const activeBranch = cookieStore.get('active_branch_id')?.value
     if (activeBranch && activeBranch !== 'all') {
@@ -64,4 +69,3 @@ export async function isSuperAdmin(): Promise<boolean> {
   const session = await auth()
   return session?.user?.role === 'SUPER_ADMIN'
 }
-

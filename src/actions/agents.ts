@@ -65,3 +65,27 @@ export async function addAgentTransaction(data: {
 
   revalidatePath('/agents')
 }
+
+export async function updateAgent(id: number, data: { name?: string; companyName?: string; openingBalance?: number }) {
+  const session = await auth()
+  if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error('Unauthorized')
+
+  await prisma.agent.update({
+    where: { id },
+    data: {
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.companyName !== undefined && { companyName: data.companyName }),
+      ...(data.openingBalance !== undefined && { openingBalance: data.openingBalance }),
+    },
+  })
+
+  revalidatePath('/agents')
+}
+
+export async function deleteAgent(id: number) {
+  const session = await auth()
+  if (session?.user?.role !== 'ADMIN' && session?.user?.role !== 'SUPER_ADMIN') throw new Error('Unauthorized')
+
+  await prisma.agent.delete({ where: { id } })
+  revalidatePath('/agents')
+}

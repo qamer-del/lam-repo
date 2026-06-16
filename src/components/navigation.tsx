@@ -35,7 +35,7 @@ const navItems = [
   { href: '/admin/settings', icon: Settings, labelKey: 'settings' as const, allowedRoles: ['SUPER_ADMIN', 'ADMIN'], labelFallback: 'System Settings' },
 ]
 
-import { BranchSwitcherClient } from '@/components/branch-switcher'
+import { Building2 } from 'lucide-react'
 
 export function Sidebar({ role, branches, activeBranchId }: { role?: string; branches?: { id: number; name: string }[]; activeBranchId?: string | null }) {
   const pathname = usePathname()
@@ -55,8 +55,19 @@ export function Sidebar({ role, branches, activeBranchId }: { role?: string; bra
 
       {/* Nav */}
       <nav className="flex-1 p-4 space-y-1">
-        {isSuperAdmin && branches && (
-          <BranchSwitcherClient branches={branches} activeBranchId={activeBranchId ?? null} />
+        {branches && branches.length > 1 && (
+          <a
+            href="/branch-select"
+            className="flex items-center gap-2 px-3 py-2 mb-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-xs w-full group hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+          >
+            <Building2 size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
+            <span className="flex-1 font-bold text-blue-800 dark:text-blue-200 truncate">
+              {activeBranchId
+                ? (branches.find(b => String(b.id) === activeBranchId)?.name ?? 'Branch')
+                : 'All Branches'}
+            </span>
+            <span className="text-[10px] text-blue-500 dark:text-blue-400 font-black uppercase tracking-widest group-hover:underline">Switch</span>
+          </a>
         )}
         {navItems.map(item => {
           if (item.allowedRoles && (!role || !item.allowedRoles.includes(role))) return null
@@ -171,9 +182,20 @@ export function MobileTopBar({ role, branches, activeBranchId }: { role?: string
           </button>
         </div>
       </div>
-      {isSuperAdmin && branches && (
-        <div className="px-4 pb-3">
-          <BranchSwitcherClient branches={branches} activeBranchId={activeBranchId ?? null} />
+      {branches && branches.length > 1 && (
+        <div className="px-4 pb-2">
+          <a
+            href="/branch-select"
+            className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-xs w-full"
+          >
+            <Building2 size={14} className="text-blue-600 shrink-0" />
+            <span className="flex-1 font-bold text-blue-800 dark:text-blue-200 truncate">
+              {activeBranchId
+                ? (branches.find(b => String(b.id) === activeBranchId)?.name ?? 'Branch')
+                : 'All Branches'}
+            </span>
+            <span className="text-[10px] text-blue-500 font-black uppercase">Switch</span>
+          </a>
         </div>
       )}
     </header>
