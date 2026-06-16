@@ -36,7 +36,7 @@ export default async function RootLayout({
   let branches = undefined
   let activeBranchId = undefined
   
-  if (session?.user?.role === 'SUPER_ADMIN') {
+  if (session?.user?.role === 'SUPER_ADMIN' || session?.user?.role === 'ADMIN') {
     branches = await prisma.branch.findMany({ select: { id: true, name: true }, orderBy: { createdAt: 'asc' } })
     const cookieStore = await cookies()
     activeBranchId = cookieStore.get('active_branch_id')?.value

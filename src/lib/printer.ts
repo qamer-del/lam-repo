@@ -130,7 +130,17 @@ async function setupSecurity(qzInstance: any) {
         credentials: 'include',
         body: JSON.stringify({ message: toSign }),
       })
-        .then(r => r.json())
+        .then(async r => {
+          const text = await r.text()
+          try {
+            const data = JSON.parse(text)
+            if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`)
+            return data
+          } catch (e: any) {
+            if (e.message.includes('HTTP')) throw e
+            throw new Error(`Invalid response from /api/print/sign (Status ${r.status}): ${text.slice(0, 100)}`)
+          }
+        })
         .then(data => {
           if (data.signature) resolve(data.signature)
           else reject(new Error(data.error || 'No signature returned'))

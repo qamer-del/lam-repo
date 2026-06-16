@@ -556,5 +556,100 @@ export async function getInventorySummary() {
   return { totalValue, lowStockCount, outOfStockCount, totalItems: items.length }
 }
 
+// ── Purchase Payment Method Correction ───────────────────────────────────────
+
+export async function correctPurchasePaymentMethod(data: {
+  purchaseOrderId: number
+  newMethod: 'CASH' | 'NETWORK' | 'CREDIT'
+  newAgentId?: number | null
+  reason: string
+}) {
+  const session = await requireAdminOrAbove()
+
+  if (!data.reason?.trim()) throw new Error('A reason is required.')
+
+  // Load the PO with its linked transaction
+  const po = await prisma.purchaseOrder.findUnique({
+    where: { id: data.purchaseOrderId },
+    include: {
+      returns: { where: { status: 'APPROVED' } },
+    },
+  })
+  if (!po) throw new Error('Purchase order not found.')
+  if (!po.transactionId) throw new Error('This purchase has no linked financial transaction and cannot be corrected.')
+
+  const targetAgentId = data.newAgentId !== undefined ? data.newAgentId : po.agentId
+
+  // Safety: already same method and same agent?
+  if (po.method === data.newMethod && po.agentId === targetAgentId) {
+    throw new Error(`Payment method is already ${data.newMethod} and representative is unchanged.`)
+  }
+
+  // Safety: block if there are approved returns (purchase reversed)
+  if (po.returns.length > 0) {
+    throw new Error('Cannot correct payment method: this purchase has approved return(s).')
+  }
+
+  // Load the linked transaction
+  const txRecord = await prisma.transaction.findUnique({
+    where: { id: po.transactionId },
+  })
+  if (!txRecord) throw new Error('Linked financial transaction not found.')
+
+  // Safety: block if the transaction is locked in a financial settlement
+  if (txRecord.settlementId) {
+    throw new Error('Cannot correct payment method: this transaction is already included in a financial settlement.')
+  }
+
+  // Safety: block CREDIT → anything if no agent is linked
+  if (data.newMethod === 'CREDIT' && !targetAgentId) {
+    throw new Error('Cannot set method to CREDIT: this purchase has no linked representative.')
+  }
+
+  // Atomic update
+  await prisma.$transaction(async (db) => {
+    const oldMethod = po.method as PayMethod
+    const oldAgentId = po.agentId
+
+    // Update PurchaseOrder method and agent
+    await db.purchaseOrder.update({
+      where: { id: po.id },
+      data: { 
+        method: data.newMethod as PayMethod,
+        agentId: targetAgentId,
+      },
+    })
+
+    // Update linked Transaction method, agent and potentially description
+    await db.transaction.update({
+      where: { id: po.transactionId! },
+      data: { 
+        method: data.newMethod as PayMethod,
+        agentId: targetAgentId,
+        ...(targetAgentId && !oldAgentId ? { description: `Inventory purchase (PO #${po.id})` } : {}),
+      },
+    })
+
+    // Write permanent audit record (reuse the existing PaymentMethodCorrection model)
+    await db.paymentMethodCorrection.create({
+      data: {
+        invoiceNumber: `PO-${po.id}`,
+        transactionId: po.transactionId!,
+        oldMethod,
+        newMethod: data.newMethod as PayMethod,
+        oldAgentId,
+        newAgentId: targetAgentId,
+        reason: data.reason.trim(),
+        correctedById: session.user.id,
+      },
+    })
+  })
+
+  revalidatePath('/inventory')
+  revalidatePath('/')
+
+  return { success: true, purchaseOrderId: po.id, newMethod: data.newMethod, newAgentId: targetAgentId }
+}
+
 // Note: consumeInventoryItems was removed — stock is consumed atomically
 // inside recordDailySales (transactions.ts) to keep the operations atomic.

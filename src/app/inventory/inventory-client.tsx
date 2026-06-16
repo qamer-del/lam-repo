@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import {
   Package, ShoppingCart, ArrowLeftRight, AlertTriangle, TrendingUp,
-  Box, SlidersHorizontal, Pencil, Power, Tag,
+  Box, SlidersHorizontal, Pencil, Power, Tag, RefreshCw,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +18,7 @@ import { CreateReturnModal } from '@/components/create-return-modal'
 import { CreateAdjustmentModal } from '@/components/create-adjustment-modal'
 import { deactivateInventoryItem } from '@/actions/inventory'
 import { approvePurchaseReturn, rejectPurchaseReturn } from '@/actions/returns'
+import { PurchasePaymentCorrectionModal } from '@/components/purchase-payment-correction-modal'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { InventoryCategory, ReturnStatus } from '@prisma/client'
@@ -178,6 +179,7 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
   const [editItem, setEditItem] = useState<InventoryItem | null>(null)
   const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [correctionPurchase, setCorrectionPurchase] = useState<PurchaseOrder | null>(null)
   const ITEMS_PER_PAGE = 10
 
   // Reset page when tab or search changes
@@ -550,9 +552,24 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                     </TableCell>
                     <TableCell className="font-black tabular-nums text-blue-600">{po.totalCost.toFixed(2)}</TableCell>
                     <TableCell>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${po.method === 'CASH' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                        {po.method}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                          po.method === 'CASH' ? 'bg-emerald-100 text-emerald-700'
+                          : po.method === 'CREDIT' ? 'bg-amber-100 text-amber-700'
+                          : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {po.method}
+                        </span>
+                        {isAdmin && (
+                          <button
+                            title="Correct payment method"
+                            onClick={() => setCorrectionPurchase(po)}
+                            className="p-1 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition shrink-0"
+                          >
+                            <RefreshCw size={12} strokeWidth={2.5} />
+                          </button>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{format(new Date(po.createdAt), 'PP')}</TableCell>
                     <TableCell className="text-sm text-gray-500">{po.recordedBy?.name || '-'}</TableCell>
@@ -574,7 +591,22 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-black text-blue-600 tabular-nums">{po.totalCost.toFixed(2)}</p>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${po.method === 'CASH' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{po.method}</span>
+                    <div className="flex items-center gap-1 justify-end mt-0.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                        po.method === 'CASH' ? 'bg-emerald-100 text-emerald-700'
+                        : po.method === 'CREDIT' ? 'bg-amber-100 text-amber-700'
+                        : 'bg-blue-100 text-blue-700'
+                      }`}>{po.method}</span>
+                      {isAdmin && (
+                        <button
+                          title="Correct payment method"
+                          onClick={() => setCorrectionPurchase(po)}
+                          className="p-1 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition"
+                        >
+                          <RefreshCw size={11} strokeWidth={2.5} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 space-y-1">
@@ -597,6 +629,19 @@ export function InventoryClient({ initialItems, initialPurchases, initialMovemen
               endIndex={Math.min(currentStartIndex + ITEMS_PER_PAGE, initialPurchases.length)}
               totalItems={initialPurchases.length}
               onPageChange={setCurrentPage}
+            />
+          )}
+
+          {/* Purchase Payment Correction Modal */}
+          {correctionPurchase && (
+            <PurchasePaymentCorrectionModal
+              open={!!correctionPurchase}
+              onOpenChange={(v) => { if (!v) setCorrectionPurchase(null) }}
+              purchaseOrderId={correctionPurchase.id}
+              currentMethod={correctionPurchase.method as 'CASH' | 'NETWORK' | 'CREDIT'}
+              supplierName={correctionPurchase.agent?.name ?? null}
+              hasSupplier={!!correctionPurchase.agent}
+              onCorrected={() => { setCorrectionPurchase(null); router.refresh() }}
             />
           )}
         </Card>

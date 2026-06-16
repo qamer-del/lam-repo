@@ -215,6 +215,8 @@ model Agent {
   purchaseOrders  PurchaseOrder[]
   supplierCases   SupplierWarrantyCase[]
   purchaseReturns PurchaseReturn[]
+  oldPaymentCorrections PaymentMethodCorrection[] @relation("OldAgentCorrections")
+  newPaymentCorrections PaymentMethodCorrection[] @relation("NewAgentCorrections")
   branchId              Int      @default(1)
   branch                Branch?  @relation(fields: [branchId], references: [id])
 }
@@ -794,6 +796,11 @@ model PaymentMethodCorrection {
   correctedById   String
   correctedBy     User      @relation("PaymentCorrections", fields: [correctedById], references: [id])
   createdAt       DateTime  @default(now())
+
+  oldAgentId      Int?
+  newAgentId      Int?
+  oldAgent        Agent?    @relation("OldAgentCorrections", fields: [oldAgentId], references: [id])
+  newAgent        Agent?    @relation("NewAgentCorrections", fields: [newAgentId], references: [id])
 
   @@index([invoiceNumber])
   @@index([correctedById])

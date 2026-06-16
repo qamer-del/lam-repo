@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   ShoppingCart, Plus, Trash2, DollarSign, Wifi, Users,
-  Package, Search, X, CheckCircle2, Printer, Tag, ChevronDown, ArrowRight, ArrowLeft
+  Package, Search, CheckCircle2, Printer, Tag, ChevronDown, ArrowRight, ArrowLeft,
+  AlertTriangle, Calendar, Hash, ClipboardCheck
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
@@ -219,7 +220,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
-  const [step, setStep] = useState<'form' | 'labels'>('form')
+  const [step, setStep] = useState<'form' | 'confirm' | 'labels'>('form')
 
   const [agentId, setAgentId] = useState('none')
   const [method, setMethod] = useState<'CASH' | 'NETWORK' | 'CREDIT'>('CASH')
@@ -255,7 +256,8 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
   const totalCost = lineItems.reduce((s, l) => s + (parseFloat(l.quantity) || 0) * (parseFloat(l.unitCost) || 0), 0)
   const validLines = lineItems.filter(l => l.itemId > 0 && parseFloat(l.quantity) > 0)
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  // Step 1: Validate and show confirmation dialog
+  const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (validLines.length === 0) {
       toast.warning('No valid items', { description: 'Add at least one item with quantity.' })
@@ -265,6 +267,11 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
       toast.warning('Supplier required', { description: 'Select a supplier for credit purchases.' })
       return
     }
+    setStep('confirm')
+  }
+
+  // Step 2: Actually create the purchase order after confirmation
+  const confirmPurchase = async () => {
     setLoading(true)
     try {
       const result = await createPurchaseOrder({
@@ -286,6 +293,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
       setStep('labels')
     } catch (err: any) {
       toast.error('Purchase Failed', { description: err.message || 'An error occurred.' })
+      setStep('form')
     } finally {
       setLoading(false)
     }
@@ -295,10 +303,8 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
     setIsPrinting(true)
     const loadToastId = toast.loading('Sending to printer...')
     try {
-      const [settings, templates] = await Promise.all([
-        getPrinterSettings(),
-        getLabelTemplates(),
-      ])
+      const settings = await getPrinterSettings()
+      const templates = await getLabelTemplates()
       
       let config = templates[0]?.config as any || DEFAULT_LABEL_CONFIG
       
@@ -342,13 +348,24 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
         <div className="p-4 sm:p-6 md:p-8 border-b border-gray-100 dark:border-gray-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 shrink-0 safe-area-top">
           <div className="space-y-0.5 min-w-0 flex-1">
             <DialogTitle className="text-lg sm:text-2xl font-black tracking-tight text-gray-900 dark:text-white flex items-center gap-2 sm:gap-3">
-              <div className="p-2 sm:p-2.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl sm:rounded-2xl shrink-0">
-                <ShoppingCart size={20} strokeWidth={2.5} className="sm:w-[22px] sm:h-[22px]" />
+              <div className={cn(
+                'p-2 sm:p-2.5 rounded-xl sm:rounded-2xl shrink-0',
+                step === 'confirm'
+                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+              )}>
+                {step === 'confirm'
+                  ? <ClipboardCheck size={20} strokeWidth={2.5} className="sm:w-[22px] sm:h-[22px]" />
+                  : <ShoppingCart size={20} strokeWidth={2.5} className="sm:w-[22px] sm:h-[22px]" />}
               </div>
               <div className="min-w-0">
-                <span className="block leading-tight">{step === 'form' ? 'Purchase Order' : 'Barcode Labels'}</span>
+                <span className="block leading-tight">
+                  {step === 'form' ? 'Purchase Order' : step === 'confirm' ? 'Confirm Purchase' : 'Barcode Labels'}
+                </span>
                 <p className="text-[11px] sm:text-xs font-semibold text-gray-400 mt-0.5 line-clamp-2">
-                  {step === 'form' ? 'Record inventory purchase items and balance stock' : 'Print barcode labels for incoming stock'}
+                  {step === 'form' ? 'Record inventory purchase items and balance stock'
+                    : step === 'confirm' ? 'Review the details below before saving'
+                    : 'Print barcode labels for incoming stock'}
                 </p>
               </div>
             </DialogTitle>
@@ -358,16 +375,26 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300",
-              step === 'form' ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105" : "bg-emerald-500 text-white"
+              step === 'form' ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105"
+                : "bg-emerald-500 text-white"
             )}>
-              {step === 'labels' ? <CheckCircle2 size={16} /> : '1'}
+              {step !== 'form' ? <CheckCircle2 size={16} /> : '1'}
             </div>
-            <div className={cn("w-10 h-0.5 rounded-full", step === 'labels' ? "bg-emerald-500" : "bg-gray-200 dark:bg-gray-800")} />
+            <div className={cn("w-5 h-0.5 rounded-full", step === 'confirm' || step === 'labels' ? "bg-emerald-500" : "bg-gray-200 dark:bg-gray-800")} />
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300",
+              step === 'confirm' ? "bg-amber-500 text-white shadow-lg shadow-amber-500/30 scale-105"
+                : step === 'labels' ? "bg-emerald-500 text-white"
+                : "bg-gray-200 text-gray-400 dark:bg-gray-800"
+            )}>
+              {step === 'labels' ? <CheckCircle2 size={16} /> : '2'}
+            </div>
+            <div className={cn("w-5 h-0.5 rounded-full", step === 'labels' ? "bg-emerald-500" : "bg-gray-200 dark:bg-gray-800")} />
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300",
               step === 'labels' ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105" : "bg-gray-200 text-gray-400 dark:bg-gray-800"
             )}>
-              2
+              3
             </div>
           </div>
         </div>
@@ -512,6 +539,120 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
           </div>
         )}
 
+        {/* ── CONFIRM STEP ── */}
+        {step === 'confirm' && (() => {
+          const selectedAgent = agents.find(a => String(a.id) === agentId)
+          const isLargePurchase = totalCost >= 1000
+          const methodInfo = {
+            CASH: { label: 'Cash', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+            NETWORK: { label: 'Network (Card)', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+            CREDIT: { label: 'Credit (Supplier)', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+          }[method]
+          return (
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-gray-50/50 dark:bg-gray-900/30 min-h-0">
+              <div className="max-w-xl mx-auto space-y-4">
+
+                {/* Large purchase warning */}
+                {isLargePurchase && (
+                  <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4">
+                    <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" strokeWidth={2.5} />
+                    <div>
+                      <p className="text-sm font-black text-amber-800 dark:text-amber-300">Large Purchase — Please Verify</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5 leading-snug">
+                        Please verify the payment method before saving.
+                        This purchase will affect financial reports and supplier balances.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Summary card */}
+                <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-100 dark:border-gray-900 shadow-sm divide-y divide-gray-100 dark:divide-gray-900">
+                  <div className="px-5 py-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Purchase Summary</p>
+                  </div>
+
+                  {/* Supplier */}
+                  <div className="px-5 py-3.5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                      <Users size={14} className="shrink-0" />
+                      <span>Supplier</span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white text-right">
+                      {selectedAgent
+                        ? (selectedAgent.companyName ? `${selectedAgent.name} (${selectedAgent.companyName})` : selectedAgent.name)
+                        : <span className="italic text-gray-400">No Supplier</span>}
+                    </span>
+                  </div>
+
+                  {/* Items count */}
+                  <div className="px-5 py-3.5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                      <Hash size={14} className="shrink-0" />
+                      <span>Number of Items</span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {validLines.length} line{validLines.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {/* Payment method */}
+                  <div className="px-5 py-3.5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                      <DollarSign size={14} className="shrink-0" />
+                      <span>Payment Method</span>
+                    </div>
+                    <span className={cn('px-2.5 py-1 rounded-xl text-xs font-black', methodInfo.color)}>
+                      {methodInfo.label}
+                    </span>
+                  </div>
+
+                  {/* Date */}
+                  <div className="px-5 py-3.5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                      <Calendar size={14} className="shrink-0" />
+                      <span>Purchase Date</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {new Date().toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {/* Total */}
+                  <div className="px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-b-2xl">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-black text-blue-100">Total Purchase Amount</span>
+                      <span className="text-2xl font-black text-white tabular-nums">
+                        {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        <span className="text-sm font-bold ml-1.5 text-blue-200">SAR</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Items breakdown */}
+                <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-100 dark:border-gray-900 shadow-sm p-4 space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Items</p>
+                  {validLines.map((line, idx) => {
+                    const item = inventoryItems.find(i => i.id === line.itemId)
+                    const subtotal = (parseFloat(line.quantity) || 0) * (parseFloat(line.unitCost) || 0)
+                    return (
+                      <div key={idx} className="flex items-center justify-between gap-4 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-gray-900 dark:text-white truncate">{item?.name || `Item #${line.itemId}`}</p>
+                          <p className="text-xs text-gray-400">{line.quantity} {item?.unit} × {parseFloat(line.unitCost).toFixed(2)} SAR</p>
+                        </div>
+                        <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0 tabular-nums">{subtotal.toFixed(2)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+
+              </div>
+            </div>
+          )
+        })()}
+
         {/* ── LABELS STEP ── */}
         {step === 'labels' && (
           <div className="flex-1 overflow-y-auto p-4 sm:p-8 md:p-10 space-y-5 sm:space-y-6 bg-gray-50/50 dark:bg-gray-900/30 min-h-0">
@@ -576,25 +717,39 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
         <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-900 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center bg-white dark:bg-gray-950 gap-3 sm:gap-4 shrink-0 safe-area-bottom">
           <button
             type="button"
-            onClick={() => { setOpen(false); reset() }}
+            onClick={() => {
+              if (step === 'confirm') { setStep('form'); return }
+              setOpen(false); reset()
+            }}
             className="h-12 sm:h-14 px-6 sm:px-8 rounded-2xl text-gray-400 hover:text-gray-900 font-black text-sm flex items-center justify-center gap-2 transition w-full sm:w-auto"
           >
             <ArrowLeft size={16} />
-            {step === 'form' ? t('cancel') : 'Close Workflow'}
+            {step === 'form' ? t('cancel') : step === 'confirm' ? 'Back to Edit' : 'Close Workflow'}
           </button>
 
           {step === 'form' && (
             <button
               onClick={() => handleSubmit()}
-              disabled={loading || validLines.length === 0}
+              disabled={validLines.length === 0}
               className="h-12 sm:h-14 px-8 sm:px-12 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-black text-sm sm:text-base shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 w-full sm:w-auto"
+            >
+              <span>Review &amp; Confirm</span>
+              <ArrowRight size={16} />
+            </button>
+          )}
+
+          {step === 'confirm' && (
+            <button
+              onClick={confirmPurchase}
+              disabled={loading}
+              className="h-12 sm:h-14 px-8 sm:px-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 transition-all active:scale-95 w-full sm:w-auto"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Record Purchase</span>
-                  <ArrowRight size={16} />
+                  <CheckCircle2 size={18} />
+                  <span>Confirm &amp; Save Purchase</span>
                 </>
               )}
             </button>
