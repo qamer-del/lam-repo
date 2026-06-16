@@ -249,6 +249,8 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
   const removeLine = (i: number) => setLineItems(p => p.filter((_, idx) => idx !== i))
   const updateLine = (i: number, field: keyof LineItem, value: string | number) =>
     setLineItems(p => p.map((l, idx) => idx === i ? { ...l, [field]: value } : l))
+  const updateSubmittedLine = (i: number, field: keyof LineItem, value: string | number) =>
+    setSubmittedLines(p => p.map((l, idx) => idx === i ? { ...l, [field]: value } : l))
 
   const totalCost = lineItems.reduce((s, l) => s + (parseFloat(l.quantity) || 0) * (parseFloat(l.unitCost) || 0), 0)
   const validLines = lineItems.filter(l => l.itemId > 0 && parseFloat(l.quantity) > 0)
@@ -279,7 +281,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
       toast.success('Purchase Recorded', {
         description: `${method} purchase of ${totalCost.toFixed(2)} SAR recorded.`,
       })
-      setSubmittedLines([...validLines])
+      setSubmittedLines(validLines.map(l => ({ ...l, printQty: parseFloat(l.quantity) || 1 })))
       router.refresh()
       setStep('labels')
     } catch (err: any) {
@@ -550,7 +552,7 @@ export function AddPurchaseModal({ triggerClassName }: { triggerClassName?: stri
                           <input
                             type="number" min="1" max="999"
                             value={line.printQty}
-                            onChange={e => updateLine(idx, 'printQty', parseInt(e.target.value) || 1)}
+                            onChange={e => updateSubmittedLine(idx, 'printQty', parseInt(e.target.value) || 1)}
                             className="w-20 h-11 text-center text-sm font-black rounded-xl border-2 border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900"
                           />
                         </div>
