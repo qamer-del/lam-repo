@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { 
   BarChart3, TrendingUp, TrendingDown, Wallet, ShoppingBag, 
   ArrowUpRight, ArrowDownLeft, FileText, Calendar, Search,
-  ChevronRight, ArrowRight, History, CreditCard, Layers, Download, RefreshCw
+  ChevronRight, ArrowRight, History, CreditCard, Layers, Download, RefreshCw, Pencil
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { format, startOfMonth, endOfMonth } from 'date-fns'
@@ -17,12 +17,14 @@ import {
 } from '@/components/ui/table'
 import { getFinanceDashboardData, generateFinanceReportAction } from '@/actions/finance'
 import { toast } from 'sonner'
+import { EditExpenseModal } from '@/components/edit-expense-modal'
 
 interface FinanceClientProps {
   data: any
+  userRole?: string | null
 }
 
-export default function FinanceClient({ data }: FinanceClientProps) {
+export default function FinanceClient({ data, userRole }: FinanceClientProps) {
   const { t, locale } = useLanguage()
   const [currentData, setCurrentData] = useState(data)
   const { stats, last6Months, methodBreakdown, recentExpenses, recentPurchases, allTransactions } = currentData
@@ -32,6 +34,10 @@ export default function FinanceClient({ data }: FinanceClientProps) {
   const ITEMS_PER_PAGE = 10
   const [isPending, startTransition] = useTransition()
   const [isMounted, setIsMounted] = useState(false)
+  const [editingExpense, setEditingExpense] = useState<any | null>(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+
+  const isSuperAdmin = userRole === 'SUPER_ADMIN'
 
   // Date Range State (Default to current month)
   const [fromDate, setFromDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
@@ -368,6 +374,16 @@ export default function FinanceClient({ data }: FinanceClientProps) {
                           <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
                             {item.description || item.note || t('noDescription')}
                           </span>
+                          {item.expenseCategory && (
+                            <span className="text-[9px] text-violet-500 font-black uppercase tracking-widest mt-0.5">
+                              {item.expenseCategory}
+                            </span>
+                          )}
+                          {item.expenseVendor && (
+                            <span className="text-[9px] text-gray-400 font-bold mt-0.5">
+                              {item.expenseVendor}
+                            </span>
+                          )}
                           {item.recordedBy && (
                             <span className="text-[9px] text-blue-500 font-black uppercase tracking-widest mt-1">
                               By: {item.recordedBy.name}
@@ -381,10 +397,24 @@ export default function FinanceClient({ data }: FinanceClientProps) {
                         </span>
                       </TableCell>
                       <TableCell className="py-4 text-right">
-                        <span className={cn("text-sm font-black tabular-nums", 
-                          item.type === 'SALE' ? "text-emerald-600" : "text-rose-600")}>
-                          {(item.amount || item.totalCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
+                        <div className="flex items-center justify-end gap-2">
+                          <span className={cn("text-sm font-black tabular-nums", 
+                            item.type === 'SALE' ? "text-emerald-600" : "text-rose-600")}>
+                            {(item.amount || item.totalCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                          {isSuperAdmin && item.type === 'EXPENSE' && (
+                            <button
+                              title="Edit Expense"
+                              onClick={() => {
+                                setEditingExpense(item)
+                                setEditModalOpen(true)
+                              }}
+                              className="p-1.5 rounded-lg bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 transition-colors opacity-0 group-hover:opacity-100"
+                            >
+                              <Pencil size={12} />
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -421,6 +451,27 @@ export default function FinanceClient({ data }: FinanceClientProps) {
             </div>
           )}
         </Card>
+      )}
+
+      {/* Edit Expense Modal — SUPER_ADMIN only */}
+      {isSuperAdmin && (
+        <EditExpenseModal
+          expense={editingExpense}
+          isOpen={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          onSuccess={() => {
+            setEditModalOpen(false)
+            // Re-fetch the data to reflect updates
+            startTransition(async () => {
+              try {
+                const newData = await getFinanceDashboardData(new Date(fromDate), new Date(toDate))
+                setCurrentData(newData)
+              } catch (e) {
+                console.error('Failed to refresh after edit', e)
+              }
+            })
+          }}
+        />
       )}
     </div>
   )

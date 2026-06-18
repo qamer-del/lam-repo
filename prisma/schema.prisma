@@ -160,6 +160,7 @@ model User {
   absenceRecords        AbsenceRecord[]       @relation("AbsenceRecordedBy")
   attendanceRecords     AttendanceRecord[]    @relation("AttendanceRecordedBy")
   paymentCorrections    PaymentMethodCorrection[] @relation("PaymentCorrections")
+  expenseAuditLogs      ExpenseAuditLog[]         @relation("ExpenseAuditUser")
 
   // Internal Consumption Audit Trails
   consumptionsCreated   InternalConsumptionRequest[] @relation("ConsumptionCreatedBy")
@@ -271,6 +272,12 @@ model Transaction {
   createdAt           DateTime          @default(now())
   branchId              Int      @default(1)
   branch                Branch?  @relation(fields: [branchId], references: [id])
+
+  // ── Expense detail fields (editable by SUPER_ADMIN only) ──
+  expenseCategory     String?           // e.g. "Utilities", "Rent", "Marketing"
+  expenseNotes        String?           // Internal notes / memo
+  expenseVendor       String?           // Vendor / supplier name (freetext)
+  expenseAuditLogs    ExpenseAuditLog[]
 }
 
 model Settlement {
@@ -780,6 +787,23 @@ model InternalConsumptionRequest {
   @@index([status])
   @@index([itemId])
   @@index([staffId])
+}
+
+// ── Expense Edit Audit Log ──────────────────────────────────
+// Permanent, immutable record of every expense edit made by SUPER_ADMIN.
+// Financial balances are NOT touched — only the descriptive fields change.
+model ExpenseAuditLog {
+  id              Int         @id @default(autoincrement())
+  transactionId   Int
+  transaction     Transaction @relation(fields: [transactionId], references: [id])
+  editedById      String
+  editedBy        User        @relation("ExpenseAuditUser", fields: [editedById], references: [id])
+  oldValues       Json        // Snapshot of all editable fields before the change
+  newValues       Json        // Snapshot of all editable fields after the change
+  createdAt       DateTime    @default(now())
+
+  @@index([transactionId])
+  @@index([editedById])
 }
 
 // ── Payment Method Correction Audit Log ────────────────────

@@ -17,7 +17,8 @@ export default async function FinancePage() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      <FinanceClient data={data} />
+      <FinanceClient data={data} userRole={role} />
     </div>
   )
 }
+
