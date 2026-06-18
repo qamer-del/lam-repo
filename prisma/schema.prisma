@@ -277,6 +277,10 @@ model Transaction {
   expenseCategory     String?           // e.g. "Utilities", "Rent", "Marketing"
   expenseNotes        String?           // Internal notes / memo
   expenseVendor       String?           // Vendor / supplier name (freetext)
+  expenseAmount       Float?            // Edited amount (preserves base amount for dashboard)
+  expenseTitle        String?           // Edited title (preserves base description)
+  expenseDate         DateTime?         // Edited date (preserves base createdAt)
+  expenseInvoice      String?           // Edited reference
   expenseAuditLogs    ExpenseAuditLog[]
 }
 

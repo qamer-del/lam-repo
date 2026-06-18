@@ -362,17 +362,17 @@ export default function FinanceClient({ data, userRole }: FinanceClientProps) {
                       <TableCell className="py-4">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-gray-900 dark:text-white tabular-nums">
-                            {format(new Date(item.createdAt), 'dd MMM yyyy')}
+                            {format(new Date(item.expenseDate ?? item.createdAt), 'dd MMM yyyy')}
                           </span>
                           <span className="text-[10px] text-gray-400 font-bold tabular-nums">
-                            {format(new Date(item.createdAt), 'HH:mm')}
+                            {format(new Date(item.expenseDate ?? item.createdAt), 'HH:mm')}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                            {item.description || item.note || t('noDescription')}
+                            {item.expenseTitle ?? item.description ?? item.note ?? t('noDescription')}
                           </span>
                           {item.expenseCategory && (
                             <span className="text-[9px] text-violet-500 font-black uppercase tracking-widest mt-0.5">
@@ -400,7 +400,7 @@ export default function FinanceClient({ data, userRole }: FinanceClientProps) {
                         <div className="flex items-center justify-end gap-2">
                           <span className={cn("text-sm font-black tabular-nums", 
                             item.type === 'SALE' ? "text-emerald-600" : "text-rose-600")}>
-                            {(item.amount || item.totalCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            {(item.expenseAmount ?? item.amount ?? item.totalCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
                           {isSuperAdmin && item.type === 'EXPENSE' && (
                             <button

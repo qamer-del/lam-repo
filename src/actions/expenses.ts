@@ -61,6 +61,10 @@ export async function editExpense(data: EditExpenseData) {
       expenseCategory: true,
       expenseNotes: true,
       expenseVendor: true,
+      expenseAmount: true,
+      expenseTitle: true,
+      expenseDate: true,
+      expenseInvoice: true,
       createdAt: true,
       // Protection fields — we will never update these
       method: true,
@@ -79,15 +83,15 @@ export async function editExpense(data: EditExpenseData) {
   // 2. Build update payload — only descriptive / display fields
   const updatedDate = data.expenseDate ? new Date(data.expenseDate) : undefined
 
-  // 3. Save old snapshot for audit
+  // 3. Save old snapshot for audit (using shadow fields if they were edited previously, else base)
   const oldValues = {
-    description: tx.description,
-    invoiceNumber: tx.invoiceNumber,
+    description: tx.expenseTitle ?? tx.description,
+    invoiceNumber: tx.expenseInvoice ?? tx.invoiceNumber,
     expenseCategory: tx.expenseCategory,
     expenseNotes: tx.expenseNotes,
     expenseVendor: tx.expenseVendor,
-    amount: tx.amount,
-    createdAt: tx.createdAt.toISOString(),
+    amount: tx.expenseAmount ?? tx.amount,
+    createdAt: (tx.expenseDate ?? tx.createdAt).toISOString(),
   }
 
   const newValues = {
@@ -102,18 +106,18 @@ export async function editExpense(data: EditExpenseData) {
 
   // 4. Execute atomically
   await prisma.$transaction(async (p) => {
-    // Update only the editable descriptive fields
+    // Update ONLY the shadow fields. The base transaction fields remain untouched.
     await p.transaction.update({
       where: { id: data.transactionId },
       data: {
-        description: data.description,
-        invoiceNumber: data.invoiceNumber,
+        expenseTitle: data.description,
+        expenseInvoice: data.invoiceNumber,
         expenseCategory: data.expenseCategory ?? null,
         expenseNotes: data.expenseNotes ?? null,
         expenseVendor: data.expenseVendor ?? null,
-        amount: data.amount,
-        ...(updatedDate ? { createdAt: updatedDate } : {}),
-        // ⚡ NEVER update: method, staffId, settlementId, shiftId, branchId, agentId, type
+        expenseAmount: data.amount,
+        expenseDate: updatedDate,
+        // ⚡ NEVER update: amount, description, invoiceNumber, createdAt, method, staffId, settlementId, shiftId, branchId, agentId, type
       }
     })
 

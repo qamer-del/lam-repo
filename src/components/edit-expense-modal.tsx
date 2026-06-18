@@ -17,6 +17,10 @@ interface ExpenseRecord {
   expenseCategory?: string | null
   expenseNotes?: string | null
   expenseVendor?: string | null
+  expenseAmount?: number | null
+  expenseTitle?: string | null
+  expenseDate?: string | Date | null
+  expenseInvoice?: string | null
   amount: number
   createdAt: string | Date
   method: string
@@ -61,16 +65,18 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSuccess }: EditEx
   // Populate form when expense changes
   useEffect(() => {
     if (expense) {
-      setDescription(expense.description || '')
-      setExpenseCategory(expense.expenseCategory || '')
-      setExpenseNotes(expense.expenseNotes || '')
-      setExpenseVendor(expense.expenseVendor || '')
-      setInvoiceNumber(expense.invoiceNumber || '')
-      setAmount(String(expense.amount))
+      setDescription(expense.expenseTitle ?? expense.description ?? '')
+      setExpenseCategory(expense.expenseCategory ?? '')
+      setExpenseNotes(expense.expenseNotes ?? '')
+      setExpenseVendor(expense.expenseVendor ?? '')
+      setInvoiceNumber(expense.expenseInvoice ?? expense.invoiceNumber ?? '')
+      setAmount(String(expense.expenseAmount ?? expense.amount))
       setExpenseDate(
-        expense.createdAt
-          ? format(new Date(expense.createdAt), 'yyyy-MM-dd')
-          : ''
+        expense.expenseDate
+          ? format(new Date(expense.expenseDate), 'yyyy-MM-dd')
+          : expense.createdAt
+            ? format(new Date(expense.createdAt), 'yyyy-MM-dd')
+            : ''
       )
       setShowHistory(false)
       setAuditLog([])
